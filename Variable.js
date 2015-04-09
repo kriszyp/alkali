@@ -1,37 +1,56 @@
-define(['xstyle/core/utils', 'xstyle/core/lang'],
-		function(utils, lang){
-	var noCacheEntry = {};
+define(['./lang', './Context'],
+		function(lang, Context){
 	var deny = {};
 	var WeakMap = lang.WeakMap;
-
-	var nextId = 1;
-	function setupObserve(variable, object, key, invalidated){
-		var properties = variable._properties;
-		var observer;
-		if(typeof object == 'object'){
-			// if we haven't recorded any observer for this context, let's
-			// setup one now
-			observer = function(events){
-				for(var i = 0; i < events.length; i++){
-					var property = properties[events[i].name];
-					if(property && property.invalidate){
-						property.invalidate(invalidated);
-					}
+	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap');
+	var CacheEntry = lang.compose(WeakMap, function() {
+	},{
+		_propertyChange: function(propertyName){
+			this.variable._propertyChange(propertyName, contextFromCache(this));
+		}
+	});
+	function registerListener(value, listener){
+		var listeners = propertyListenersMap.get(value);
+		if(listeners){
+			listeners.push(this);
+		}else{
+			propertyListenersMap.set(value, listeners = [listener]);
+		}
+	}
+	function deregisterListener(value, listener){
+		var listeners = propertyListenersMap.get(value);
+		if(listeners){
+			var nextListener, i = 0;
+			while((nextListener = listeners[i])){
+				if(nextListener === listener){
+					listeners.splice(i, 1);
+					return;
 				}
-			};
-			lang.observe(object, observer);
-			if(observer.addKey){
-				observer.addKey(key);
+				i++;
 			}
 		}
-		return observer;
 	}
+	function contextFromCache(cache){
+		var context = new Context();
+		do{
+			context[cache.propertyName] = cache.key;
+			cache = cache.parent;
+		}while(cache);
+		return context;
+	}
+
 	function Variable(value){
 		this.value = value;
 	}
 	Variable.prototype = {
 		valueOf: function(){
-			return this.value;
+			var value = this.value;
+			if(value && typeof value === 'object' &&
+					this._properties && this.dependents){
+				// set up the listeners tracking
+				registerListener(value, this);
+			}
+			return value;
 		},
 		property: function(key){
 			var properties = this._properties || (this._properties = {});
@@ -41,6 +60,10 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 				propertyVariable = properties[key] = new Property(this, key);
 			}
 			return propertyVariable;
+		},
+		_propertyChange: function(propertyName, context){
+			var property = this.variable && this.variable._properties[propertyName];
+			property && property.invalidate(context);
 		},
 		apply: function(instance, args){
 			return new Call(this, args);
@@ -55,6 +78,10 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 				}
 			}
 			this.handles = null;
+			var value = this.value;
+			if(value && typeof value === 'object'){
+				deregisterListener(value, this);
+			}
 		},
 		own: function(handle){
 			(this.handles || (this.handles = [])).push(handle);
@@ -64,20 +91,10 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 		},
 
 		invalidate: function(context){
-			// TODO: there might actually be a collection of observers
-			var observer = this.cacheObserve;
-			if(observer){
-				lang.unobserve(this.cache, observer);
-				this.cacheObserve = null;
-			}
-			// clear the cache
-			if(context){
-				// just based on the context
-				var cache = this.getCache(context);
-				delete cache.value;
-			}else{
-				// delete our whole cache if it is an unconstrained invalidation
-				this.cache = {};
+			// TODO: there might actually be a collection of listeners
+			var value = this.value;
+			if(value && typeof value === 'object'){
+				deregisterListener(value, this);
 			}
 
 			var i, l, properties = this._properties;
@@ -136,14 +153,20 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 				}
 			});
 		},
+		items: function(){
+			return this.items || (this.items = new Items(this));
+		},
 		newElement: function(){
-			return utils.when(this.valueOf(), function(value){
+			return lang.when(this.valueOf(), function(value){
 				return value && value.newElement && value.newElement();
 			});
+		},
+		getSchema: function(){
+			return this.schema || (this.schema = new Schema(this));
 		}
 	};
 
-	var Caching = Variable.Caching = utils.compose(Variable, function(getValue, setValue){
+	var Caching = Variable.Caching = lang.compose(Variable, function(getValue, setValue){
 		if(getValue){
 			this.getValue = getValue;
 		}
@@ -152,21 +175,22 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 		}
 	}, {
 		getCache: function(context){
-			var cache = this.cache || (this.cache = new WeakMap());
+			var cache = this.cache || (this.cache = new CacheEntry());
 			while(cache.getNextKey){
 				var propertyName = cache.propertyName;
 				var keyValue = context.get(propertyName);
 				// TODO: handle the case of a primitive
 				var nextCache = cache.get(keyValue);
 				if(!nextCache){
-					nextCache = new WeakMap();
+					nextCache = new CacheEntry();
 					cache.set(keyValue, nextCache);
+					nextCache.key = keyValue;
 				}
 				cache = nextCache;
 			}
 			return cache;
 		},
-		valueOf: function(context){
+		valueOf: function(context, cacheHolder){
 			// first check to see if we have the variable already computed
 			var useCache = this.dependents || this._properties;
 			if(useCache){
@@ -178,6 +202,9 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 			}
 			var cache = this.getCache(context);
 			if('value' in cache){
+				if(cacheHolder && cacheHolder instanceof GetCache){
+					cacheHolder.cache = cache;
+				}
 				return cache.value;
 			}
 			var cache = this.cache;
@@ -193,24 +220,58 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 						}
 						var nextCache = cache.get(keyValue);
 						if(!nextCache){
-							nextCache = new WeakMap();
+							nextCache = new CacheEntry();
 							cache.set(keyValue, nextCache);
+							nextCache.parent = cache;
+							nextCache.key = keyValue;
+							nextCache.propertyName = propertyName;
 						}
 						cache = nextCache;
 					}
 					return keyValue;
 				}
 			};
-			var computedValue = this.getValue(watchedContext);
-			cache.value = computedValue;
-			return computedValue;
+			var variable = this;
+			return lang.when(Variable.prototype.getValue.call(this, watchedContext), function(computedValue){
+				if(computedValue && typeof computedValue === 'object' &&
+						variable._properties && variable.dependents){
+					// set up the listeners tracking
+					registerListener(computedValue, cache);
+					cache.variable = variable;
+				}
+				cache.value = computedValue;
+				if(cacheHolder && cacheHolder instanceof GetCache){
+					cacheHolder.cache = cache;
+				}
+				return computedValue;
+			});
 		},
+
 		getValue: function(){
 			return this.value;
+		},
+		invalidate: function(context){
+			// TODO: there might actually be a collection of listeners
+			// clear the cache
+			if(context){
+				// just based on the context
+				var cache = this.getCache(context);
+				deregisterListener(cache.value, cache);
+				delete cache.value;
+			}else{
+				// delete our whole cache if it is an unconstrained invalidation
+				deregisterListener(this.cache.value, this.cache);
+				this.cache = {};
+			}
+			Variable.prototype.invalidate.call(this, context);
 		}
+
 	});
 
-	var Property = utils.compose(Variable, function Property(parent, key){
+	function GetCache(){
+	}
+
+	var Property = lang.compose(Variable, function Property(parent, key){
 		this.parent = parent;
 		this.key = key;
 	},
@@ -218,12 +279,19 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 		init: function(){
 			this.dependsOn(this.parent);
 		},
-		getValue: function(context){
+		valueOf: function(context){
 			var key = this.key;
 			var parent = this.parent;
-			return utils.when(parent.valueOf(context), function(object){
-				// TODO: cleanup
-				setupObserve(parent, object, key, context);
+			var property = this;
+			var cacheHolder = new GetCache();
+			return lang.when(parent.valueOf(context, cacheHolder), function(object){
+				if(property.dependents){
+					var cache = cacheHolder.cache || parent;
+					var listeners = propertyListenersMap.get(cache);
+					if(listeners && listeners.observer && listeners.observer.addKey){
+						listeners.observer.addKey(key);
+					}
+				}
 				return object == null ? object : object[key];
 			});
 		},
@@ -231,19 +299,24 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 			var key = this.key;
 			var parent = this.parent;
 			var property = this;
-			return utils.when(parent.valueOf(context), function(object){
+			return lang.when(parent.valueOf(context), function(object){
 				if(object == null){
 					return deny;
+				}
+				var listeners = propertyListenersMap.get(object);
+				if(listeners){
+					for(var i = 0, l = listeners.length; i < l; i++){
+						listeners[i]._propertyChange();
+					}
 				}
 				object[key] = value;
 				return Variable.prototype.put.call(property, value, context);
 			});
 		}
-
 	});
 
 	// a call variable is the result of a call
-	var Call = utils.compose(Caching, function Call(functionVariable, args){
+	var Call = lang.compose(Caching, function Call(functionVariable, args){
 		this.functionVariable = functionVariable;
 		this.args = args;
 	}, {
@@ -261,13 +334,20 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 		},
 		getValue: function(context){
 			var call = this;
-			return utils.when(this.functionVariable.valueOf(context), function(functionValue){
+			return lang.when(this.functionVariable.valueOf(context), function(functionValue){
 				return call.invoke(functionValue, call.args, context);
 			});
 		},
+		execute: function(context){
+			var call = this;
+			return lang.when(this.functionVariable.valueOf(context), function(functionValue){
+				return call.invoke(functionValue, call.args, context, true);
+			});
+		},
+
 		put: function(value, context){
 			var call = this;
-			return utils.when(this.functionVariable.valueOf(context), function(functionValue){
+			return lang.when(this.functionVariable.valueOf(context), function(functionValue){
 				var result = call.invoke(function(){
 					if(functionValue.reverse){
 						functionValue.reverse.call(this, value, arguments, context);
@@ -279,7 +359,7 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 				return result;
 			});
 		},
-		invoke: function(functionValue, args, context){
+		invoke: function(functionValue, args, context, observeArguments){
 			var instance = this.functionVariable.parent;
 			if(functionValue.handlesContext){
 				return functionValue.apply(instance, args, context);
@@ -295,7 +375,27 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 					// include the instance in whenAll
 					results.push(instance);
 					// wait for the values to be received
-					return utils.whenAll(results, function(inputs){
+					return lang.whenAll(results, function(inputs){
+						if(observeArguments){
+							var handles = [];
+							for(var i = 0, l = inputs.length; i < l; i++){
+								var input = inputs[i];
+								if(input && typeof input === 'object'){
+									handles.push(observe(input));
+								}
+							}
+							var instance = inputs.pop();
+							try{
+								var result = functionValue.apply(instance, inputs, context);
+							}finally{
+								lang.when(result, function(){
+									for(var i = 0; i < l; i++){
+										handles[i].done();
+									}
+								});
+							}
+							return result;
+						}
 						var instance = inputs.pop();
 						return functionValue.apply(instance, inputs, context);
 					});
@@ -303,6 +403,92 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 			}
 		}
 	});
+
+	var Items = lang.compose(Variable, function(parent){
+		this.parent = parent;
+	}, {
+		init: function(){
+			this.dependsOn(this.parent);
+		},
+		lastIndex: 0,
+		valueOf: function(context){
+			var parent = this.parent;
+			var variable = this;
+			return lang.when(parent.valueOf(context), function(array){
+
+				if(!context || !array){
+					return array;
+				}
+				var previous = context.get('after');
+				if(!previous){
+					return array[0];
+				}else{
+					// performance shortcut
+					if(array[variable.lastIndex++] === previous){
+						return array[variable.lastIndex];
+					}
+					for(var i = 0, l = array.length; i < l;){
+						if(array[i++] === previous){
+							variable.lastIndex = i;
+							return array[i];
+						}
+					}
+				}
+				if(variable.dependents){
+					lang.observeArray(array, function(events){
+						event.name;
+						variable.invalidate(new ArrayContext(changedItem));
+					});
+				}
+			});
+		},
+		forEach: function(callback, context){
+			var iteratorContext = lang.mixin({}, context);
+			var variable = this;
+			return lang.when(this.valueOf(iteratorContext), function(item){
+				while(item){
+					callback(item);
+					iteratorContext.after = item;
+					item = variable.valueOf(iteratorContext);
+				}
+			});
+		}
+	});
+	var Validating = lang.compose(Caching, function(target, schema){
+		this.target = target;
+		this.schema = schema;
+	}, {
+		init: function(){
+			this.dependsOn(this.target);
+			this.dependsOn(this.schema);
+		},
+		valueOf: function(context){
+			return doValidation(this.target.valueOf(context), this.schema.valueOf(context));
+		}
+	});
+	var Schema = lang.compose(Caching, function(target){
+		this.target = target;
+	}, {
+		init: function(){
+			this.dependsOn(this.target);
+		},
+		getValue: function(context){
+			if(this.value){ // if it has an explicit schema, we can use that.
+				return this.value;
+			}
+			// get the schema, going through target parents until it is found
+			return getSchema(this.target);
+			function getSchema(target){
+				return lang.when(target.valueOf(context), function(value){
+					return value && value.schema || target.parent && getSchema(target.parent)[target.key];
+				});
+			}
+		}
+	});
+	function validate(target){
+		var schemaForObject = schema(target);
+		return new Validating(target, schemaForObject);
+	}
 	Variable.deny = deny;
 	function addFlag(name){
 		Variable[name] = function(functionValue){
@@ -311,5 +497,44 @@ define(['xstyle/core/utils', 'xstyle/core/lang'],
 	}
 	addFlag(Variable, 'handlesContext');
 	addFlag(Variable, 'handlesPromises');
+
+	function observe(object){
+		var listeners = propertyListenersMap.get(object);
+		if(listeners.observerCount){
+			listeners.observerCount++;
+		}else{
+			listeners.observerCount = 1;
+			var observer = listeners.observer = lang.observe(object, function(events){
+				for(var i = 0, l = listeners.length; i < l; i++){
+					var listener = listeners[i];
+					for(var j = 0, el = events.length; j < el; j++){
+						var event = events[i];
+						listener._propertyChange(event.name);
+					}
+				}
+			});
+			if(observer.addKey){
+				for(var i = 0, l = listeners.length; i < l; i++){
+					var listener = listeners[i];
+					listener.eachKey(function(key){
+						observer.addKey(key);
+					});
+				}
+			}
+		}
+		return {
+			remove: function(){
+				if(!(--listeners.observerCount)){
+					listeners.observer.remove();
+				}
+			},
+			done: function(){
+				// deliver changes
+				lang.deliverChanges(observer);
+				this.remove();
+			}
+		};
+	}
+	Variable.observe = observe;
 	return Variable;
 });

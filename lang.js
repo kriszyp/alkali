@@ -1,6 +1,6 @@
-define('xstyle/core/lang', [], function(){
+define([], function(){
 	var hasFeatures = {
-		observe: Object.observe,
+		observe: false && Object.observe,
 		defineProperty: Object.defineProperty && (function(){
 			try{
 				Object.defineProperty({}, 't', {});
@@ -263,6 +263,54 @@ define('xstyle/core/lang', [], function(){
 
 		observe: observe,
 		unobserve: unobserve,
+			when: function(value, callback, errorHandler){
+			return value && value.then ?
+				(value.then(callback, errorHandler) || value) : callback(value);
+		},
+		whenAll: function(inputs, callback){
+			if(someHasProperty(inputs, 'then')){
+				// we have asynch inputs, do lazy loading
+				return {
+					then: function(onResolve, onError){
+						var remaining = 1;
+						var readyInputs = [];
+						for(var i = 0; i < inputs.length; i++){
+							var input = inputs[i];
+							remaining++;
+							if(input && input.then){
+								(function(i){
+									input.then(function(value){
+										readyInputs[i] = value;
+										onEach();
+									}, onError);
+								})(i);
+							}else{
+								readyInputs[i] = input;
+								onEach();
+							}
+						}
+						onEach();
+						function onEach(){
+							remaining--;
+							if(!remaining){
+								onResolve(callback(readyInputs));
+							}
+						}
+					},
+					inputs: inputs
+				};
+			}
+			// just sync inputs
+			return callback(inputs);
+
+		},
+		compose: function(Base, constructor, properties){
+			var prototype = constructor.prototype = new Base();
+			for(var i in properties){
+				prototype[i] = properties[i];
+			}
+			return constructor;
+		},
 		copy: Object.assign || function(target, source){
 			for(var i in source){
 				target[i] = source[i];
