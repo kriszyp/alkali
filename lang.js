@@ -311,6 +311,17 @@ define([], function(){
 			}
 			return constructor;
 		},
+		nextTurn: has('promise') ? 
+			function (callback) {
+				// promises resolve on the next micro turn
+				new Promise(function (resolve) {
+					resolve(); 
+				}).then(callback);
+			} :
+			function (callback) {
+				// TODO: we can do better for other, older browsers
+				setTimeout(callback, 0);
+			},
 		copy: Object.assign || function(target, source){
 			for(var i in source){
 				target[i] = source[i];
