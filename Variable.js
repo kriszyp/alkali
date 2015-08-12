@@ -87,7 +87,7 @@ define(['./lang', './Context'],
 			(this.handles || (this.handles = [])).push(handle);
 		},
 		dependsOn: function(target){
-			this.own(target.dependencyOf(this));
+			this.own(target.notifies(this));
 		},
 
 		invalidate: function(context){
@@ -110,7 +110,7 @@ define(['./lang', './Context'],
 				}
 			}
 		},
-		dependencyOf: function(dependent){
+		notifies: function(dependent){
 			var dependents = this.dependents;
 			if(!dependents){
 				this.init();
@@ -147,7 +147,7 @@ define(['./lang', './Context'],
 				listener(this.valueOf(context));
 			}
 			var variable = this;
-			return this.dependencyOf({
+			return this.notifies({
 				invalidate: function(){
 					listener(variable.valueOf());
 				}
@@ -327,7 +327,7 @@ define(['./lang', './Context'],
 			var args = this.args;
 			for(var i = 0, l = args.length; i < l; i++){
 				var arg = args[i];
-				if(arg.dependencyOf){
+				if(arg.notifies){
 					this.dependsOn(arg);
 				}
 			}

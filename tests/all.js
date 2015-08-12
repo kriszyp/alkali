@@ -1,4 +1,5 @@
 define([
-	'./Variable'
+	'./Variable',
+	'./Element'
 ], function () {
 });

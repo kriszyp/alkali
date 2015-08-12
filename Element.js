@@ -1,4 +1,7 @@
-define(['./bind', './lang', './Context'], function (bind, lang, Context) {
+define(function (require, exports, module) {
+	bind = require('./bind');
+	lang = require('./lang');
+	Context = require('./Context');
 	var knownElementProperties = {
 	};
 	['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
@@ -6,8 +9,8 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 	});
 	var testStyle = document.createElement('div').style;
 	var childTagForParent = {
-		TABLE: 'tr td',
-		TBODY: 'tr td',
+		TABLE: ['tr','td'],
+		TBODY: ['tr','td'],
 		TR: 'td',
 		UL: 'li',
 		OL: 'li',
@@ -19,18 +22,23 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 		SELECT: 1
 	};
 	var doc = document;
-	function ElementType() {
-	}
-	var invalidedElements = new WeakMap(null, 'invalidated');
+	var invalidatedElements = new WeakMap(null, 'invalidated');
 	var queued;
 	var baseDefinitions = {
-		class: function (className) {
-			elementType.selector += '.' + className;
+		class: {
+			is: function (className) {
+				return {
+					for: function(context) {
+						var elementType = context.get('type');
+						elementType.selector += '.' + className;
+					}
+				};
+			}
 		}
 	};
 	function processQueue() {
-		for (var i = 0; i < invalidated.length; i++){
-			invalidated[i]();
+		for (var i = 0; i < toRender.length; i++){
+			toRender[i]();
 		}
 		invalidatedElements = new WeakMap(null, 'invalidated');
 		// TODO: if this is not a real weak map, we don't want to GC it, or it will leak
@@ -40,7 +48,8 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 		variable.dependencyOf(this);
 		this.onUpdate = onUpdate;
 		this.elementType = elementType;
-		onUpdate();
+		this.variable = variable;
+		onUpdate.call(this);
 	}
 	Updater.prototype = {
 		invalidate: function (context) {
@@ -56,9 +65,9 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 				}
 			} else {
 				var updater = this;
-				invalidated.push(function(){
+				toRender.push(function(){
 					updater.update(element);
-				});	
+				});
 			}
 		},
 		invalidateElement: function(element) {
@@ -72,7 +81,7 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 				queued = true;
 			}
 			var updater = this;
-			invalidated.push(function(){
+			toRender.push(function(){
 				updater.update(element);
 			});
 		}
@@ -80,7 +89,7 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 	};
 
 
-	var invalidated = [];
+	var toRender = [];
 	function flatten(target, part) {
 		var base = target.base;
 		if (base) {
@@ -92,6 +101,9 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 	}
 
 	var nextId = 1;
+	function ElementType(tagName) {
+		this.tagName = tagName || 'span';
+	}
 	ElementType.prototype = {
 		with: function (properties, targetValue) {
 			var derivative = this.deriveType();
@@ -109,30 +121,34 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 		deriveType: function () {
 			var derivative = Object.create(this);
 			derivative.base = this;
-			derivative.selector = this.tagName + nextId++;
 			if (this.definitions) {
 				derivative.definitions = Object.create(this.definitions);
 			}
+			return derivative;
 		},
 		define: function (name, value) {
 			this.definitions[name] = value;
 		},
 		init: function () {
 			this._initialized = true;
+			this.selector = this.selector || 
+				(this.tagName + nextId++);
 			if (this.base) {
 				//this.base.init();
 				flatten(this, 'styles');
 				flatten(this, 'properties');
 			}
 			var properties = this.properties;
-			for (var i = 0; i < this.properties.length; i++){
-				var name = properties[i];
-				var value = properties[name];
-				if (value && value.invalidate) {
-					// a variable
-					new Updater(value, this, function(context, element){
-						element[name] = this.variable.valueOf(context);
-					});
+			if (properties) {
+				for (var i = 0; i < this.properties.length; i++){
+					var name = properties[i];
+					var value = properties[name];
+					if (value && value.invalidate) {
+						// a variable
+						new Updater(value, this, function(context, element){
+							this.element[name] = this.variable.valueOf(context);
+						});
+					}
 				}
 			}
 		},
@@ -153,11 +169,23 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 			return this;
 		},
 		setStyle: function (name, value) {
-			this.styles[name] = value;
+			var styles = this.styles || (this.styles = []);
+			if (styles[name] === undefined) {
+				styles[name] = value;
+				styles.push(name);
+			} else {
+				styles[name] = value;
+			}
 			return this;
 		},
 		setProperty: function (name, value) {
-			this.properties[name] = value;
+			var properties = this.properties || (this.properties = []);
+			if (properties[name] === undefined) {
+				properties[name] = value;
+				properties.push(name);
+			} else {
+				properties[name] = value;
+			}
 			return this;
 		},
 		elements: function (callback) {
@@ -173,16 +201,15 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 			var element = document.createElement(this.tagName);
 			// simple conversion of CSS selector class names to space separated class names
 			element.className = this.selector.replace(/[^\.]+\.([\w-]+)/g, '$1 ');
-			var properties = this.properties;
+			var properties = this.properties || 0;
 			var context = new Context(this, element);
-			if (properties) {
-				for (var i = 0, l = properties.length; i < l; i++) {
-					var name = properties[i];
-					element[name] = properties[name].valueOf(context);
-				}
+			for (var i = 0, l = properties.length; i < l; i++) {
+				var name = properties[i];
+				element[name] = properties[name].valueOf(context);
 			}
 			this.renderStyles(element, context);
 			this.fillElement(element, context);
+			return element;
 		},
 		renderStyles: function (element, context) {
 			var inlineStyles = this.inlineStyles;
@@ -208,7 +235,8 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 						}
 					};
 				};
-				for (var i = 0; i < this.styles.length; i++) {
+				var styles = this.styles || 0;
+				for (var i = 0; i < styles.length; i++) {
 					var name = this.styles[i];
 					var value = this.styles[name];
 					var ruleStyles;
@@ -307,4 +335,6 @@ define(['./bind', './lang', './Context'], function (bind, lang, Context) {
 
 		}
 	};
+	ElementType.refresh = processQueue;
+	module.exports = ElementType;
 });
