@@ -14,7 +14,23 @@ define(function (require, exports, module) {
 		queued = false;
 	}
 	function Updater(variable, selector) {
-		variable.notifies(this);
+		if (variable.notifies) {
+			// if it has notifies, we don't need to instantiate a closure
+			variable.notifies(this);
+		} else {
+			// baconjs-esqe API
+			var updater = this;
+			variable.subscribe(function (event) {
+				// replace the variable with an object
+				// that returns the value from the event
+				updater.variable = {
+					valueOf: function () {
+						return event.value();
+					}
+				};
+			});
+		}
+			
 		this.variable = variable;
 		this.selector = selector;
 	}
