@@ -9,7 +9,7 @@ var miniExcludes = {
 		/\/core\/put/, // contents of core folder
 		/\/xstyle(\.min)?$/ // xstyle.min.*
 	],
-	isTestRe = /\/test\//;
+	isTestRe = /\/tests\//;
 
 var profile = {
 	resourceTags: {
