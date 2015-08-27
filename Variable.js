@@ -111,6 +111,9 @@ define(['./lang', './Context'],
 			}
 		},
 		notifies: function(dependent){
+			if(!dependent.invalidate){
+				throw new Error('Invalid variable provided as notification receipient, a variable must have an invalidate method');
+			}
 			var dependents = this.dependents;
 			if(!dependents){
 				this.init();
@@ -153,6 +156,19 @@ define(['./lang', './Context'],
 				}
 			});
 		},
+		subscribe: function(listener){
+			// baconjs compatible
+			var variable = this;
+			return this.notifies({
+				invalidate: function(){
+					listener({
+						value: function(){
+							return variable.valueOf();
+						}
+					});
+				}
+			});
+		},
 		items: function(){
 			return this.items || (this.items = new Items(this));
 		},
@@ -163,6 +179,9 @@ define(['./lang', './Context'],
 		},
 		getSchema: function(){
 			return this.schema || (this.schema = new Schema(this));
+		},
+		map: function (operator) {
+			return new Variable(operator).apply(null, [this]);
 		}
 	};
 
@@ -232,7 +251,7 @@ define(['./lang', './Context'],
 				}
 			};
 			var variable = this;
-			return lang.when(Variable.prototype.getValue.call(this, watchedContext), function(computedValue){
+			return lang.when(this.getValue(watchedContext), function(computedValue){
 				if(computedValue && typeof computedValue === 'object' &&
 						variable._properties && variable.dependents){
 					// set up the listeners tracking
@@ -256,11 +275,11 @@ define(['./lang', './Context'],
 			if(context){
 				// just based on the context
 				var cache = this.getCache(context);
-				deregisterListener(cache.value, cache);
+				// deregisterListener(cache.value, cache);
 				delete cache.value;
 			}else{
 				// delete our whole cache if it is an unconstrained invalidation
-				deregisterListener(this.cache.value, this.cache);
+				// deregisterListener(this.cache.value, this.cache);
 				this.cache = {};
 			}
 			Variable.prototype.invalidate.call(this, context);

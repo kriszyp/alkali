@@ -268,7 +268,13 @@ define([], function(){
 				(value.then(callback, errorHandler) || value) : callback(value);
 		},
 		whenAll: function(inputs, callback){
-			if(someHasProperty(inputs, 'then')){
+			var promiseInvolved;
+			for(var i = 0, l = inputs.length; i < l; i++){
+				if(inputs[i] && inputs[i].then){
+					promiseInvolved = true;
+				}
+			}
+			if(promiseInvolved){
 				// we have asynch inputs, do lazy loading
 				return {
 					then: function(onResolve, onError){

@@ -1,9 +1,11 @@
 define(function (require, exports, module) {
+	var lang = require('./lang');
 	var doc = document;
 	var invalidatedElements = new WeakMap(null, 'invalidated');
 	var queued;
 	var toRender = [];
-	nextFrame = window.requestAnimationFrame || setTimeout
+	var nextId = 1;
+	var nextFrame = window.requestAnimationFrame || setTimeout;
 	function processQueue() {
 		for (var i = 0; i < toRender.length; i++){
 			toRender[i]();
@@ -13,7 +15,15 @@ define(function (require, exports, module) {
 		// TODO: if this is not a real weak map, we don't want to GC it, or it will leak
 		queued = false;
 	}
-	function Updater(variable, selector) {
+	function queueRenderer(renderer){
+	 	if (!queued) {
+			nextFrame(processQueue);
+			queued = true;
+		}
+		toRender.push(renderer);
+	}
+	function Updater(options) {
+		var variable = options.variable;
 		if (variable.notifies) {
 			// if it has notifies, we don't need to instantiate a closure
 			variable.notifies(this);
@@ -30,38 +40,37 @@ define(function (require, exports, module) {
 				};
 			});
 		}
-			
+
 		this.variable = variable;
-		this.selector = selector;
+		if (options) {
+			if (options.selector) {
+				this.selector = options.selector;
+			}
+			if (options.element) {
+				this.element = options.element;
+			}
+			if (options.update) {
+				this.update = options.update;
+			}
+			if (options.renderUpdate) {
+				this.renderUpdate = options.renderUpdate;
+			}
+		}
+		this.update(true);
 	}
 	Updater.prototype = {
 		constructor: Updater,
-		update: function (newValue) {
+		update: function () {
 			throw new Error ('update must be implemented by sub class of Updater');
-		},
-		addElement: function (element) {
-			if (this.selector) {
-				element.updaters = [this];
-			} else {
-				// no way of tracking so, we have to keep an array
-				(this.elements = (this.elements || [])).push(element);
-			}
-			// and immediately do an update
-			this.update(element, this.variable.valueOf());
 		},
 		invalidate: function (context) {
 			if (!this.invalidated) {
 				// do this only once, until we render again
 				this.invalidated = true;
-				var elements = this.elements;
-	 			if (!queued) {
-					nextFrame(processQueue);
-					queued = true;
-				}
 				var updater = this;
-				toRender.push(function(){
+				queueRenderer(function(){
 					updater.invalidated = false;
-					updater.update(updater.variable.valueOf());
+					updater.update();
 				});
 			}
 		},
@@ -84,34 +93,98 @@ define(function (require, exports, module) {
 
 	};
 
-	function ElementUpdater(variable, selector) {
-		Updater.call(this, variable, selector);
+	function ElementUpdater(variable, options) {
+		Updater.call(this, variable, options);
 	}
-	ElementUpdater.prototype.update = function (newValue) {
+	ElementUpdater.prototype = Object.create(Updater.prototype);
+	ElementUpdater.prototype.update = function (always) {
 		var updater = this;
-		elements && elements.forEach(function (element) {
-			updater.update(element, newValue);
-		});
+		var element = this.element;
+		if(always || element.offsetParent){
+			// it is visible
+			updater.updateElement();
+		}else{
+			var id = updater.id || (updater.id = nextId++);
+			var updaters = element.updaters;
+			if(!updaters){
+				updaters = element.updaters = [];
+				element.className += ' needs-rerendering';
+			}
+			if (!updaters[id]) {
+				updaters[id] = updater;
+			}
+		}
 	};
+	ElementUpdater.prototype.addElement = function (element) {
+		if (this.selector) {
+			element.updaters = [this];
+		} else {
+			// no way of tracking so, we have to keep an array
+			(this.elements = (this.elements || [])).push(element);
+		}
+		// and immediately do an update
+		this.updateElement(element);
+	};
+	ElementUpdater.prototype.updateElement = function () {
+		var value = this.variable.valueOf();
+		if(value !== undefined){
+			var updater = this;
+			lang.when(value, function (value) {
+				updater.renderUpdate(value);
+			});
+		}
+	};
+	ElementUpdater.prototype.renderUpdate = function (newValue) {
+		throw new Error('renderUpdate(newValue) must be implemented');
+	};
+	Updater.Updater = Updater;
 	Updater.ElementUpdater = ElementUpdater;
 
-	function AttributeUpdater(variable, selector) {
-		ElementUpdater.call(this, variable, selector);
+	function AttributeUpdater(options) {
+		if(options.name){
+			this.name = options.name;
+		}
+		ElementUpdater.apply(this, arguments);
 	}
-	AttributeUpdater.prototype = Object.create(Updater.prototype);
-	AttributeUpdater.prototype.updateElement = function (element, newValue) {
-		element.setAttribute(name, newValue);
+	AttributeUpdater.prototype = Object.create(ElementUpdater.prototype);
+	AttributeUpdater.prototype.renderUpdate = function (newValue) {
+		this.element.setAttribute(this.name, newValue);
 	};
 	Updater.AttributeUpdater = AttributeUpdater;
 
-	function ContentUpdater(variable, selector) {
-		Updater.call(this, variable, selector);
+	function ContentUpdater(options) {
+		ElementUpdater.apply(this, arguments);
 	}
-	ContentUpdater.prototype = Object.create(Updater.prototype);
-	ContentUpdater.prototype.update = function (element, newValue) {
-		element.innerHTML = '';
-		element.appendChild(document.createTextNode(newValue));
+	ContentUpdater.prototype = Object.create(ElementUpdater.prototype);
+	ContentUpdater.prototype.renderUpdate = function (newValue) {
+		this.element.innerHTML = '';
+		this.element.appendChild(document.createTextNode(newValue));
 	};
 	Updater.ContentUpdater = ContentUpdater;
+	var onShowElement = Updater.onShowElement = function(shownElement){
+		queueRenderer(function(){
+			var elements = [].slice.call(shownElement.getElementsByClassName('needs-rerendering'));
+			if (shownElement.className.indexOf('needs-rerendering') > 0){
+				var includingTop = [shownElement];
+				includingTop.push.apply(includingTop, elements);
+				elements = includingTop;
+			}
+			for (var i = 0, l = elements.length; i < l; i++){
+				var element = elements[i];
+				if(element.offsetParent){ // check to make sure it is really visible
+					var updaters = element.updaters;
+					if(updaters){
+						element.updaters = null;
+						// remove needs-rerendering class
+						element.className = element.className.replace(/\s?needs\-rerendering\s?/g, '');
+						for (var id in updaters) {
+							var updater = updaters[id];
+							updater.updateElement(element);
+						}
+					}
+				}
+			}
+		});
+	};
 	module.exports = Updater;
 });
