@@ -1,5 +1,98 @@
-The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. The alkali library is a lightweight set of modules for accessing simple native JavaScript objects with modeling and reactivity capabilities. Alkali uses categorical models with contextualized calculations and caching, with an invalidation-based notification system. This makes it possible to build highly efficient and fast applications, with standard JavaScript objects using modern functionally reactive techniques.
+The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. The alkali library is a lightweight set of modules for accessing simple native JavaScript objects with modeling and reactivity capabilities. Alkali uses categorical models with contextualized calculations and caching, with an invalidation-based notification system. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
 
+There are several key paradigms in alkali:
+
+## Variables
+
+The central entity in the data model system is a "Variable" (this notion has variously been known by various names such as "reactive", "stream", "signal" and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the value.
+
+Notifications of data changes are delivered by invalidation notifications. When a downstream subscriber is interested in the results of a variable change, it can request the lates value. Variables can employ internal caching of calculated values. Variables support bi-directional flow. They can be updated as well as monitored.
+
+## Variable API
+
+### put(value)
+
+This allows us to update the value of a variable with a new value.
+
+### subscribe(listener)
+
+This adds a listener for any changes to the variable. This will be called with an event object that has a `value()` method that can be called to get the current value. Generally it is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management.
+
+### map(function)
+
+This maps the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be used by the returned variable.
+
+### notifies(dependentVariable)
+
+This is called to indicate that the dependent variable is dependent on this variable. More specifically, if this variable changes, it is responsible for calling the invalidate method on the dependent variable.
+
+### invalidate()
+This should be called to indicate that the variable's current value is no longer valid, (it has changed or dependency values have changed), and it should return a new value from valueOf in the future.
+export interface Changing<T> extends Value<T>, Invalidating {
+    notifies(dependent: Variable): Handle;
+    apply(instance: Variable: args: Variable[]): CallVariable;
+}
+### apply(instance, functionVariable)
+
+This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables become invalidated (change), than the returned variable will invalidated. The function can be re-executed with the changed values on the next call to valueOf.
+
+
+## Updaters
+
+Updaters are the central mechanism for making UI components react to data changes. Updaters allow us to add reactive capabilities to existing components with minimal change. Updaters are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an updater's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. The `Updater` module includes several specific updaters, for updating attributes and the text of an element. For example, we could create a simple variable:
+
+	var Variable = require('alkali/Variable');
+
+	var greeting = new Variable('Hi');
+
+And then define an updater:
+
+	var AttributeUpdater = require('alkali/Updater').AttributeUpdater;
+	new AttributeUpdater({
+			variable: myNumber,
+			element: someElement,
+			name: 'title' // update the title attribute with the variable value
+		})
+
+This will immediately assign the string 'Hi' to the title attribute of the element. If later we change the variable:
+
+	greeting.put('Hello World');
+
+This will schedule an update to the title. However, we change the variable again before the rendering phase (usually through `requestAnimationFrame`), we do not have to worry about multiple renderings taking place, it will simply render once, with the latest value.
+
+We can also create custom updaters:
+
+	var greeting = new Variable('Hi');
+	new Updater({
+			variable: myNumber,
+			element: someElement,
+			renderUpdate: function (newValue) {
+				element.innerHTML = newValue + '.';
+			}
+		})
+
+
+## Data Objects
+
+Data objects are plain JS objects: Variables can be used on their own, or the Variable interface is designed to provide an enhanced interface to objects without requiring any special properties or prototypes on the data objects themselves.
+
+
+## Contextualization
+
+The computations (and invalidations) can be all be executed with an optional context, which effectively allows variables to be parameterized. This means that a given variable does not have to be used to only represent a single value, but the variable may be used to represent set of different variables depending on their context. This also facilitates the construction of very powerful caching mechanisms that can intelligently cache based on determining which parameters may lead to different results.
+
+
+# Design Philosophy
+
+ This has several key architectural advantages:
+* Getting values from a variable always (new or original) always goes through the same code path.
+* Caching avoids unnecessary computations
+* Getting values and performing computations based on changes is not performed until needed (lazy, on-demand).
+* Deduplication of messages is handled by the top level of dependency layer, the UI layer. When elements are invalidated, multiple invalidation don't need to trigger recomputations. The alkali UI handler can schedule rendering invalidated portions once a rendering phase each reached (the same way repainting works in the browser).
+Hidden components can use invalidation information to determine if they need to re-render anything next time they are shown, without having to immediately recompute or re-render anything.
+Caching can be performed safely because dependencies and the cache can be invalidated once any dependencies invalidate.
+These advantages are explained in more depth here:
+http://kriszyp.name/2015/01/13/reactivity-and-caching/
 
 
 ## License
