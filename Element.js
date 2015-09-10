@@ -45,7 +45,7 @@ define(function (require, exports, module) {
 		queued = false;
 	}
 	function Updater(variable, elementType, onUpdate) {
-		variable.dependencyOf(this);
+		variable.notifies(this);
 		this.onUpdate = onUpdate;
 		this.elementType = elementType;
 		this.variable = variable;

@@ -1,6 +1,6 @@
 define([], function(){
 	var hasFeatures = {
-		observe: false && Object.observe,
+		observe: Object.observe,
 		defineProperty: Object.defineProperty && (function(){
 			try{
 				Object.defineProperty({}, 't', {});
@@ -15,9 +15,16 @@ define([], function(){
 		return hasFeatures[feature];
 	}
 	// This is an polyfill for Object.observe with just enough functionality
-	// for what xstyle needs
+	// for what Variables need
 	// An observe function, with polyfile
-	var observe = has('observe') ? Object.observe :
+	var observe = has('observe') ? function(target, listener){
+			Object.observe(target, listener);
+			return {
+				remove: function(){
+					Object.unobserve(target, listener);
+				}
+			};
+		} :
 		// for the case of setter support, but no Object.observe support (like IE9, IE10, some FF, Safari)
 		// this is much faster than polling
 			has('defineProperty') ? 
@@ -29,6 +36,7 @@ define([], function(){
 			listener.remove = function(){
 				listener = null;
 			};
+			return listener;
 			function addKey(key){
 				var keyFlag = 'key' + key;
 				if(this[keyFlag]){
@@ -100,7 +108,7 @@ define([], function(){
 			}
 		}else{
 			queuedListeners = [listener];
-			setTimeout(function(){
+			lang.nextTurn(function(){
 				queuedListeners.forEach(function(listener){
 					var events = [];
 					listener.properties.forEach(function(property){
@@ -170,7 +178,7 @@ define([], function(){
 	};
 	Hidden.prototype.toJSON = toJSONHidden;
 
-	return {
+	var lang = {
 		Promise: has('promise') ? Promise : (function(){
 			function Promise(execute){
 				var isResolved, resolution, errorResolution;
@@ -335,4 +343,5 @@ define([], function(){
 			return target;
 		}
 	};
+	return lang;
 });
