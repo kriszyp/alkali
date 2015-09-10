@@ -12,7 +12,7 @@ define(['./lang', './Context'],
 	function registerListener(value, listener){
 		var listeners = propertyListenersMap.get(value);
 		if(listeners){
-			listeners.push(this);
+			listeners.push(listener);
 		}else{
 			propertyListenersMap.set(value, listeners = [listener]);
 		}
@@ -43,12 +43,23 @@ define(['./lang', './Context'],
 		this.value = value;
 	}
 	Variable.prototype = {
-		valueOf: function(){
-			var value = this.value;
-			if(value && typeof value === 'object' &&
-					this._properties && this.dependents){
-				// set up the listeners tracking
-				registerListener(value, this);
+		valueOf: function(context){
+			return this.gotValue(this.getValue(context), context);
+		},
+		getValue: function(){
+			return this.value;
+		},
+		gotValue: function(value, context){
+			if(value && this.dependents){
+				if(value.notifies){
+					// the value is another variable, start receiving notifications
+					this.dependsOn(value);
+					value = value.valueOf(context);
+				}
+				if(typeof value === 'object' && this._properties){
+					// set up the listeners tracking
+					registerListener(value, this);
+				}
 			}
 			return value;
 		},
@@ -62,7 +73,7 @@ define(['./lang', './Context'],
 			return propertyVariable;
 		},
 		_propertyChange: function(propertyName, context){
-			var property = this.variable && this.variable._properties[propertyName];
+			var property = this._properties && this._properties[propertyName];
 			property && property.invalidate(context);
 		},
 		apply: function(instance, args){
@@ -82,6 +93,13 @@ define(['./lang', './Context'],
 			if(value && typeof value === 'object'){
 				deregisterListener(value, this);
 			}
+			var valueHandle = this.valueHandle;
+			if(valueHandle){
+				valueHandle.remove();
+				this.valueHandle = null;
+				// TODO: move this into the caching class
+				this.computedVariable = null;
+			}
 		},
 		own: function(handle){
 			(this.handles || (this.handles = [])).push(handle);
@@ -91,10 +109,14 @@ define(['./lang', './Context'],
 		},
 
 		invalidate: function(context){
-			// TODO: there might actually be a collection of listeners
 			var value = this.value;
 			if(value && typeof value === 'object'){
 				deregisterListener(value, this);
+			}
+			var valueHandle = this.valueHandle;
+			if(valueHandle){
+				valueHandle.remove();
+				this.valueHandle = null;
 			}
 
 			var i, l, properties = this._properties;
@@ -144,22 +166,11 @@ define(['./lang', './Context'],
 		setValue: function(value){
 			this.value = value;
 		},
-		observe: function(listener, context){
-			// shorthand for setting up a real invalidation scheme
-			if(this.getValue){
-				listener(this.valueOf(context));
-			}
-			var variable = this;
-			return this.notifies({
-				invalidate: function(){
-					listener(variable.valueOf());
-				}
-			});
-		},
 		subscribe: function(listener){
 			// baconjs compatible
 			var variable = this;
-			return this.notifies({
+			// it is important to make sure you register for notifications before getting the value
+			var handle = this.notifies({
 				invalidate: function(){
 					listener({
 						value: function(){
@@ -168,17 +179,33 @@ define(['./lang', './Context'],
 					});
 				}
 			});
+			var initialValue = this.valueOf();
+			if(initialValue !== undefined){
+				listener({
+					value: function(){
+						return initialValue;
+					}
+				});
+			}
+			return handle;
+		},
+		onValue: function(listener){
+			return this.subscribe(function(event){
+				lang.when(event.value(), function(value){
+					listener(value);
+				});
+			});
 		},
 		items: function(){
-			return this.items || (this.items = new Items(this));
+			return this._items || (this._items = new Items(this));
 		},
 		newElement: function(){
 			return lang.when(this.valueOf(), function(value){
 				return value && value.newElement && value.newElement();
 			});
 		},
-		getSchema: function(){
-			return this.schema || (this.schema = new Schema(this));
+		schema: function(){
+			return this._schema || (this._schema = new Schema(this));
 		},
 		map: function (operator) {
 			return new Variable(operator).apply(null, [this]);
@@ -252,10 +279,16 @@ define(['./lang', './Context'],
 			};
 			var variable = this;
 			return lang.when(this.getValue(watchedContext), function(computedValue){
+				if(computedValue && computedValue.notifies){
+					if(variable.computedVariable && variable.computedVariable !== computedValue){
+						throw new Error('Can pass in a different variable for a different context as the result of a single variable');
+					}
+					variable.computedVariable = computedValue;
+				}
+				computedValue = variable.gotValue(computedValue, watchedContext);
 				if(computedValue && typeof computedValue === 'object' &&
 						variable._properties && variable.dependents){
-					// set up the listeners tracking
-					registerListener(computedValue, cache);
+
 					cache.variable = variable;
 				}
 				cache.value = computedValue;
@@ -267,7 +300,7 @@ define(['./lang', './Context'],
 		},
 
 		getValue: function(){
-			return this.value;
+			return this.value && this.value.valueOf();
 		},
 		invalidate: function(context){
 			// TODO: there might actually be a collection of listeners
@@ -281,6 +314,9 @@ define(['./lang', './Context'],
 				// delete our whole cache if it is an unconstrained invalidation
 				// deregisterListener(this.cache.value, this.cache);
 				this.cache = {};
+			}
+			if(this.computedVariable){
+				this.computedVariable = null;
 			}
 			Variable.prototype.invalidate.call(this, context);
 		}
@@ -305,7 +341,7 @@ define(['./lang', './Context'],
 			var cacheHolder = new GetCache();
 			return lang.when(parent.valueOf(context, cacheHolder), function(object){
 				if(property.dependents){
-					var cache = cacheHolder.cache || parent;
+					var cache = cacheHolder.cache || object;
 					var listeners = propertyListenersMap.get(cache);
 					if(listeners && listeners.observer && listeners.observer.addKey){
 						listeners.observer.addKey(key);
@@ -499,7 +535,9 @@ define(['./lang', './Context'],
 			return getSchema(this.target);
 			function getSchema(target){
 				return lang.when(target.valueOf(context), function(value){
-					return value && value.schema || target.parent && getSchema(target.parent)[target.key];
+					var schema;
+					return (value && value._schema) || (target.parent && (schema = target.parent.schema())
+						&& (schema = schema.valueOf()) && schema[target.key]);
 				});
 			}
 		}
@@ -519,6 +557,9 @@ define(['./lang', './Context'],
 
 	function observe(object){
 		var listeners = propertyListenersMap.get(object);
+		if(!listeners){
+			propertyListenersMap.set(object, listeners = []);
+		}
 		if(listeners.observerCount){
 			listeners.observerCount++;
 		}else{
@@ -527,7 +568,7 @@ define(['./lang', './Context'],
 				for(var i = 0, l = listeners.length; i < l; i++){
 					var listener = listeners[i];
 					for(var j = 0, el = events.length; j < el; j++){
-						var event = events[i];
+						var event = events[j];
 						listener._propertyChange(event.name);
 					}
 				}

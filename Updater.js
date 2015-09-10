@@ -152,6 +152,19 @@ define(function (require, exports, module) {
 	};
 	Updater.AttributeUpdater = AttributeUpdater;
 
+	function PropertyUpdater(options) {
+		if(options.name){
+			this.name = options.name;
+		}
+		ElementUpdater.apply(this, arguments);
+	}
+	PropertyUpdater.prototype = Object.create(ElementUpdater.prototype);
+	PropertyUpdater.prototype.renderUpdate = function (newValue) {
+		this.element[this.name] = newValue;
+	};
+	Updater.PropertyUpdater = PropertyUpdater;
+
+
 	function ContentUpdater(options) {
 		ElementUpdater.apply(this, arguments);
 	}

@@ -9,7 +9,7 @@ define([
 		'simple single value': function () {
 			var invalidated = false;
 			var variable = new Variable(1);
-			variable.dependencyOf({
+			variable.notifies({
 				invalidate: function(){
 					invalidated = true;
 				}
@@ -29,7 +29,7 @@ define([
 			}, function (newValue) {
 				value = newValue;
 			});
-			variable.dependencyOf({
+			variable.notifies({
 				invalidate: function(){
 					invalidated = true;
 				}
@@ -47,24 +47,27 @@ define([
 				b: 10
 			};
 			var variable = new Variable(object);
+			Variable.observe(object);
 			var invalidated;
 			var aProperty = variable.property('a');
-			aProperty.dependencyOf({
+			aProperty.notifies({
 				invalidate: function(){
 					invalidated = true;
 				}
 			});
 			assert.equal(aProperty.valueOf(), 1);
 			object.a = 2;
+			return Promise.resolve().then(function(){
 			//Object.deliverChangeRecords && Object.deliverChangeRecords();
-			assert.equal(aProperty.valueOf(), 2);
-			assert.isTrue(invalidated);
-			invalidated = false;
-			variable.put({
-				a: 3
+				assert.equal(aProperty.valueOf(), 2);
+				assert.isTrue(invalidated);
+				invalidated = false;
+				variable.put({
+					a: 3
+				});
+				assert.equal(aProperty.valueOf(), 3);
+				assert.isTrue(invalidated);
 			});
-			assert.equal(aProperty.valueOf(), 3);
-			assert.isTrue(invalidated);
 		},
 		'function call': function () {
 			var add = new Variable(function (a, b) {
@@ -76,7 +79,7 @@ define([
 			var b = new Variable(2);
 			var sum = add.apply(null, [a, b]);
 			var invalidated;
-			sum.dependencyOf({
+			sum.notifies({
 				invalidate: function(){
 					invalidated = true;
 				}
@@ -89,6 +92,49 @@ define([
 			b.put(4);
 			assert.isTrue(invalidated);
 			assert.equal(sum.valueOf(), 7);
+		},
+		map: function () {
+			var a = new Variable();
+			var b = new Variable();
+			var sum = a.map(function (a) {
+				return b.map(function(){
+					return a + b;
+				});
+			});
+			var invalidated = false;
+			sum.notifies({
+				invalidate: function() {
+					invalidated = true;
+				}
+			});
+			var target = new Variable();
+			target.put(sum);
+			var targetInvalidated = false;
+			target.notifies({
+				invalidate: function() {
+					targetInvalidated = true;
+				}
+			});
+			a.put(3);
+			// assert.isFalse(invalidated);
+			b.put(5);
+			//assert.isTrue(invalidated);
+			assert.equal(sum.valueOf(), 8);
+			invalidated = false;
+			assert.equal(target.valueOf(), 8);
+			targetInvalidated = false;
+			a.put(4);
+			assert.isTrue(invalidated);
+			assert.equal(sum.valueOf(), 9);
+			invalidated = false;
+			assert.isTrue(targetInvalidated);
+			assert.equal(target.valueOf(), 9);
+			targetInvalidated = false;
+			b.put(6);
+			assert.isTrue(invalidated);
+			assert.equal(sum.valueOf(), 10);
+			assert.isTrue(targetInvalidated);
+			assert.equal(target.valueOf(), 10);
 		},
 		items: function () {
 
