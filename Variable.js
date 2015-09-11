@@ -204,11 +204,23 @@ define(['./lang', './Context'],
 				return value && value.newElement && value.newElement();
 			});
 		},
-		schema: function(){
-			return this._schema || (this._schema = new Schema(this));
+		get schema(){
+			var schema = new Schema(this);
+			Object.defineProperty(this, 'schema', {
+				value: schema
+			});
+			return schema;
 		},
 		map: function (operator) {
 			return new Variable(operator).apply(null, [this]);
+		},
+		get validate(){
+			var schema = this.schema;
+			var validate = new Validating(this, schema);
+			Object.defineProperty(this, 'validate', {
+				value: validate
+			});
+			return validate;
 		}
 	};
 
@@ -511,14 +523,14 @@ define(['./lang', './Context'],
 	});
 	var Validating = lang.compose(Caching, function(target, schema){
 		this.target = target;
-		this.schema = schema;
+		this.targetSchema = schema;
 	}, {
 		init: function(){
 			this.dependsOn(this.target);
-			this.dependsOn(this.schema);
+			this.dependsOn(this.targetSchema);
 		},
 		valueOf: function(context){
-			return doValidation(this.target.valueOf(context), this.schema.valueOf(context));
+			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context));
 		}
 	});
 	var Schema = lang.compose(Caching, function(target){
@@ -536,7 +548,7 @@ define(['./lang', './Context'],
 			function getSchema(target){
 				return lang.when(target.valueOf(context), function(value){
 					var schema;
-					return (value && value._schema) || (target.parent && (schema = target.parent.schema())
+					return (value && value._schema) || (target.parent && (schema = target.parent.schema)
 						&& (schema = schema.valueOf()) && schema[target.key]);
 				});
 			}

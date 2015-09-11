@@ -145,16 +145,24 @@ define([
 				b: 'foo'
 			};
 			var variable = new Variable(object);
-			var schema = variable.schema();
+			var schema = variable.schema;
 			schema.put({
 				a: 'number',
 				b: 'string'
 			});
+			doValidation = function(target, schema){
+				if(typeof target != schema){
+					return ['error'];
+				}
+				return [];
+			};
 			var propertyA = variable.property('a');
-			assert.equal(propertyA.schema().valueOf(), 'number');
-			assert.equal(propertyA.validate().valueOf(), []);
+			assert.equal(propertyA.schema.valueOf(), 'number');
+			assert.deepEqual(propertyA.validate.valueOf(), []);
 			object.a = 'not a number';
-			assert.equal(propertyA.validate().valueOf(), ['error']);
+			assert.deepEqual(propertyA.validate.valueOf(), ['error']);
+			object.a = 8;
+			assert.deepEqual(propertyA.validate.valueOf(), []);
 		}
 	});
 });

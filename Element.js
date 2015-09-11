@@ -1,7 +1,4 @@
-define(function (require, exports, module) {
-	bind = require('./bind');
-	lang = require('./lang');
-	Context = require('./Context');
+define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	var knownElementProperties = {
 	};
 	['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
@@ -44,49 +41,6 @@ define(function (require, exports, module) {
 		// TODO: if this is not a real weak map, we don't want to GC it, or it will leak
 		queued = false;
 	}
-	function Updater(variable, elementType, onUpdate) {
-		variable.notifies(this);
-		this.onUpdate = onUpdate;
-		this.elementType = elementType;
-		this.variable = variable;
-		onUpdate.call(this);
-	}
-	Updater.prototype = {
-		invalidate: function (context) {
-			if (this.needsElement) {
-				var element = context.get('element');
-				if (element) {
-					this.invalidateElement(element);
-				} else {
-					var elements = document.querySelectorAll(this.elementType.selector);
-					for (var i = 0; i < elements.length; i++) {
-						this.invalidateElement(elements[i]);
-					}
-				}
-			} else {
-				var updater = this;
-				toRender.push(function(){
-					updater.update(element);
-				});
-			}
-		},
-		invalidateElement: function(element) {
-			var invalidatedParts = invalidatedElements.get(element);
-			invalidatedElements.set(element, invalidatedParts = {});
-			if (!invalidatedParts[id]) {
-				invalidatedParts[id] = true;
-			}
-			if (!queued) {
-				lang.queueTask(processQueue);
-				queued = true;
-			}
-			var updater = this;
-			toRender.push(function(){
-				updater.update(element);
-			});
-		}
-
-	};
 
 
 	var toRender = [];
@@ -145,8 +99,10 @@ define(function (require, exports, module) {
 					var value = properties[name];
 					if (value && value.invalidate) {
 						// a variable
-						new Updater(value, this, function(context, element){
-							this.element[name] = this.variable.valueOf(context);
+						new Updater.PropertyUpdater({
+							variable: value,
+							selector: this.selector,
+							name: name
 						});
 					}
 				}
@@ -244,9 +200,11 @@ define(function (require, exports, module) {
 					if (value && value.invalidate) {
 						// a variable
 						var elementType = this;
-						var updater = new Updater(value, function(context){
-							if (this.needsElement) {
-								context.get('element');
+						var updater = new Updater({
+							variable: value,
+							selector: this.selector,
+							renderUpdate: function(){
+
 							}
 						});
 						context = context || new Context(this);
@@ -336,5 +294,5 @@ define(function (require, exports, module) {
 		}
 	};
 	ElementType.refresh = processQueue;
-	module.exports = ElementType;
+	return ElementType;
 });
