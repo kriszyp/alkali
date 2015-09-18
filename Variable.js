@@ -50,10 +50,16 @@ define(['./lang', './Context'],
 			return this.value;
 		},
 		gotValue: function(value, context){
+			if(this.notifyingValue){
+				this.notifyingValue.stopNotifies(this);
+				this.notifyingValue = null;
+			}
 			if(value && this.dependents){
 				if(value.notifies){
 					// the value is another variable, start receiving notifications
-					this.dependsOn(value);
+					// TODO: do cleanup of this notifies
+					value.notifies(this);
+					this.notifyingValue = value;
 					value = value.valueOf(context);
 				}
 				if(typeof value === 'object' && this._properties){
@@ -62,6 +68,11 @@ define(['./lang', './Context'],
 				}
 			}
 			return value;
+		},
+		cleanup: function(){
+			if(this.notifyingValue){
+				this.notifyingValue.stopNotifies(this);
+			}
 		},
 		property: function(key){
 			var properties = this._properties || (this._properties = {});
@@ -101,12 +112,6 @@ define(['./lang', './Context'],
 				this.computedVariable = null;
 			}
 		},
-		own: function(handle){
-			(this.handles || (this.handles = [])).push(handle);
-		},
-		dependsOn: function(target){
-			this.own(target.notifies(this));
-		},
 
 		invalidate: function(context){
 			var value = this.value;
@@ -145,19 +150,23 @@ define(['./lang', './Context'],
 			dependents.push(dependent);
 			return {
 				remove: function(){
-					for(var i = 0; i < dependents.length; i++){
-						if(dependents[i] === dependent){
-							dependents.splice(i--, 1);
-						}
-					}
-					if(dependents.length === 0){
-						// clear the dependents so it will be reinitialized if it has
-						// dependents again
-						variable.dependents = dependents = false;
-						variable.cleanup();
-					}
+					variable.stopNotifies(dependent);
 				}
 			};
+		},
+		stopNotifies: function(dependent){
+			var dependents = this.dependents;
+			for(var i = 0; i < dependents.length; i++){
+				if(dependents[i] === dependent){
+					dependents.splice(i--, 1);
+				}
+			}
+			if(dependents.length === 0){
+				// clear the dependents so it will be reinitialized if it has
+				// dependents again
+				this.dependents = dependents = false;
+				this.cleanup();
+			}
 		},
 		put: function(value, context){
 			this.setValue(value);
@@ -344,7 +353,11 @@ define(['./lang', './Context'],
 	},
 	{
 		init: function(){
-			this.dependsOn(this.parent);
+			this.parent.notifies(this);
+		},
+		cleanup: function(){
+			Variable.prototype.cleanup.call(this);
+			this.parent.stopNotifies(this);
 		},
 		valueOf: function(context){
 			var key = this.key;
@@ -389,16 +402,29 @@ define(['./lang', './Context'],
 	}, {
 		init: function(){
 			// depend on the function itself
-			this.dependsOn(this.functionVariable);
+			this.functionVariable.notifies(this);
 			// depend on the args
 			var args = this.args;
 			for(var i = 0, l = args.length; i < l; i++){
 				var arg = args[i];
 				if(arg.notifies){
-					this.dependsOn(arg);
+					arg.notifies(this);
 				}
 			}
 		},
+		cleanup: function(){
+			Caching.prototype.cleanup.call(this);
+			this.functionVariable.stopNotifies(this);
+			// depend on the args
+			var args = this.args;
+			for(var i = 0, l = args.length; i < l; i++){
+				var arg = args[i];
+				if(arg.notifies){
+					arg.stopNotifies(this);
+				}
+			}
+		},
+
 		getValue: function(context){
 			var call = this;
 			return lang.when(this.functionVariable.valueOf(context), function(functionValue){
@@ -475,7 +501,11 @@ define(['./lang', './Context'],
 		this.parent = parent;
 	}, {
 		init: function(){
-			this.dependsOn(this.parent);
+			this.parent.notifies(this);
+		},
+		cleanup: function(){
+			Variable.prototype.cleanup.call(this);
+			this.parent.stopNotifies(this);
 		},
 		lastIndex: 0,
 		valueOf: function(context){
@@ -526,8 +556,13 @@ define(['./lang', './Context'],
 		this.targetSchema = schema;
 	}, {
 		init: function(){
-			this.dependsOn(this.target);
-			this.dependsOn(this.targetSchema);
+			this.target.notifies(this);
+			this.targetSchema.notifies(this);
+		},
+		cleanup: function(){
+			Caching.prototype.cleanup.call(this);
+			this.target.stopNotifies(this);
+			this.targetSchema.stopNotifies(this);			
 		},
 		valueOf: function(context){
 			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context));
@@ -537,7 +572,11 @@ define(['./lang', './Context'],
 		this.target = target;
 	}, {
 		init: function(){
-			this.dependsOn(this.target);
+			this.target.notifies(this);
+		},
+		cleanup: function(){
+			Caching.prototype.cleanup.call(this);
+			this.target.notifies(this);
 		},
 		getValue: function(context){
 			if(this.value){ // if it has an explicit schema, we can use that.

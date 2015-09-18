@@ -41,6 +41,31 @@ define([
 			assert.equal(value, 2);
 			assert.isTrue(invalidated);
 		},
+		'on/off': function () {
+			var invalidated = false;
+			var value = 1;
+			var variable = new Variable.Caching(function () {
+				return value;
+			}, function (newValue) {
+				value = newValue;
+			});
+			var target = {
+				invalidate: function(){
+					invalidated = true;
+				}
+			};
+			variable.notifies(target);
+			assert.equal(variable.valueOf(), 1);
+			assert.isFalse(invalidated);
+			variable.put(2);
+			assert.equal(variable.valueOf(), 2);
+			assert.equal(value, 2);
+			assert.isTrue(invalidated);
+			variable.stopNotifies(target);
+			invalidated = false;
+			variable.put(3);
+			assert.isFalse(invalidated);
+		},
 		'property access': function () {
 			var object = {
 				a: 1,

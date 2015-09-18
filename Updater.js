@@ -98,20 +98,19 @@ define(function (require, exports, module) {
 	}
 	ElementUpdater.prototype = Object.create(Updater.prototype);
 	ElementUpdater.prototype.update = function (always) {
-		var updater = this;
 		var element = this.element;
 		if(always || element.offsetParent){
 			// it is visible
-			updater.updateElement();
+			this.updateElement();
 		}else{
-			var id = updater.id || (updater.id = nextId++);
+			var id = this.id || (this.id = nextId++);
 			var updaters = element.updaters;
 			if(!updaters){
 				updaters = element.updaters = [];
 				element.className += ' needs-rerendering';
 			}
 			if (!updaters[id]) {
-				updaters[id] = updater;
+				updaters[id] = this;
 			}
 		}
 	};
