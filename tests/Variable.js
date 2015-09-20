@@ -64,7 +64,7 @@ define([
 			variable.stopNotifies(target);
 			invalidated = false;
 			variable.put(3);
-			assert.isFalse(invalidated);
+			assert.isFalse(invalidated);	
 		},
 		'property access': function () {
 			var object = {

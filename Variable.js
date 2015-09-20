@@ -54,25 +54,20 @@ define(['./lang', './Context'],
 				this.notifyingValue.stopNotifies(this);
 				this.notifyingValue = null;
 			}
-			if(value && this.dependents){
-				if(value.notifies){
+			if(value && value.notifies){
+				if(this.dependents){
 					// the value is another variable, start receiving notifications
 					// TODO: do cleanup of this notifies
 					value.notifies(this);
 					this.notifyingValue = value;
-					value = value.valueOf(context);
 				}
-				if(typeof value === 'object' && this._properties){
-					// set up the listeners tracking
-					registerListener(value, this);
-				}
+				value = value.valueOf(context);
+			}
+			if(typeof value === 'object' && this.dependents && this._properties){
+				// set up the listeners tracking
+				registerListener(value, this);
 			}
 			return value;
-		},
-		cleanup: function(){
-			if(this.notifyingValue){
-				this.notifyingValue.stopNotifies(this);
-			}
 		},
 		property: function(key){
 			var properties = this._properties || (this._properties = {});
@@ -91,6 +86,9 @@ define(['./lang', './Context'],
 			return new Call(this, args);
 		},
 		init: function(){
+			if(this.notifyingValue){
+				this.notifyingValue.notifies(this);
+			}
 		},
 		cleanup: function(){
 			var handles = this.handles;
@@ -104,10 +102,10 @@ define(['./lang', './Context'],
 			if(value && typeof value === 'object'){
 				deregisterListener(value, this);
 			}
-			var valueHandle = this.valueHandle;
-			if(valueHandle){
-				valueHandle.remove();
-				this.valueHandle = null;
+			var notifyingValue = this.notifyingValue;
+			if(notifyingValue){
+				this.notifyingValue.stopNotifies(this);
+				this.notifyingValue = null;
 				// TODO: move this into the caching class
 				this.computedVariable = null;
 			}
@@ -118,10 +116,10 @@ define(['./lang', './Context'],
 			if(value && typeof value === 'object'){
 				deregisterListener(value, this);
 			}
-			var valueHandle = this.valueHandle;
-			if(valueHandle){
-				valueHandle.remove();
-				this.valueHandle = null;
+			var notifyingValue = this.notifyingValue;
+			if(notifyingValue){
+				notifyingValue.stopNotifies(this);
+				this.notifyingValue = null;
 			}
 
 			var i, l, properties = this._properties;
@@ -260,12 +258,8 @@ define(['./lang', './Context'],
 		valueOf: function(context, cacheHolder){
 			// first check to see if we have the variable already computed
 			var useCache = this.dependents || this._properties;
-			if(useCache){
-				// TODO: use when
-				// TODO: Check the context to determine if it is cached
-				//if(this.cache !== noCacheEntry){
-					//return this.cache;
-				//}
+			if(!useCache){
+				return Variable.prototype.valueOf.apply(this, arguments);
 			}
 			var cache = this.getCache(context);
 			if('value' in cache){
