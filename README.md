@@ -10,9 +10,13 @@ Notifications of data changes are delivered by invalidation notifications. When 
 
 ## Variable API
 
-### put(value)
+### valueOf(context?)
 
-This allows us to update the value of a variable with a new value.
+This returns the current value of the variable.
+
+### put(value, context?)
+
+This allows us to update the value of a variable with a new value. This can be given a standard value, or you can pass in another variable, in which case this variable will be "linked" to the other, receiving all values and updates from the provided variable.
 
 ### subscribe(listener)
 
@@ -24,17 +28,23 @@ This maps the value of the current variable to a new variable (that is returned)
 
 ### notifies(dependentVariable)
 
-This is called to indicate that the dependent variable is dependent on this variable. More specifically, if this variable changes, it is responsible for calling the invalidate method on the dependent variable.
+This is called to indicate that the dependent variable is dependent on this variable, and will result in changes or invalidation on this variable to invalidate the provided dependent variable. If this variable changes, it will call the invalidate method on the dependent variable.
 
-### invalidate()
+### stopNotifies(dependentVariable)
+
+This stops the notifications to the dependent variable, undoing the action of `notifies`.
+
+### invalidate(context?)
+
 This should be called to indicate that the variable's current value is no longer valid, (it has changed or dependency values have changed), and it should return a new value from valueOf in the future.
-export interface Changing<T> extends Value<T>, Invalidating {
-    notifies(dependent: Variable): Handle;
-    apply(instance: Variable: args: Variable[]): CallVariable;
-}
+
 ### apply(instance, functionVariable)
 
 This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables become invalidated (change), than the returned variable will invalidated. The function can be re-executed with the changed values on the next call to valueOf.
+
+### property(propertyName)
+
+This returns a variable representing the property of the value of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in property variable will update the corresponding property on the parent object.
 
 
 ## Updaters
@@ -82,7 +92,19 @@ We can also create custom updaters:
 
 ## Data Objects
 
-Data objects are plain JS objects: Variables can be used on their own, or the Variable interface is designed to provide an enhanced interface to objects without requiring any special properties or prototypes on the data objects themselves.
+Data objects are plain JS objects: Variables can be used on their own, or the Variable interface is designed to provide an enhanced interface to objects without requiring any special properties or prototypes on the data objects themselves. Objects can be used in conjunction with property variables to receive notification of object changes using the consistent variable interface. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observe` the object. For example:
+
+	var myObject = {name: 'simple property'};
+	var myVariable = new Variable(myObject);
+	// actively observe this object
+	Variable.observe(myObject);
+	var nameProperty = myVariable.property('name');
+
+	nameProperty.subscribe(function (event) {
+		console.log('name change', event.value())
+	});
+
+	myObject.name = 'new name'; // this will trigger a change on the nameProperty
 
 
 ## Contextualization
