@@ -193,10 +193,10 @@ define([
 			var signal = new Variable();
 			var arr = [1,2,3];
 			var data = signal.map(function() { return arr; });
-			var inner = data.map(function(arr) { return arr.map(function(o) { return o*2; }); });
-			var derived = outer.map(function (processing) {
-				return inner.map(function(arr){
-					return [processing, arr];
+			var inner = data.map(function(a) { return a.map(function(v) { return v*2; }); });
+			var derived = outer.map(function (o) {
+				return inner.map(function(i){
+					return [o, i];
 				});
 			});
 			assert.deepEqual(derived.valueOf(), [false, [2,4,6]]);
