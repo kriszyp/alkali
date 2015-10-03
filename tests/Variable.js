@@ -171,6 +171,8 @@ define([
 			});
 			var mult = sum.map(function(s) { return s.valueOf() * 2; });
 			assert.equal(mult.valueOf(), 10);
+			b.put(4);
+			assert.equal(mult.valueOf(), 12);
 		},
 		derivedMapWithArray: function() {
 			var a = new Variable([2]);
@@ -183,6 +185,26 @@ define([
 			assert.deepEqual(sum.valueOf(), [5]);
 			var mult = sum.map(function(s) { return [s.valueOf()[0] * 2]; });
 			assert.deepEqual(mult.valueOf(), [10]);
+			b.put([4]);
+                        assert.deepEqual(mult.valueOf(), [12]);
+		},
+                derivedComposedInvalidations: function() {
+			var outer = new Variable(false);
+			var signal = new Variable();
+			var arr = [1,2,3];
+			var data = signal.map(function() { return arr; });
+			var inner = data.map(function(arr) { return arr.map(function(o) { return o*2; }); });
+			var derived = outer.map(function (processing) {
+				return inner.map(function(arr){
+					return [processing, arr];
+				});
+			});
+			assert.deepEqual(derived.valueOf(), [false, [2,4,6]]);
+			outer.put(true);
+			arr = [4,5,6];
+			signal.invalidate();
+			outer.put(false);
+			assert.deepEqual(derived.valueOf(), [false, [8,10,12]]);
 		},
 		mapWithArray: function() {
 			var values = [0,1,2,3,4,5]
