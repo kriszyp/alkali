@@ -44,8 +44,64 @@ define([
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.equal(div.innerHTML, 'next');
 			});
+		},
+		UpdaterInvalidation: function() {
+			document.body.appendChild(div);
+			var outer = new Variable(false);
+			var signal = new Variable();
+			var arr = [1,2,3];
+			var data = signal.map(function() { return arr; });
+			var inner = data.map(function(a) { return a.map(function(o) { return o*2; }); });
+			var derived = outer.map(function (o) {
+				return inner.map(function(i){
+					return [o, i];
+				});
+			});
+			var valuesSeen = [];
+			var updater = new Updater.ElementUpdater({
+				variable: derived,
+				element: div,
+				renderUpdate: function (value) {
+					valuesSeen.push(value);
+				}
+			});
+
+			var INTERMEDIATE_ANIMATION_FRAME = false;
+			var resolver = function(r){r();}; // resolve asynchronously without an animation frame
+			// we expect the updater to observe the inner array mutation regardless of the outer end state
+			var firstResult = [false, [2,4,6]];
+			var lastResult = [false, [8,10,12]];
+			var expected = [firstResult,lastResult];
+
+			if (INTERMEDIATE_ANIMATION_FRAME) {
+			  // request an intermediate animation frame
+			  resolver = requestAnimationFrame;
+			  // the intermediate frame observes the outer state change
+			  expected = [firstResult, [true,[2,4,6]], lastResult]
+			}
+
+			return new Promise(requestAnimationFrame).then(function(){
+				// confirm the initial state
+				assert.deepEqual(valuesSeen, [firstResult]);
+				// processing
+				outer.put(true);
+				// simulate an async task
+				return new Promise(resolver).then(function() {
+					// do some "work"
+					arr = [4,5,6];
+					// invalidate the data signal
+					signal.invalidate();
+				}).then(function() {
+					// done processing
+					outer.put(false);
+
+					// UI should now reflect changes to data array
+
+					return new Promise(requestAnimationFrame).then(function() {
+						assert.deepEqual(valuesSeen, expected);
+					});
+				});
+			});
 		}
-
-
 	});
 });
