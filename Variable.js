@@ -116,11 +116,6 @@ define(['./lang', './Context'],
 			if(value && typeof value === 'object'){
 				deregisterListener(value, this);
 			}
-			var notifyingValue = this.notifyingValue;
-			if(notifyingValue){
-				notifyingValue.stopNotifies(this);
-				this.notifyingValue = null;
-			}
 
 			var i, l, properties = this._properties;
 			for( i in properties){
@@ -334,6 +329,11 @@ define(['./lang', './Context'],
 				this.computedVariable = null;
 			}
 			Variable.prototype.invalidate.call(this, context);
+		},
+		cleanup: function(){
+			// once we are no longer "live", we no longer receive notifications, so can't keep the cache up-to-date, better empty it
+			this.cache = {};
+			Variable.prototype.cleanup.call();
 		}
 
 	});
