@@ -1,6 +1,7 @@
 define(['./lang', './Context'],
 		function(lang, Context){
 	var deny = {};
+	var noChange = {};
 	var WeakMap = lang.WeakMap;
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap');
 	var CacheEntry = lang.compose(WeakMap, function() {
@@ -9,24 +10,29 @@ define(['./lang', './Context'],
 			this.variable._propertyChange(propertyName, contextFromCache(this));
 		}
 	});
+	var listenerId = 1;
 	function registerListener(value, listener){
 		var listeners = propertyListenersMap.get(value);
+		var id = listener.id || (listener.id = ('-' + listenerId++));
 		if(listeners){
-			listeners.push(listener);
+			if(listeners[id] === undefined){
+				listeners[id] = listeners.push(listener) - 1;
+			}
 		}else{
 			propertyListenersMap.set(value, listeners = [listener]);
+			listeners[id] = 0;
+			if(Variable.autoObserveObjects){
+				observe(value);
+			}
 		}
 	}
 	function deregisterListener(value, listener){
 		var listeners = propertyListenersMap.get(value);
 		if(listeners){
-			var nextListener, i = 0;
-			while((nextListener = listeners[i])){
-				if(nextListener === listener){
-					listeners.splice(i, 1);
-					return;
-				}
-				i++;
+			var index = listeners[listener.id];
+			if(index > -1){
+				listeners.splice(index, 1);
+				delete listeners[listener.id];
 			}
 		}
 	}
@@ -43,6 +49,7 @@ define(['./lang', './Context'],
 		this.value = value;
 	}
 	Variable.prototype = {
+		constructor: Variable,
 		valueOf: function(context){
 			return this.gotValue(this.getValue(context), context);
 		},
@@ -63,7 +70,7 @@ define(['./lang', './Context'],
 				}
 				value = value.valueOf(context);
 			}
-			if(typeof value === 'object' && this.dependents && this._properties){
+			if(typeof value === 'object' && value && this.dependents && this._properties){
 				// set up the listeners tracking
 				registerListener(value, this);
 			}
@@ -84,6 +91,9 @@ define(['./lang', './Context'],
 		},
 		apply: function(instance, args){
 			return new Call(this, args);
+		},
+		call: function(instance){
+			return this.apply(instance, Array.prototype.slice.call(arguments, 1));
 		},
 		init: function(){
 			if(this.notifyingValue){
@@ -121,12 +131,16 @@ define(['./lang', './Context'],
 			for( i in properties){
 				properties[i].invalidate(context);
 			}
-			var dependents = this.dependents || 0;
-			for(i = 0, l = dependents.length; i < l; i++){
-				try{
-					dependents[i].invalidate(context);
-				}catch(e){
-					console.error(e, 'invalidating a variable');
+			var dependents = this.dependents;
+			if(dependents){
+				// make a copy, in case they change
+				dependents = dependents.slice(0);
+				for(i = 0, l = dependents.length; i < l; i++){
+					try{
+						dependents[i].invalidate(context);
+					}catch(e){
+						console.error(e, 'invalidating a variable');
+					}
 				}
 			}
 		},
@@ -162,8 +176,18 @@ define(['./lang', './Context'],
 			}
 		},
 		put: function(value, context){
+			if(this.getValue() === value){
+				return noChange;
+			}
 			this.setValue(value);
 			this.invalidate(context);
+		},
+		get: function(key, context){
+			var object = this.valueOf(context);
+			return object && object[key];
+		},
+		set: function(key, value, context){
+			this.property(key).put(value, context);
 		},
 		setValue: function(value){
 			this.value = value;
@@ -366,7 +390,7 @@ define(['./lang', './Context'],
 						listeners.observer.addKey(key);
 					}
 				}
-				return object == null ? object : object[key];
+				return property.gotValue(object == null ? undefined : object[key], context);
 			});
 		},
 		put: function(value, context){
@@ -376,6 +400,9 @@ define(['./lang', './Context'],
 			return lang.when(parent.valueOf(context), function(object){
 				if(object == null){
 					return deny;
+				}
+				if(object[key] === value){
+					return noChange;
 				}
 				var listeners = propertyListenersMap.get(object);
 				if(listeners){
@@ -434,16 +461,20 @@ define(['./lang', './Context'],
 
 		put: function(value, context){
 			var call = this;
-			return lang.when(this.functionVariable.valueOf(context), function(functionValue){
-				var result = call.invoke(function(){
-					if(functionValue.reverse){
-						functionValue.reverse.call(this, value, arguments, context);
-					}else{
-						return deny;
-					}
-				}, call.args, context);
-				Variable.prototype.put.call(call, value, context);
-				return result;
+			return lang.when(this.valueOf(context), function(originalValue){
+				if(originalValue === value){
+					return noChange;
+				}
+				return lang.when(call.functionVariable.valueOf(context), function(functionValue){
+					return call.invoke(function(){
+						if(functionValue.reverse){
+							functionValue.reverse.call(call, value, call.args, context);
+							return Variable.prototype.put.call(call, value, context);
+						}else{
+							return deny;
+						}
+					}, call.args, context);
+				});				
 			});
 		},
 		invoke: function(functionValue, args, context, observeArguments){
@@ -592,6 +623,7 @@ define(['./lang', './Context'],
 		return new Validating(target, schemaForObject);
 	}
 	Variable.deny = deny;
+	Variable.noChange = noChange;
 	function addFlag(name){
 		Variable[name] = function(functionValue){
 			functionValue[name] = true;
