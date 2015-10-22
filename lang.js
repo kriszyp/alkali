@@ -25,7 +25,7 @@ define([], function(){
 				}
 			};
 		} :
-		// for the case of setter support, but no Object.observe support (like IE9, IE10, some FF, Safari)
+		// for the case of setter support, but no Object.observe support (like IE9+, FF, Safari)
 		// this is much faster than polling
 			has('defineProperty') ? 
 		function observe(target, listener){
@@ -61,7 +61,8 @@ define([], function(){
 									queue(listener, this, key);
 								}
 							}
-						}
+						},
+						enumerable: descriptor.enumerable
 					});
 				}else{
 					Object.defineProperty(target, key, {
@@ -75,7 +76,8 @@ define([], function(){
 									queue(listener, this, key);
 								}
 							}
-						}
+						},
+						enumerable: !descriptor || descriptor.enumerable
 					});
 				}
 			}
