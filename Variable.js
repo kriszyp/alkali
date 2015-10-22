@@ -88,6 +88,18 @@ define(['./lang', './Context'],
 		_propertyChange: function(propertyName, context){
 			var property = this._properties && this._properties[propertyName];
 			property && property.invalidate(context);
+			var ancestor = this;
+			do{
+				if(ancestor._withDescendants){
+					ancestor._withDescendants.invalidate(context);
+				}
+				ancestor = ancestor.parent;
+			}while(ancestor);
+		},
+		eachKey: function(callback){
+			for(var i in this._properties){
+				callback(i);
+			}
 		},
 		apply: function(instance, args){
 			return new Call(this, args);
@@ -230,15 +242,19 @@ define(['./lang', './Context'],
 				return value && value.newElement && value.newElement();
 			});
 		},
+		map: function (operator) {
+			// TODO: create a more efficient map, we don't really need a full variable here
+			return new Variable(operator).apply(null, [this]);
+		},
+		get withDescendants(){
+			return this._withDescendants || (this._withDescendants = new WithDescendants(this));
+		},
 		get schema(){
 			var schema = new Schema(this);
 			Object.defineProperty(this, 'schema', {
 				value: schema
 			});
 			return schema;
-		},
-		map: function (operator) {
-			return new Variable(operator).apply(null, [this]);
 		},
 		get validate(){
 			var schema = this.schema;
@@ -404,13 +420,13 @@ define(['./lang', './Context'],
 				if(object[key] === value){
 					return noChange;
 				}
+				object[key] = value;
 				var listeners = propertyListenersMap.get(object);
 				if(listeners){
 					for(var i = 0, l = listeners.length; i < l; i++){
 						listeners[i]._propertyChange();
 					}
 				}
-				object[key] = value;
 				return Variable.prototype.put.call(property, value, context);
 			});
 		}
@@ -593,6 +609,22 @@ define(['./lang', './Context'],
 			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context));
 		}
 	});
+
+	var WithDescendants = lang.compose(Variable, function(target){
+		this.target = target;
+	}, {
+		init: function(){
+			this.target.notifies(this);
+		},
+		cleanup: function(){
+			Caching.prototype.cleanup.call(this);
+			this.target.notifies(this);
+		},
+		valueOf: function(context){
+			return this.target.valueOf(context);
+		}
+	});
+
 	var Schema = lang.compose(Caching, function(target){
 		this.target = target;
 	}, {
