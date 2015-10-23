@@ -329,7 +329,7 @@ define(['./lang', './Context'],
 			};
 			var variable = this;
 			return lang.when(this.getValue(watchedContext), function(computedValue){
-				if(computedValue && computedValue.notifies){
+				if(computedValue && computedValue.notifies && this.dependents){
 					if(variable.computedVariable && variable.computedVariable !== computedValue){
 						throw new Error('Can pass in a different variable for a different context as the result of a single variable');
 					}
