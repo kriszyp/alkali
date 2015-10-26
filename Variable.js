@@ -87,14 +87,11 @@ define(['./lang', './Context'],
 		},
 		_propertyChange: function(propertyName, context){
 			var property = this._properties && this._properties[propertyName];
-			property && property.invalidate(context);
-			var ancestor = this;
-			do{
-				if(ancestor._withDescendants){
-					ancestor._withDescendants.invalidate(context);
-				}
-				ancestor = ancestor.parent;
-			}while(ancestor);
+			if(property){
+				property.invalidate(context);
+			}else{
+				this.invalidate(context, propertyName);
+			}
 		},
 		eachKey: function(callback){
 			for(var i in this._properties){
@@ -133,23 +130,22 @@ define(['./lang', './Context'],
 			}
 		},
 
-		invalidate: function(context){
+		invalidate: function(context, property){
 			var value = this.value;
-			if(value && typeof value === 'object'){
+			if(value && typeof value === 'object' && property){
 				deregisterListener(value, this);
 			}
 
-			var i, l, properties = this._properties;
-			for( i in properties){
-				properties[i].invalidate(context);
-			}
 			var dependents = this.dependents;
 			if(dependents){
 				// make a copy, in case they change
 				dependents = dependents.slice(0);
-				for(i = 0, l = dependents.length; i < l; i++){
+				for(var i = 0, l = dependents.length; i < l; i++){
 					try{
-						dependents[i].invalidate(context);
+						var dependent = dependents[i];
+						if(!property || dependent.parent !== this){
+							dependent.invalidate(context);
+						}
 					}catch(e){
 						console.error(e, 'invalidating a variable');
 					}
@@ -247,7 +243,7 @@ define(['./lang', './Context'],
 			return new Variable(operator).apply(null, [this]);
 		},
 		get withDescendants(){
-			return this._withDescendants || (this._withDescendants = new WithDescendants(this));
+			return this;
 		},
 		get schema(){
 			var schema = new Schema(this);
@@ -424,11 +420,15 @@ define(['./lang', './Context'],
 				var listeners = propertyListenersMap.get(object);
 				if(listeners){
 					for(var i = 0, l = listeners.length; i < l; i++){
-						listeners[i]._propertyChange();
+						listeners[i]._propertyChange(key, context);
 					}
 				}
 				return Variable.prototype.put.call(property, value, context);
 			});
+		},
+		invalidate: function(context){
+			this.parent.invalidate(context, this.key);
+			return Variable.prototype.invalidate.apply(this, arguments);
 		}
 	});
 
@@ -537,6 +537,7 @@ define(['./lang', './Context'],
 			}
 		}
 	});
+	Variable.Call = Call;
 
 	var Items = lang.compose(Variable, function(parent){
 		this.parent = parent;
@@ -607,21 +608,6 @@ define(['./lang', './Context'],
 		},
 		valueOf: function(context){
 			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context));
-		}
-	});
-
-	var WithDescendants = lang.compose(Variable, function(target){
-		this.target = target;
-	}, {
-		init: function(){
-			this.target.notifies(this);
-		},
-		cleanup: function(){
-			Caching.prototype.cleanup.call(this);
-			this.target.notifies(this);
-		},
-		valueOf: function(context){
-			return this.target.valueOf(context);
 		}
 	});
 
