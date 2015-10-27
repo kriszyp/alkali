@@ -19,6 +19,7 @@ define([
 				id: 'id-1'
 			});
 			var element = withVariable.newElement();
+			document.body.appendChild(element);
 			assert.strictEqual(element.id, 'id-1');
 			assert.strictEqual(element.title, '4');
 			variable.put(5);

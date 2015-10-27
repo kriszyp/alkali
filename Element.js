@@ -33,15 +33,6 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			}
 		}
 	};
-	function processQueue() {
-		for (var i = 0; i < toRender.length; i++){
-			toRender[i]();
-		}
-		invalidatedElements = new WeakMap(null, 'invalidated');
-		// TODO: if this is not a real weak map, we don't want to GC it, or it will leak
-		queued = false;
-	}
-
 
 	var toRender = [];
 	function flatten(target, part) {
@@ -54,7 +45,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		}
 	}
 
-	var nextId = 1;
+	var nextId = 390983;
 	function ElementType(tagName) {
 		this.tagName = tagName || 'span';
 	}
@@ -86,7 +77,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		init: function () {
 			this._initialized = true;
 			this.selector = this.selector || 
-				(this.tagName + nextId++);
+				(this.tagName + (this.tagName.indexOf('.') > -1 ? '' : '.-x-') + nextId++);
 			if (this.base) {
 				//this.base.init();
 				flatten(this, 'styles');
@@ -293,6 +284,6 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 
 		}
 	};
-	ElementType.refresh = processQueue;
+	ElementType.refresh = Updater.refresh;
 	return ElementType;
 });

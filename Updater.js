@@ -87,7 +87,7 @@ define(function (require, exports, module) {
 			var updater = this;
 			toRender.push(function(){
 				updater.invalidated = false;
-				updater.updateElement(updater.variable.valueOf(), element);
+				updater.updateElement(element);
 			});
 		}
 
@@ -97,11 +97,22 @@ define(function (require, exports, module) {
 		Updater.call(this, variable, options);
 	}
 	ElementUpdater.prototype = Object.create(Updater.prototype);
-	ElementUpdater.prototype.update = function (always) {
-		var element = this.element;
+	ElementUpdater.prototype.update = function (always, element) {
+		element = this.element || element;
+		if(!element){
+			if(this.selector){
+				var elements = document.querySelectorAll(this.selector);
+				for(var i = 0, l = elements.length; i < l; i++){
+					this.update(always, elements[i]);
+				}
+			}else{
+				throw new Error('No element or selector was provided to the Updater');
+			}
+			return;
+		}
 		if(always || element.offsetParent){
 			// it is visible
-			this.updateElement();
+			this.updateElement(element);
 		}else{
 			var id = this.id || (this.id = nextId++);
 			var updaters = element.updaters;
@@ -124,16 +135,16 @@ define(function (require, exports, module) {
 		// and immediately do an update
 		this.updateElement(element);
 	};
-	ElementUpdater.prototype.updateElement = function () {
+	ElementUpdater.prototype.updateElement = function(element) {
 		var value = this.variable.valueOf();
 		if(value !== undefined){
 			var updater = this;
 			lang.when(value, function (value) {
-				updater.renderUpdate(value);
+				updater.renderUpdate(value, element);
 			});
 		}
 	};
-	ElementUpdater.prototype.renderUpdate = function (newValue) {
+	ElementUpdater.prototype.renderUpdate = function (newValue, element) {
 		throw new Error('renderUpdate(newValue) must be implemented');
 	};
 	Updater.Updater = Updater;
@@ -146,8 +157,8 @@ define(function (require, exports, module) {
 		ElementUpdater.apply(this, arguments);
 	}
 	AttributeUpdater.prototype = Object.create(ElementUpdater.prototype);
-	AttributeUpdater.prototype.renderUpdate = function (newValue) {
-		this.element.setAttribute(this.name, newValue);
+	AttributeUpdater.prototype.renderUpdate = function (newValue, element) {
+		element.setAttribute(this.name, newValue);
 	};
 	Updater.AttributeUpdater = AttributeUpdater;
 
@@ -158,8 +169,8 @@ define(function (require, exports, module) {
 		ElementUpdater.apply(this, arguments);
 	}
 	PropertyUpdater.prototype = Object.create(ElementUpdater.prototype);
-	PropertyUpdater.prototype.renderUpdate = function (newValue) {
-		this.element[this.name] = newValue;
+	PropertyUpdater.prototype.renderUpdate = function (newValue, element) {
+		element[this.name] = newValue;
 	};
 	Updater.PropertyUpdater = PropertyUpdater;
 
@@ -168,9 +179,9 @@ define(function (require, exports, module) {
 		ElementUpdater.apply(this, arguments);
 	}
 	ContentUpdater.prototype = Object.create(ElementUpdater.prototype);
-	ContentUpdater.prototype.renderUpdate = function (newValue) {
-		this.element.innerHTML = '';
-		this.element.appendChild(document.createTextNode(newValue));
+	ContentUpdater.prototype.renderUpdate = function (newValue, element) {
+		element.innerHTML = '';
+		element.appendChild(document.createTextNode(newValue));
 	};
 	Updater.ContentUpdater = ContentUpdater;
 	var onShowElement = Updater.onShowElement = function(shownElement){
@@ -198,5 +209,6 @@ define(function (require, exports, module) {
 			}
 		});
 	};
+	Updater.refresh = processQueue;
 	module.exports = Updater;
 });
