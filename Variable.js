@@ -195,6 +195,7 @@ define(['./lang', './Context'],
 			return object && object[key];
 		},
 		set: function(key, value, context){
+			// TODO: create an optimized route when the property doesn't exist yet
 			this.property(key).put(value, context);
 		},
 		setValue: function(value){
@@ -230,8 +231,24 @@ define(['./lang', './Context'],
 				});
 			});
 		},
-		items: function(){
-			return this._items || (this._items = new Items(this));
+		forEach: function(callback, context){
+			// iterate through current value of variable
+			return lang.when(this.valueOf(context), function(value){
+				if(value && value.forEach){
+					value.forEach(callback);
+				}else{
+					for(var i in value){
+						callback(value[i]);
+					}
+				}
+			});
+		},
+		each: function(callback){
+			// returns a new mapped variable
+			// TODO: support events on array (using dstore api)
+			return this.map(function(array){
+				return array.map(callback);
+			});
 		},
 		newElement: function(){
 			return lang.when(this.valueOf(), function(value){

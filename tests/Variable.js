@@ -188,7 +188,7 @@ define([
 			b.put([4]);
                         assert.deepEqual(mult.valueOf(), [12]);
 		},
-                derivedComposedInvalidations: function() {
+    derivedComposedInvalidations: function() {
 			var outer = new Variable(false);
 			var signal = new Variable();
 			var arr = [1,2,3];
@@ -258,8 +258,28 @@ define([
 			assert.deepEqual(filter1.valueOf(), [2,3,4], 'filter1 should return subset of values');
 			assert.deepEqual(filter2.valueOf(), [2], 'filter2 should return first element of subset');
 		},
-		items: function () {
-
+		parentalNotification: function(){
+			var parent = new Variable({
+				a: 1
+			});
+			var parentNofified;
+			parent.subscribe(function(){
+				parentNofified = true;
+			});
+			parent.set('a', 2);
+			assert.isTrue(parentNofified);
+		},
+		array: function () {
+			var array = [1, 2];
+			var variable = new Variable(array);
+			var twice = variable.each(function(item){
+				return item * 2;
+			});
+			var results = [];
+			twice.forEach(function(value){
+				results.push(value);
+			});
+			assert.deepEqual(results, [2, 4]);
 		},
 		schema: function () {
 			var object = {
