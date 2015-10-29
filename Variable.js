@@ -86,12 +86,11 @@ define(['./lang', './Context'],
 			return propertyVariable;
 		},
 		_propertyChange: function(propertyName, context){
-			var property = this._properties && this._properties[propertyName];
+			var property = propertyName && this._properties && this._properties[propertyName];
 			if(property){
 				property.invalidate(context);
-			}else{
-				this.invalidate(context, propertyName);
 			}
+			this.invalidate(context, propertyName);
 		},
 		eachKey: function(callback){
 			for(var i in this._properties){
@@ -132,7 +131,7 @@ define(['./lang', './Context'],
 
 		invalidate: function(context, property){
 			var value = this.value;
-			if(value && typeof value === 'object' && property){
+			if(value && typeof value === 'object' && !property){
 				deregisterListener(value, this);
 			}
 
@@ -423,29 +422,41 @@ define(['./lang', './Context'],
 			});
 		},
 		put: function(value, context){
+			return this._propertyChange(null, context, true, value);
+		},
+		_propertyChange: function(propertyName, context, doChange, newValue){
 			var key = this.key;
 			var parent = this.parent;
 			var property = this;
+			var args = arguments;
 			return lang.when(parent.valueOf(context), function(object){
 				if(object == null){
 					return deny;
 				}
-				if(object[key] === value){
-					return noChange;
+				if(doChange){
+					if(object[key] === newValue){
+						// no actual change to make
+						return noChange;
+					}
+					object[key] = newValue;
 				}
-				object[key] = value;
 				var listeners = propertyListenersMap.get(object);
+				var parentListenerFound;
 				if(listeners){
 					for(var i = 0, l = listeners.length; i < l; i++){
-						listeners[i]._propertyChange(key, context);
+						var listener = listeners[i];
+						if (listener === parent){
+							parentListenerFound = true;
+						}
+						listener._propertyChange(key, context);
 					}
 				}
-				return Variable.prototype.put.call(property, value, context);
+				if(!parentListenerFound){
+					// at least make sure we notify the parent
+					parent._propertyChange(key, context);
+				}
+				return Variable.prototype._propertyChange.apply(property, args);
 			});
-		},
-		invalidate: function(context){
-			this.parent.invalidate(context, this.key);
-			return Variable.prototype.invalidate.apply(this, arguments);
 		}
 	});
 

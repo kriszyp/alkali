@@ -262,12 +262,46 @@ define([
 			var parent = new Variable({
 				a: 1
 			});
-			var parentNofified;
-			parent.subscribe(function(){
-				parentNofified = true;
+			var parentNotified;
+			parent.subscribe(function(event){
+				event.value();
+				parentNotified = true;
 			});
+			parentNotified = false;
 			parent.set('a', 2);
-			assert.isTrue(parentNofified);
+			assert.isTrue(parentNotified);
+		},
+		parentalParentalNotification: function(){
+			var parent = new Variable({
+				a: {
+					b: 1
+				}
+			});
+			var parentNotified;
+			parent.subscribe(function(event){
+				event.value();
+				parentNotified = true;
+			});
+			parentNotified = false;
+			parent.property('a').set('b', 2);
+			assert.isTrue(parentNotified);
+		},
+		separateChildPath: function(){
+			var parent = new Variable({
+				a: {
+					b: 1
+				}
+			});
+			var parentReference = new Variable();
+			parentReference.put(parent);
+			var parentNotified;
+			parent.property('a').subscribe(function(event){
+				event.value();
+				parentNotified = true;
+			});
+			parentNotified = false;
+			parentReference.property('a').set('b', 2);
+			assert.isTrue(parentNotified);
 		},
 		array: function () {
 			var array = [1, 2];
