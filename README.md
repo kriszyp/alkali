@@ -18,6 +18,8 @@ This returns the current value of the variable.
 
 This allows us to update the value of a variable with a new value. This can be given a standard value, or you can pass in another variable, in which case this variable will be "linked" to the other, receiving all values and updates from the provided variable.
 
+If the `value` passed in is not different than the current value, no changes will be made and this will return `Variable.noChange`. If the value can be assigned (like a property of a `null` value), it will return `Variable.deny`.
+
 ### subscribe(listener)
 
 This adds a listener for any changes to the variable. This will be called with an event object that has a `value()` method that can be called to get the current value. Generally it is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management.
@@ -89,6 +91,9 @@ We can also create custom updaters:
 			}
 		})
 
+An Updater will only update an element if it is visible, and will mark it as needing rerendering. If a hidden element is made visible again, you can trigger the rerendering by calling `Updater.onShowElement(element)` on a parent element.
+
+Alternately, you may set `alwaysUpdate` to true on the Updater options to force the Updater to always render in response to changes.
 
 ## Data Objects
 
