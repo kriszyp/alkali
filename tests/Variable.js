@@ -270,6 +270,9 @@ define([
 			parentNotified = false;
 			parent.set('a', 2);
 			assert.isTrue(parentNotified);
+			parentNotified = false;
+			parent.property('a').invalidate();
+			assert.isTrue(parentNotified);
 		},
 		parentalParentalNotification: function(){
 			var parent = new Variable({
@@ -284,6 +287,9 @@ define([
 			});
 			parentNotified = false;
 			parent.property('a').set('b', 2);
+			assert.isTrue(parentNotified);
+			parentNotified = false;
+			parent.property('a').property('b').invalidate();
 			assert.isTrue(parentNotified);
 		},
 		separateChildPath: function(){

@@ -3,7 +3,12 @@ define(['./lang', './Context'],
 	var deny = {};
 	var noChange = {};
 	var WeakMap = lang.WeakMap;
+	// Invalidation types
+	var ToChild = 1;
+	var ToParent = 2;
+	var RequestChange = 3;
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap');
+
 	var CacheEntry = lang.compose(WeakMap, function() {
 	},{
 		_propertyChange: function(propertyName){
@@ -88,9 +93,9 @@ define(['./lang', './Context'],
 		_propertyChange: function(propertyName, context){
 			var property = propertyName && this._properties && this._properties[propertyName];
 			if(property){
-				property.invalidate(context);
+				property.invalidate(context, ToChild);
 			}
-			this.invalidate(context, propertyName);
+			this.invalidate(context, ToParent);
 		},
 		eachKey: function(callback){
 			for(var i in this._properties){
@@ -129,9 +134,9 @@ define(['./lang', './Context'],
 			}
 		},
 
-		invalidate: function(context, property){
+		invalidate: function(context, type){
 			var value = this.value;
-			if(value && typeof value === 'object' && !property){
+			if(value && typeof value === 'object' && type !== ToParent){
 				deregisterListener(value, this);
 			}
 
@@ -142,8 +147,9 @@ define(['./lang', './Context'],
 				for(var i = 0, l = dependents.length; i < l; i++){
 					try{
 						var dependent = dependents[i];
-						if(!property || dependent.parent !== this){
-							dependent.invalidate(context);
+						// skip notifying property dependents if we are headed up the parent chain
+						if(type !== ToParent || dependent.parent !== this){
+							dependent.invalidate(context, dependent.parent === this ? ToChild : undefined);
 						}
 					}catch(e){
 						console.error(e, 'invalidating a variable');
@@ -422,18 +428,24 @@ define(['./lang', './Context'],
 			});
 		},
 		put: function(value, context){
-			return this._propertyChange(null, context, true, value);
+			return this._changeValue(context, RequestChange, value);
 		},
-		_propertyChange: function(propertyName, context, doChange, newValue){
+		invalidate: function(context, type){
+			if(type !== ToChild){
+				this._changeValue(context, type);
+			}
+			if(type === ToChild || type == ToParent){
+				return Variable.prototype.invalidate.call(this, context, type);
+			} // else
+		},
+		_changeValue: function(context, type, newValue){
 			var key = this.key;
 			var parent = this.parent;
-			var property = this;
-			var args = arguments;
 			return lang.when(parent.valueOf(context), function(object){
 				if(object == null){
 					return deny;
 				}
-				if(doChange){
+				if(type == RequestChange){
 					if(object[key] === newValue){
 						// no actual change to make
 						return noChange;
@@ -448,14 +460,13 @@ define(['./lang', './Context'],
 						if (listener === parent){
 							parentListenerFound = true;
 						}
-						listener._propertyChange(key, context);
+						listener._propertyChange(key, context, type);
 					}
 				}
 				if(!parentListenerFound){
 					// at least make sure we notify the parent
-					parent._propertyChange(key, context);
+					parent._propertyChange(key, context, type);
 				}
-				return Variable.prototype._propertyChange.apply(property, args);
 			});
 		}
 	});
