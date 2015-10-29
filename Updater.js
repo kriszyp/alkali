@@ -55,6 +55,9 @@ define(function (require, exports, module) {
 			if (options.renderUpdate) {
 				this.renderUpdate = options.renderUpdate;
 			}
+			if (options.alwaysUpdate) {
+				this.alwaysUpdate = options.alwaysUpdate;
+			}
 		}
 		this.update(true);
 	}
@@ -70,7 +73,7 @@ define(function (require, exports, module) {
 				var updater = this;
 				queueRenderer(function(){
 					updater.invalidated = false;
-					updater.update();
+					updater.update(updater.alwaysUpdate);
 				});
 			}
 		},
