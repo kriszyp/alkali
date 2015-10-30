@@ -295,7 +295,8 @@ define([
 		separateChildPath: function(){
 			var parent = new Variable({
 				a: {
-					b: 1
+					b: 1,
+					c: 3
 				}
 			});
 			var parentReference = new Variable();
@@ -305,9 +306,15 @@ define([
 				event.value();
 				parentNotified = true;
 			});
-			parentNotified = false;
+			var siblingNotified;
+			parent.property('a').property('c').subscribe(function(event){
+				event.value();
+				siblingNotified = true;
+			});
+			siblingNotified = false;
 			parentReference.property('a').set('b', 2);
 			assert.isTrue(parentNotified);
+			assert.isFalse(siblingNotified);
 		},
 		array: function () {
 			var array = [1, 2];
