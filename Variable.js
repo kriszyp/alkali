@@ -90,9 +90,9 @@ define(['./lang', './Context'],
 			}
 			return propertyVariable;
 		},
-		_propertyChange: function(propertyName, context, type){
-			var property = type !== ToParent && propertyName && this._properties && this._properties[propertyName];
-			if(property){// should not call this if coming from child
+		_propertyChange: function(propertyName, context){
+			var property = propertyName && this._properties && this._properties[propertyName];
+			if(property){
 				property.invalidate(context, ToChild);
 			}
 			this.invalidate(context, ToParent);
