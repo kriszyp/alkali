@@ -295,14 +295,16 @@ define([
 		separateChildPath: function(){
 			var parent = new Variable({
 				a: {
-					b: 1,
+					b: {
+						d: 2
+					},
 					c: 3
 				}
 			});
 			var parentReference = new Variable();
 			parentReference.put(parent);
 			var parentNotified;
-			parent.property('a').subscribe(function(event){
+			parent.property('a').property('b').subscribe(function(event){
 				event.value();
 				parentNotified = true;
 			});
@@ -312,7 +314,8 @@ define([
 				siblingNotified = true;
 			});
 			siblingNotified = false;
-			parentReference.property('a').set('b', 2);
+			parentNotified = false;
+			parentReference.property('a').property('b').set('d', 6);
 			assert.isTrue(parentNotified);
 			assert.isFalse(siblingNotified);
 		},

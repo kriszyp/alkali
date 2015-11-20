@@ -48,6 +48,9 @@ This allows you to execute a function that is the value of a variable, with argu
 
 This returns a variable representing the property of the value of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in property variable will update the corresponding property on the parent object.
 
+### fixed
+
+This property can be set to true, when a variable holds another variable (acting as proxy), so that subsequent `put()` will not replace the contained variable, but will put in it.
 
 ## Updaters
 

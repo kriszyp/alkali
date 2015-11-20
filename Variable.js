@@ -56,6 +56,9 @@ define(['./lang', './Context'],
 	Variable.prototype = {
 		constructor: Variable,
 		valueOf: function(context){
+			if(this.state){
+				this.state = null;
+			}
 			return this.gotValue(this.getValue(context), context);
 		},
 		getValue: function(){
@@ -75,7 +78,7 @@ define(['./lang', './Context'],
 				}
 				value = value.valueOf(context);
 			}
-			if(typeof value === 'object' && value && this.dependents && this._properties){
+			if(typeof value === 'object' && value && this.dependents){
 				// set up the listeners tracking
 				registerListener(value, this);
 			}
@@ -90,9 +93,9 @@ define(['./lang', './Context'],
 			}
 			return propertyVariable;
 		},
-		_propertyChange: function(propertyName, context){
+		_propertyChange: function(propertyName, context, type){
 			var property = propertyName && this._properties && this._properties[propertyName];
-			if(property){
+			if(property && type !== ToParent){
 				property.invalidate(context, ToChild);
 			}
 			this.invalidate(context, ToParent);
@@ -135,6 +138,10 @@ define(['./lang', './Context'],
 		},
 
 		invalidate: function(context, type){
+			if(this.state === 'invalidated'){
+				return;
+			}
+			this.state = 'invalidated';
 			var value = this.value;
 			if(value && typeof value === 'object' && type !== ToParent){
 				deregisterListener(value, this);
@@ -189,8 +196,16 @@ define(['./lang', './Context'],
 			}
 		},
 		put: function(value, context){
-			if(this.getValue() === value){
+			var oldValue = this.getValue();
+			if(oldValue === value){
 				return noChange;
+			}
+			if(this.fixed &&
+					// if it is set to fixed, we see we can put in the current variable
+					oldValue && oldValue.put && // if we currently have a variable
+					// and it is always fixed, or not a new variable
+					(this.fixed == 'always' || !(value && value.notifies))){
+				return oldValue.put(value);
 			}
 			this.setValue(value);
 			this.invalidate(context);
@@ -265,6 +280,7 @@ define(['./lang', './Context'],
 			return new Variable(operator).apply(null, [this]);
 		},
 		get withDescendants(){
+			// deprecated
 			return this;
 		},
 		get schema(){
@@ -310,6 +326,10 @@ define(['./lang', './Context'],
 		},
 		valueOf: function(context, cacheHolder){
 			// first check to see if we have the variable already computed
+			if(this.state){
+				this.state = null;
+			}
+
 			var useCache = this.dependents || this._properties;
 			if(!useCache){
 				return Variable.prototype.valueOf.apply(this, arguments);
@@ -412,6 +432,9 @@ define(['./lang', './Context'],
 			this.parent.stopNotifies(this);
 		},
 		valueOf: function(context){
+			if(this.state){
+				this.state = null;
+			}
 			var key = this.key;
 			var parent = this.parent;
 			var property = this;
@@ -419,7 +442,7 @@ define(['./lang', './Context'],
 			return lang.when(parent.valueOf(context, cacheHolder), function(object){
 				if(property.dependents){
 					var cache = cacheHolder.cache || object;
-					var listeners = propertyListenersMap.get(cache);
+					var listeners = cache && propertyListenersMap.get(cache);
 					if(listeners && listeners.observer && listeners.observer.addKey){
 						listeners.observer.addKey(key);
 					}
@@ -590,6 +613,10 @@ define(['./lang', './Context'],
 		},
 		lastIndex: 0,
 		valueOf: function(context){
+			if(this.state){
+				this.state = null;
+			}
+
 			var parent = this.parent;
 			var variable = this;
 			return lang.when(parent.valueOf(context), function(array){
@@ -645,7 +672,7 @@ define(['./lang', './Context'],
 			this.target.stopNotifies(this);
 			this.targetSchema.stopNotifies(this);			
 		},
-		valueOf: function(context){
+		getValue: function(context){
 			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context));
 		}
 	});
