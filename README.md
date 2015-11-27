@@ -119,6 +119,21 @@ Data objects are plain JS objects: Variables can be used on their own, or the Va
 
 The computations (and invalidations) can be all be executed with an optional context, which effectively allows variables to be parameterized. This means that a given variable does not have to be used to only represent a single value, but the variable may be used to represent set of different variables depending on their context. This also facilitates the construction of very powerful caching mechanisms that can intelligently cache based on determining which parameters may lead to different results.
 
+## Variable Copies
+
+Alkali includes a variable Copy constructor, that allows you to maintain a copy of an object from another variable. Variable copies are very useful in situations where you want to reactively create a working copy of any object to edit and change, and potentially later save those changes back to the original object. For example, you may want to select an object to open in a form, and allow changes to be made in form. By using a working copy, the form edits can automatically be mapped to the object, but not committed back to the original object until later:
+
+	var selectedObject = new Variable(); // this will be set to the currently selected object
+	var workingCopy = new Copy(selectedObject); // holds a copy of each object contained in selectedObject
+	var myForm = new MyForm({
+		variable: workingCopy // we can pass this to a form, with changing the original object
+	});
+	myForm.on('submit', function() {
+		workingCopy.save(); // now save the changes back to the original object
+	})
+
+
+
 
 # Design Philosophy
 
@@ -132,6 +147,8 @@ Caching can be performed safely because dependencies and the cache can be invali
 These advantages are explained in more depth here:
 http://kriszyp.name/2015/01/13/reactivity-and-caching/
 
+The two phase rendering approach of alkali is described here:
+http://kriszyp.name/2015/11/25/rendering-efficiently-with-two-phase-ui-updates/
 
 ## License
 Alkali is freely available under *either* the terms of the modified BSD license *or* the
