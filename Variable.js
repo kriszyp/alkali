@@ -466,6 +466,10 @@ define(['./lang', './Context'],
 			var parent = this.parent;
 			return lang.when(parent.valueOf(context), function(object){
 				if(object == null){
+					// nothing there yet, create an object to hold the new property
+					parent.put(object = typeof key == 'number' ? [] : {});
+				}else if(typeof object != 'object'){
+					// if the parent is not an object, we can't set anything (that will be retained)
 					return deny;
 				}
 				if(type == RequestChange){
