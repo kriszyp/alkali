@@ -2,10 +2,17 @@ define(['./Variable', './lang'],
 		function(Variable, lang){
 
 	function deepCopy(source) {
-		if(typeof source == 'object'){
-			var target = {};
-			for(var i in source){
-				target[i] = deepCopy(source[i]);
+		if(source && typeof source == 'object'){
+			if(source instanceof Array){
+				var target = [];
+				for(var i = 0, l = source.length; i < l; i++){
+					target[i] = deepCopy(source[i]);
+				}
+			}else{
+				var target = {};
+				for(var i in source){
+					target[i] = deepCopy(source[i]);
+				}
 			}
 			return target;
 		}
@@ -17,6 +24,9 @@ define(['./Variable', './lang'],
 		this.map = new lang.WeakMap(null, 'derivative');
 	}, {
 		valueOf: function(context){
+			if(this.state){
+				this.state = null;
+			}
 			var value = this.copiedFrom.valueOf(context);
 			if(value && typeof value == 'object'){
 				var derivative = this.map.get(value);
@@ -25,7 +35,11 @@ define(['./Variable', './lang'],
 				}
 				return derivative;
 			}
-			return value;
+			var thisValue = this.getValue(context);
+			if(thisValue === undefined){
+				return value;
+			}
+			return thisValue;
 		},
 		save: function(){
 			// TODO: copy instead?
