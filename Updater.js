@@ -59,7 +59,9 @@ define(function (require, exports, module) {
 				this.alwaysUpdate = options.alwaysUpdate;
 			}
 		}
-		this.update(true);
+		if(options && options.updateOnStart !== false){
+			this.update(true);
+		}
 	}
 	Updater.prototype = {
 		constructor: Updater,
@@ -113,8 +115,8 @@ define(function (require, exports, module) {
 			}
 			return;
 		}
-		if(always || element.offsetParent){
-			// it is visible
+		if(always || document.body.contains(element)){
+			// it is connected
 			this.updateElement(element);
 		}else{
 			var id = this.id || (this.id = nextId++);
@@ -141,10 +143,16 @@ define(function (require, exports, module) {
 	ElementUpdater.prototype.updateElement = function(element) {
 		var value = this.variable.valueOf();
 		if(value !== undefined){
-			var updater = this;
-			lang.when(value, function (value) {
-				updater.renderUpdate(value, element);
-			});
+			if(value && value.then){
+				if(this.renderLoading){
+					this.renderLoading(value, element);
+				}
+				var updater = this;
+				value.then(function (value) {
+					updater.renderUpdate(value, element);
+				});
+			}
+			this.renderUpdate(value, element);
 		}
 	};
 	ElementUpdater.prototype.renderUpdate = function (newValue, element) {

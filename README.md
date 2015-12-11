@@ -8,6 +8,8 @@ The central entity in the data model system is a "Variable" (this notion has var
 
 Notifications of data changes are delivered by invalidation notifications. When a downstream subscriber is interested in the results of a variable change, it can request the lates value. Variables can employ internal caching of calculated values. Variables support bi-directional flow. They can be updated as well as monitored.
 
+Variables also support promises as values, and the variable pipeline will handle waiting for a promises to resolve to do computations.
+
 ## Variable API
 
 ### valueOf(context?)
@@ -97,6 +99,8 @@ We can also create custom updaters:
 An Updater will only update an element if it is visible, and will mark it as needing rerendering. If a hidden element is made visible again, you can trigger the rerendering by calling `Updater.onShowElement(element)` on a parent element.
 
 Alternately, you may set `alwaysUpdate` to true on the Updater options to force the Updater to always render in response to changes.
+
+If your variables use promises, alkali will wait for the promise to resolve before calling `renderUpdate` (and it will be called with the resolution of the promise). You may define a `renderLoading` to render something while a promise is waiting to be resolved.
 
 ## Data Objects
 
