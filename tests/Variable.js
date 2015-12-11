@@ -331,6 +331,27 @@ define([
 			});
 			assert.deepEqual(results, [2, 4]);
 		},
+
+		promise: function () {
+			var resolvePromise;
+			var promise = new Promise(function(resolve){
+				resolvePromise = resolve;
+			});
+			var variable = new Variable(promise);
+			var plus2 = variable.map(function(value) {
+				return value + 2;
+			});
+			var sum;
+			var finished = plus2.valueOf().then(function(result){
+				sum = result;
+			});
+			assert.isUndefined(sum);
+			resolvePromise(4);
+			return finished.then(function() {
+				assert.equal(sum, 6);
+			});
+		},
+
 		schema: function () {
 			var object = {
 				a: 1,

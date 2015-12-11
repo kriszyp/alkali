@@ -273,7 +273,7 @@ define([], function(){
 
 		observe: observe,
 		unobserve: unobserve,
-			when: function(value, callback, errorHandler){
+		when: function(value, callback, errorHandler){
 			return value && value.then ?
 				(value.then(callback, errorHandler) || value) : callback(value);
 		},
@@ -289,17 +289,24 @@ define([], function(){
 				return {
 					then: function(onResolve, onError){
 						var remaining = 1;
+						var result;
 						var readyInputs = [];
+						var lastPromiseResult;
 						for(var i = 0; i < inputs.length; i++){
 							var input = inputs[i];
 							remaining++;
 							if(input && input.then){
-								(function(i){
-									input.then(function(value){
+								(function(i, previousPromiseResult){
+									lastPromiseResult = input.then(function(value){
 										readyInputs[i] = value;
 										onEach();
+										if(!remaining){
+											return result;
+										}else{
+											return previousPromiseResult;
+										}
 									}, onError);
-								})(i);
+								})(i, lastPromiseResult);
 							}else{
 								readyInputs[i] = input;
 								onEach();
@@ -309,9 +316,10 @@ define([], function(){
 						function onEach(){
 							remaining--;
 							if(!remaining){
-								onResolve(callback(readyInputs));
+								result = onResolve(callback(readyInputs));
 							}
 						}
+						return lastPromiseResult;
 					},
 					inputs: inputs
 				};
