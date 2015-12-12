@@ -277,6 +277,9 @@ define(['./lang', './Context'],
 		},
 		map: function (operator) {
 			// TODO: create a more efficient map, we don't really need a full variable here
+			if(!operator){
+				throw new Error('No function provided to map');
+			}
 			return new Variable(operator).apply(null, [this]);
 		},
 		get withDescendants(){
