@@ -69,20 +69,23 @@ define(['./lang', './Context'],
 				this.notifyingValue.stopNotifies(this);
 				this.notifyingValue = null;
 			}
-			if(value && value.notifies){
-				if(this.dependents){
-					// the value is another variable, start receiving notifications
-					// TODO: do cleanup of this notifies
-					value.notifies(this);
-					this.notifyingValue = value;
+			var variable = this;
+			return lang.when(value, function(value){
+				if(value && value.notifies){
+					if(variable.dependents){
+						// the value is another variable, start receiving notifications
+						// TODO: do cleanup of this notifies
+						value.notifies(variable);
+						variable.notifyingValue = value;
+					}
+					value = value.valueOf(context);
 				}
-				value = value.valueOf(context);
-			}
-			if(typeof value === 'object' && value && this.dependents){
-				// set up the listeners tracking
-				registerListener(value, this);
-			}
-			return value;
+				if(typeof value === 'object' && value && variable.dependents){
+					// set up the listeners tracking
+					registerListener(value, variable);
+				}
+				return value;
+			});
 		},
 		property: function(key){
 			var properties = this._properties || (this._properties = {});
