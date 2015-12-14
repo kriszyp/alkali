@@ -151,8 +151,9 @@ define(function (require, exports, module) {
 				value.then(function (value) {
 					updater.renderUpdate(value, element);
 				});
+			}else{
+				this.renderUpdate(value, element);
 			}
-			this.renderUpdate(value, element);
 		}
 	};
 	ElementUpdater.prototype.renderUpdate = function (newValue, element) {
