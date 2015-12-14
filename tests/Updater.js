@@ -45,6 +45,26 @@ define([
 				assert.equal(div.innerHTML, 'next');
 			});
 		},
+		PromisedUpdate: function () {
+			var resolvePromise;
+			var promise = new Promise(function(resolve){
+				resolvePromise = resolve;
+			});
+			var variable = new Variable(promise);
+			var updater = new Updater.ElementUpdater({
+				variable: variable,
+				element: div,
+				renderUpdate: function(value){
+					assert.equal(value, 4);
+				}
+			});
+			resolvePromise(4);
+
+			return variable.valueOf().then(function() {
+				return new Promise(requestAnimationFrame);
+			});
+
+		},
 		UpdaterInvalidation: function() {
 			document.body.appendChild(div);
 			var outer = new Variable(false);
