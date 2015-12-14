@@ -352,6 +352,38 @@ define([
 			});
 		},
 
+		promiseComposition: function() {
+			var inner = new Variable('a');
+			var resolvePromise;
+			var promise = new Promise(function(resolve) {
+			    resolvePromise = resolve;
+			});
+                        var promiseVar = new Variable(promise);
+			outerCallbackInvoked = 0;
+			innerCallbackInvoked = 0;
+			var composed = promiseVar.map(function(promiseValue) {
+			    outerCallbackInvoked++;
+                            console.log('outer invoked');
+			    return inner.map(function(innerValue) {
+				innerCallbackInvoked++;
+                                console.log('inner invoked');
+				return [promiseValue, innerValue];
+			    });
+			});
+			var result;
+			var finished = composed.valueOf().then(function(composedValue) {
+                            console.log('composedValue', composedValue);
+			    result = composedValue;
+			});
+			assert.isUndefined(result);
+                        resolvePromise('promise');
+			return finished.then(function() {
+			    assert.equal(outerCallbackInvoked, 1, 'outer map not invoked exactly once: ' + outerCallbackInvoked);
+			    assert.equal(innerCallbackInvoked, 1, 'inner map not invoked exactly once: ' + innerCallbackInvoked);
+                            assert.deepEqual(result, ['promise','a']);
+			});
+		},
+
 		schema: function () {
 			var object = {
 				a: 1,
