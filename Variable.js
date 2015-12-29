@@ -7,6 +7,7 @@ define(['./lang', './Context'],
 	var ToChild = 1;
 	var ToParent = 2;
 	var RequestChange = 3;
+	var nextId = 1;
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap');
 
 	var CacheEntry = lang.compose(WeakMap, function() {
@@ -221,6 +222,9 @@ define(['./lang', './Context'],
 			// TODO: create an optimized route when the property doesn't exist yet
 			this.property(key).put(value, context);
 		},
+		undefine: function(key, context){
+			this.set(key, undefined, context);
+		},
 		setValue: function(value){
 			this.value = value;
 		},
@@ -303,7 +307,11 @@ define(['./lang', './Context'],
 				value: validate
 			});
 			return validate;
+		},
+		getId: function(){
+			return this.id || (this.id = nextId++)
 		}
+
 	};
 
 	var Caching = Variable.Caching = lang.compose(Variable, function(getValue, setValue){
