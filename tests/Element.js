@@ -23,8 +23,9 @@ define([
 			assert.strictEqual(element.id, 'id-1');
 			assert.strictEqual(element.title, '4');
 			variable.put(5);
-			ElementType.refresh();
-			assert.strictEqual(element.title, '5');
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(element.title, '5');
+			});
 		}
 
 	});
