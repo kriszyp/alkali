@@ -1,6 +1,7 @@
 define([], function(){
 	var hasFeatures = {
 		observe: Object.observe,
+		requestAnimationFrame: typeof requestAnimationFrame != 'undefined',
 		defineProperty: Object.defineProperty && (function(){
 			try{
 				Object.defineProperty({}, 't', {});
@@ -181,6 +182,26 @@ define([], function(){
 	Hidden.prototype.toJSON = toJSONHidden;
 
 	var lang = {
+		requestAnimationFrame: has('requestAnimationFrame') ? requestAnimationFrame :
+			(function(){
+				var toRender = [];
+				var queued = false;
+				function processAnimationFrame() {
+					for (var i = 0; i < toRender.length; i++){
+						toRender[i]();
+					}
+					toRender = [];
+					queued = false;
+				}
+				function requestAnimationFrame(renderer){
+				 	if (!queued) {
+						setTimeout(processAnimationFrame);
+						queued = true;
+					}
+					toRender.push(renderer);
+				}
+				return requestAnimationFrame;
+			})(),
 		Promise: has('promise') ? Promise : (function(){
 			function Promise(execute){
 				var isResolved, resolution, errorResolution;

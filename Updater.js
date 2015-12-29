@@ -1,27 +1,11 @@
 define(function (require, exports, module) {
 	var lang = require('./lang');
 	var doc = document;
-	var invalidatedElements = new WeakMap(null, 'invalidated');
+	var invalidatedElements;
 	var queued;
 	var toRender = [];
 	var nextId = 1;
-	var nextFrame = window.requestAnimationFrame || setTimeout;
-	function processQueue() {
-		for (var i = 0; i < toRender.length; i++){
-			toRender[i]();
-		}
-		toRender = [];
-		invalidatedElements = new WeakMap(null, 'invalidated');
-		// TODO: if this is not a real weak map, we don't want to GC it, or it will leak
-		queued = false;
-	}
-	function queueRenderer(renderer){
-	 	if (!queued) {
-			nextFrame(processQueue);
-			queued = true;
-		}
-		toRender.push(renderer);
-	}
+	var requestAnimationFrame = lang.requestAnimationFrame;
 	function Updater(options) {
 		var variable = options.variable;
 		if (variable.notifies) {
@@ -47,7 +31,8 @@ define(function (require, exports, module) {
 				this.selector = options.selector;
 			}
 			if (options.element) {
-				this.element = options.element;
+				var element = this.element = options.element;
+				(element.alkaliRenderers || (element.alkaliRenderers = [])).push(this);
 			}
 			if (options.update) {
 				this.update = options.update;
@@ -73,13 +58,17 @@ define(function (require, exports, module) {
 				// do this only once, until we render again
 				this.invalidated = true;
 				var updater = this;
-				queueRenderer(function(){
-					updater.invalidated = false;
+				requestAnimationFrame(function(){
+					invalidatedElements = null;
 					updater.update(updater.alwaysUpdate);
 				});
 			}
 		},
 		invalidateElement: function(element) {
+			if(!invalidatedElements){
+				invalidatedElements = new WeakMap(null, 'invalidated');
+				// TODO: if this is not a real weak map, we don't want to GC it, or it will leak
+			}
 			var invalidatedParts = invalidatedElements.get(element);
 			invalidatedElements.set(element, invalidatedParts = {});
 			if (!invalidatedParts[id]) {
@@ -94,6 +83,9 @@ define(function (require, exports, module) {
 				updater.invalidated = false;
 				updater.updateElement(element);
 			});
+		},
+		getId: function(){
+			return this.id || (this.id = nextId++)
 		}
 
 	};
@@ -119,7 +111,7 @@ define(function (require, exports, module) {
 			// it is connected
 			this.updateElement(element);
 		}else{
-			var id = this.id || (this.id = nextId++);
+			var id = this.getId();
 			var updaters = element.updaters;
 			if(!updaters){
 				updaters = element.updaters = [];
@@ -141,6 +133,7 @@ define(function (require, exports, module) {
 		this.updateElement(element);
 	};
 	ElementUpdater.prototype.updateElement = function(element) {
+		this.invalidated = false;
 		var value = this.variable.valueOf();
 		if(value !== undefined){
 			if(value && value.then){
@@ -196,8 +189,9 @@ define(function (require, exports, module) {
 		element.appendChild(document.createTextNode(newValue));
 	};
 	Updater.ContentUpdater = ContentUpdater;
-	var onShowElement = Updater.onShowElement = function(shownElement){
-		queueRenderer(function(){
+	Updater.onShowElement = function(shownElement){
+		requestAnimationFrame(function(){
+			invalidatedElements = null;
 			var elements = [].slice.call(shownElement.getElementsByClassName('needs-rerendering'));
 			if (shownElement.className.indexOf('needs-rerendering') > 0){
 				var includingTop = [shownElement];
@@ -206,21 +200,41 @@ define(function (require, exports, module) {
 			}
 			for (var i = 0, l = elements.length; i < l; i++){
 				var element = elements[i];
-				if(element.offsetParent){ // check to make sure it is really visible
-					var updaters = element.updaters;
-					if(updaters){
-						element.updaters = null;
-						// remove needs-rerendering class
-						element.className = element.className.replace(/\s?needs\-rerendering\s?/g, '');
-						for (var id in updaters) {
-							var updater = updaters[id];
-							updater.updateElement(element);
-						}
+				var updaters = element.updaters;
+				if(updaters){
+					element.updaters = null;
+					// remove needs-rerendering class
+					element.className = element.className.replace(/\s?needs\-rerendering\s?/g, '');
+					for (var id in updaters) {
+						var updater = updaters[id];
+						updater.updateElement(element);
 					}
 				}
 			}
 		});
 	};
-	Updater.refresh = processQueue;
+
+	function onElementRemoval(element){
+		// cleanup element renderers
+		if(element.alkaliRenderers){
+			var renderers = element.alkaliRenderers;
+			for(var i = 0; i < renderers.length; i++){
+				var renderer = renderers[i];
+				renderer.variable.stopNotifies(renderer);
+			}
+		}
+	}
+	Updater.onElementRemoval = function(element, onlyChildren){
+		if(!onlyChildren){
+			onElementRemoval(element);
+		}
+		var children = element.getElementsByTagName('*');
+		for(var i = 0, l = children.length; i < l; i++){
+			var child = children[i];
+			if(child.alkaliRenderers){
+				onElementRemoval(child);
+			}
+		}
+	};
 	module.exports = Updater;
 });
