@@ -37,6 +37,9 @@ define(function (require, exports, module) {
 			if (options.update) {
 				this.update = options.update;
 			}
+			if (options.shouldRender) {
+				this.shouldRender = options.shouldRender;
+			}
 			if (options.renderUpdate) {
 				this.renderUpdate = options.renderUpdate;
 			}
@@ -94,6 +97,9 @@ define(function (require, exports, module) {
 		Updater.call(this, variable, options);
 	}
 	ElementUpdater.prototype = Object.create(Updater.prototype);
+	ElementUpdater.prototype.shouldRender = function (element) {
+		return document.body.contains(element);
+	};
 	ElementUpdater.prototype.update = function (always, element) {
 		element = this.element || element;
 		if(!element){
@@ -107,7 +113,7 @@ define(function (require, exports, module) {
 			}
 			return;
 		}
-		if(always || document.body.contains(element)){
+		if(always || this.shouldRender(element)){
 			// it is connected
 			this.updateElement(element);
 		}else{

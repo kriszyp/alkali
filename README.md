@@ -96,7 +96,7 @@ We can also create custom updaters:
 			}
 		})
 
-An Updater will only update an element if it is visible, and will mark it as needing rerendering. If a hidden element is made visible again, you can trigger the rerendering by calling `Updater.onShowElement(element)` on a parent element.
+An Updater will only update an element if it is visible, and will mark it as needing rerendering. If a hidden element is made visible again, you can trigger the rerendering by calling `Updater.onShowElement(element)` on a parent element. You can also provide a custom definition for what constitutes a visible element that should be immediately rendered by defining a `shouldRender(element)` method, which should return true or false indicating if the element needs to be rendered.
 
 Alternately, you may set `alwaysUpdate` to true on the Updater options to force the Updater to always render in response to changes.
 
