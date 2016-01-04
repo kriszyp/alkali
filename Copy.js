@@ -21,7 +21,7 @@ define(['./Variable', './lang'],
 	return lang.compose(Variable, function(copiedFrom){
 		// this is the variable that we derive from
 		this.copiedFrom = copiedFrom;
-		this.map = new lang.WeakMap(null, 'derivative');
+		this.derivativeMap = new lang.WeakMap(null, 'derivative');
 	}, {
 		valueOf: function(context){
 			if(this.state){
@@ -29,9 +29,9 @@ define(['./Variable', './lang'],
 			}
 			var value = this.copiedFrom.valueOf(context);
 			if(value && typeof value == 'object'){
-				var derivative = this.map.get(value);
+				var derivative = this.derivativeMap.get(value);
 				if (derivative == null){
-					this.map.set(value, derivative = deepCopy(value));
+					this.derivativeMap.set(value, derivative = deepCopy(value));
 				}
 				return derivative;
 			}
