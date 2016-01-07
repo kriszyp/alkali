@@ -494,19 +494,18 @@ define(['./lang', './Context'],
 					object[key] = newValue;
 				}
 				var listeners = propertyListenersMap.get(object);
-				var parentListenerFound;
+				// at least make sure we notify the parent
+				// we need to do it before the other listeners, so we can invalidate it before
+				// we trigger a full clobbering of the object
+				parent._propertyChange(key, context, type);
 				if(listeners){
 					for(var i = 0, l = listeners.length; i < l; i++){
 						var listener = listeners[i];
-						if (listener === parent){
-							parentListenerFound = true;
+						if (listener !== parent){
+							// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
+							listener._propertyChange(key, context, type);
 						}
-						listener._propertyChange(key, context, type);
 					}
-				}
-				if(!parentListenerFound){
-					// at least make sure we notify the parent
-					parent._propertyChange(key, context, type);
 				}
 			});
 		}
