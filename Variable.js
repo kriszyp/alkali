@@ -66,16 +66,22 @@ define(['./lang', './Context'],
 			return this.value;
 		},
 		gotValue: function(value, context){
-			if(this.notifyingValue){
-				this.notifyingValue.stopNotifies(this);
-				this.notifyingValue = null;
-			}
+			var previousNotifyingValue = this.notifyingValue;
 			var variable = this;
 			return lang.when(value, function(value){
+				if(previousNotifyingValue){
+					if(value === previousNotifyingValue){
+						// nothing changed, immediately return valueOf
+						return value.valueOf(context);
+					}
+					// if there was a another value that we were dependent on before, stop listening to it
+					// TODO: we may want to consider doing cleanup after the next rendering turn
+					previousNotifyingValue.stopNotifies(variable);
+					variable.notifyingValue = null;
+				}
 				if(value && value.notifies){
 					if(variable.dependents){
 						// the value is another variable, start receiving notifications
-						// TODO: do cleanup of this notifies
 						value.notifies(variable);
 						variable.notifyingValue = value;
 					}
@@ -510,6 +516,7 @@ define(['./lang', './Context'],
 			});
 		}
 	});
+	Variable.Property = Property;
 
 	// a call variable is the result of a call
 	var Call = lang.compose(Caching, function Call(functionVariable, args){
@@ -674,8 +681,34 @@ define(['./lang', './Context'],
 					item = variable.valueOf(iteratorContext);
 				}
 			});
+		},
+		arrayContext: function(context){
+			return new ContextualArray(context, this);
 		}
 	});
+	function ContextualArray(context, parent){
+		this.context = context;
+		this.parent = parent;
+	}
+	ContextualArray.prototype.valueOf = function(){
+		return this.parent.valueOf(this.context);
+	};
+	function arrayMethod(name){
+		Variable.prototype[name] = ContextualArray.prototype[name] = function(){
+			var args = arguments;
+			var variable = this;
+			return lang.when(this.valueOf(), function(array){
+				array.push.apply(array, args);
+				variable.invalidate();
+			});
+		};
+	}
+	arrayMethod('push');
+	arrayMethod('splice');
+	arrayMethod('shift');
+	arrayMethod('unshift');
+	arrayMethod('pop');
+
 	var Validating = lang.compose(Caching, function(target, schema){
 		this.target = target;
 		this.targetSchema = schema;
