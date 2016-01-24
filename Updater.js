@@ -168,6 +168,7 @@ define(function (require, exports, module) {
 		ElementUpdater.apply(this, arguments);
 	}
 	AttributeUpdater.prototype = Object.create(ElementUpdater.prototype);
+	AttributeUpdater.prototype.type = 'AttributeUpdater';
 	AttributeUpdater.prototype.renderUpdate = function (newValue, element) {
 		element.setAttribute(this.name, newValue);
 	};
@@ -180,6 +181,7 @@ define(function (require, exports, module) {
 		ElementUpdater.apply(this, arguments);
 	}
 	PropertyUpdater.prototype = Object.create(ElementUpdater.prototype);
+	PropertyUpdater.prototype.type = 'PropertyUpdater';
 	PropertyUpdater.prototype.renderUpdate = function (newValue, element) {
 		element[this.name] = newValue;
 	};
@@ -190,6 +192,7 @@ define(function (require, exports, module) {
 		ElementUpdater.apply(this, arguments);
 	}
 	ContentUpdater.prototype = Object.create(ElementUpdater.prototype);
+	ContentUpdater.prototype.type = 'ContentUpdater';
 	ContentUpdater.prototype.renderUpdate = function (newValue, element) {
 		element.innerHTML = '';
 		element.appendChild(document.createTextNode(newValue));
