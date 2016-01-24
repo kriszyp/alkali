@@ -6,9 +6,13 @@ There are several key paradigms in alkali:
 
 The central entity in the data model system is a "Variable" (this notion has variously been known by various names such as "reactive", "stream", "signal" and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the value.
 
-Notifications of data changes are delivered by invalidation notifications. When a downstream subscriber is interested in the results of a variable change, it can request the lates value. Variables can employ internal caching of calculated values. Variables support bi-directional flow. They can be updated as well as monitored.
+Notifications of data changes are delivered by invalidation notifications. When a downstream subscriber is interested in the results of a variable change, it can request the lates value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. Variables support bi-directional flow. They can be updated as well as monitored.
 
 Variables also support promises as values, and the variable pipeline will handle waiting for a promises to resolve to do computations.
+
+## Debugging/Interaction
+
+[Litmus](https://github.com/kriszyp/litmus) is a project that provides a visual explorer/graph of alkali variables and data flow, that can assist with debugging and interaction with alkali data.
 
 ## Variable API
 
@@ -24,7 +28,7 @@ If the `value` passed in is not different than the current value, no changes wil
 
 ### subscribe(listener)
 
-This adds a listener for any changes to the variable. This will be called with an event object that has a `value()` method that can be called to get the current value. Generally it is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management.
+This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subcriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` (in either form, but especially the latter) is generally discouraged, because of the API is not well-suited for alkali's optimized resource management, it is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
 
 ### map(function)
 

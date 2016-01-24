@@ -19,7 +19,7 @@ define(['./lang', './Context'],
 	var listenerId = 1;
 	function registerListener(value, listener){
 		var listeners = propertyListenersMap.get(value);
-		var id = listener.id || (listener.id = ('-' + listenerId++));
+		var id = listener.listenerId || (listener.listenerId = ('-' + listenerId++));
 		if(listeners){
 			if(listeners[id] === undefined){
 				listeners[id] = listeners.push(listener) - 1;
@@ -35,10 +35,10 @@ define(['./lang', './Context'],
 	function deregisterListener(value, listener){
 		var listeners = propertyListenersMap.get(value);
 		if(listeners){
-			var index = listeners[listener.id];
+			var index = listeners[listener.listenerId];
 			if(index > -1){
 				listeners.splice(index, 1);
-				delete listeners[listener.id];
+				delete listeners[listener.listenerId];
 			}
 		}
 	}
@@ -235,25 +235,33 @@ define(['./lang', './Context'],
 			this.value = value;
 		},
 		subscribe: function(listener){
-			// baconjs compatible
+			// ES7 Observable (and baconjs) compatible API
 			var variable = this;
+			var invalidated;
 			// it is important to make sure you register for notifications before getting the value
+			if (typeof listener === 'function'){
+				// BaconJS compatible API
+				var event = {
+					value: function(){
+						return variable.valueOf();
+					}
+				};
+				invalidated = function(){
+					listener(event);
+				};
+			} else {
+				// Assuming ES7 Observable API. It is actually a streaming API, this pretty much violates all principles of reactivity, but we will support it
+				invalidated = function(){
+					listener.next(variable.valueOf());
+				};
+			}
+
 			var handle = this.notifies({
-				invalidate: function(){
-					listener({
-						value: function(){
-							return variable.valueOf();
-						}
-					});
-				}
+				invalidate: invalidated
 			});
 			var initialValue = this.valueOf();
 			if(initialValue !== undefined){
-				listener({
-					value: function(){
-						return initialValue;
-					}
-				});
+				invalidated();
 			}
 			return handle;
 		},
