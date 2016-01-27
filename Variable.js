@@ -485,9 +485,7 @@ define(['./lang', './Context'],
 			if(type !== ToChild){
 				this._changeValue(context, type);
 			}
-			if(type === ToChild || type == ToParent){
-				return Variable.prototype.invalidate.call(this, context, type);
-			} // else
+			return Variable.prototype.invalidate.call(this, context, type);
 		},
 		_changeValue: function(context, type, newValue){
 			var key = this.key;
