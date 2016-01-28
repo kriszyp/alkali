@@ -141,7 +141,8 @@ define(function (require, exports, module) {
 	ElementUpdater.prototype.updateElement = function(element) {
 		this.invalidated = false;
 		var value = this.variable.valueOf();
-		if(value !== undefined){
+		if(value !== undefined || this.started){
+			this.started = true;
 			if(value && value.then){
 				if(this.renderLoading){
 					this.renderLoading(value, element);
@@ -195,6 +196,9 @@ define(function (require, exports, module) {
 	ContentUpdater.prototype.type = 'ContentUpdater';
 	ContentUpdater.prototype.renderUpdate = function (newValue, element) {
 		element.innerHTML = '';
+		if (newValue === undefined){
+			newValue = ''
+		}
 		element.appendChild(document.createTextNode(newValue));
 	};
 	Updater.ContentUpdater = ContentUpdater;
