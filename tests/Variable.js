@@ -408,6 +408,23 @@ define([
 			assert.deepEqual(propertyA.validate.valueOf(), ['error']);
 			object.a = 8;
 			assert.deepEqual(propertyA.validate.valueOf(), []);
+		},
+
+		composite: function () {
+			var a = new Variable(1)
+			var b = new Variable(2)
+			var c = new Variable(3)
+			var result;
+			Variable.all([a, b, c]).subscribe({
+				next: function(resolved){
+					result = resolved;
+				}
+			});
+			assert.deepEqual(result, [1, 2, 3])
+			a.put(4)
+			assert.deepEqual(result, [4, 2, 3])
+			c.put(6)
+			assert.deepEqual(result, [4, 2, 6])
 		}
 	});
 });

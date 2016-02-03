@@ -104,6 +104,9 @@ define(['./lang', './Context'],
 			return propertyVariable;
 		},
 		_propertyChange: function(propertyName, context, type){
+			if(this.onPropertyChange){
+				this.onPropertyChange(propertyName, context);
+			}
 			var property = propertyName && this._properties && this._properties[propertyName];
 			if(property && type !== ToParent){
 				property.invalidate(context, ToChild);
@@ -524,14 +527,10 @@ define(['./lang', './Context'],
 	});
 	Variable.Property = Property;
 
-	// a call variable is the result of a call
-	var Call = lang.compose(Caching, function Call(functionVariable, args){
-		this.functionVariable = functionVariable;
+	var Composite = lang.compose(Caching, function Composite(args){
 		this.args = args;
 	}, {
 		init: function(){
-			// depend on the function itself
-			this.functionVariable.notifies(this);
 			// depend on the args
 			var args = this.args;
 			for(var i = 0, l = args.length; i < l; i++){
@@ -541,9 +540,9 @@ define(['./lang', './Context'],
 				}
 			}
 		},
+
 		cleanup: function(){
 			Caching.prototype.cleanup.call(this);
-			this.functionVariable.stopNotifies(this);
 			// depend on the args
 			var args = this.args;
 			for(var i = 0, l = args.length; i < l; i++){
@@ -552,6 +551,34 @@ define(['./lang', './Context'],
 					arg.stopNotifies(this);
 				}
 			}
+		},
+
+		getValue: function(context){
+			var results = [];
+			var args = this.args;
+			for(var i = 0, l = args.length; i < l; i++){
+				results[i] = args[i].valueOf(context);
+			}
+			return lang.whenAll(results, function(resolved) {
+				return resolved;
+			});
+		}
+	});
+
+	// a call variable is the result of a call
+	var Call = lang.compose(Composite, function Call(functionVariable, args){
+		this.functionVariable = functionVariable;
+		this.args = args;
+	}, {
+		init: function(){
+			// depend on the function itself
+			this.functionVariable.notifies(this);
+			// depend on the args
+			Composite.prototype.init.call(this);
+		},
+		cleanup: function(){
+			this.functionVariable.stopNotifies(this);
+			Composite.prototype.cleanup.call(this);
 		},
 
 		getValue: function(context){
@@ -812,6 +839,10 @@ define(['./lang', './Context'],
 			}
 		};
 	}
+	function all(array){
+		return new Composite(array);
+	}
+	Variable.all = all;
 	Variable.observe = observe;
 	return Variable;
 });
