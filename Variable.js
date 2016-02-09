@@ -91,6 +91,9 @@ define(['./lang', './Context'],
 					// set up the listeners tracking
 					registerListener(value, variable);
 				}
+				if(value === undefined) {
+					value = variable.default;
+				}
 				return value;
 			});
 		},
