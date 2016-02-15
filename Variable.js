@@ -843,7 +843,12 @@ define(['./lang', './Context'],
 		};
 	}
 	function all(array){
-		return new Composite(array);
+		// This is intended to mirror Promise.all. It actually takes
+		// an iterable, but for now we are just looking for array-like
+		if (array.length > -1) {
+			return new Composite(array);
+		}
+		throw new TypeError('Variable.all requires an array');
 	}
 	Variable.all = all;
 	Variable.observe = observe;

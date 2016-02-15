@@ -56,7 +56,11 @@ This returns a variable representing the property of the value of the variable. 
 
 ### fixed
 
-This property can be set to true, when a variable holds another variable (acting as proxy), so that subsequent `put()` will not replace the contained variable, but will put in it.
+This property can be set to true, when a variable holds another variable (acting as proxy), so that subsequent `put()` will not replace the contained variable, but will replace the value in the target variable.
+
+### Variable.all(array)
+
+This function allows you to compose a new variable from an array of input variables, where the resulting variable will update in response to changes from any of the input variables. The return variable will hold an array of values that represent the value of each of the input variable's values (in the same order as the variables were provided). This is intended to mirror the `Promise.all()` API.
 
 ## Updaters
 
@@ -139,9 +143,6 @@ Alkali includes a variable Copy constructor, that allows you to maintain a copy 
 	myForm.on('submit', function() {
 		workingCopy.save(); // now save the changes back to the original object
 	})
-
-
-
 
 # Design Philosophy
 
