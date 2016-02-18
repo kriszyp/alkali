@@ -19,6 +19,18 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		SELECT: 1
 	};
 	var doc = document;
+	var cssRules;
+	function createCssRule(selector) {
+		if (!cssRules) {
+			var styleSheet = document.createElement("style");
+			styleSheet.setAttribute("type", "text/css");
+			styleSheet.appendChild(document.createTextNode(css));
+			document.head.insertBefore(styleSheet, document.head.firstChild);
+			cssRules = styleSheet.cssRules || styleSheet.rules;
+		}
+		var ruleNumber = cssRules.length;
+		return styleSheet.addRule(selector, ' ', ruleNumber);
+	}
 	var invalidatedElements = new WeakMap(null, 'invalidated');
 	var queued;
 	var baseDefinitions = {
@@ -45,245 +57,129 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		}
 	}
 
-	var nextId = 390983;
-	function ElementType(tagName) {
-		this.tagName = tagName || 'span';
+	classToTag = {
+		Anchor: 'a',
+		UList: 'ul',
+		OList: 'ol',
+		DList: 'dl'
 	}
-	ElementType.prototype = {
-		with: function (properties, targetValue) {
-			var derivative = this.deriveType();
-			for (var key in properties) {
-				derivative.set(key, properties[key]);
-			}
-			if (targetValue) {
-				derivative.bindTo(targetValue);
-			}
-			return derivative;
-		},
-		bindTo: function(targetValue){
-			this.content = targetValue;
-		},
-		deriveType: function () {
-			var derivative = Object.create(this);
-			derivative.base = this;
-			if (this.definitions) {
-				derivative.definitions = Object.create(this.definitions);
-			}
-			return derivative;
-		},
-		define: function (name, value) {
-			this.definitions[name] = value;
-		},
-		init: function () {
-			this._initialized = true;
-			this.selector = this.selector || 
-				(this.tagName + (this.tagName.indexOf('.') > -1 ? '' : '.-x-') + nextId++);
-			if (this.base) {
-				//this.base.init();
-				flatten(this, 'styles');
-				flatten(this, 'properties');
-			}
-			var properties = this.properties;
-			if (properties) {
-				for (var i = 0; i < this.properties.length; i++){
-					var name = properties[i];
-					var value = properties[name];
-					if (value && value.invalidate) {
-						// a variable
-						new Updater.PropertyUpdater({
-							variable: value,
-							selector: this.selector,
-							name: name
-						});
-					}
-				}
-			}
-		},
-		set: function (name, value) {
-			var definitions = this.definitions;
-			if (definitions && definitions[name]) {
-				var result = definitions[name].is(value, new Context(this));
-				if (result && result.for) {
-					result.for()
-				}
-			} else if (knownElementProperties[name]){
-				this.setProperty(name, value);
-			} else if (testStyle[name] !== undefined) {
-				this.setStyle(name, value);
-			} else {
-				this.setProperty(name, value);
-			}
-			return this;
-		},
-		setStyle: function (name, value) {
-			var styles = this.styles || (this.styles = []);
-			if (styles[name] === undefined) {
-				styles[name] = value;
-				styles.push(name);
-			} else {
-				styles[name] = value;
-			}
-			return this;
-		},
-		setProperty: function (name, value) {
-			var properties = this.properties || (this.properties = []);
-			if (properties[name] === undefined) {
-				properties[name] = value;
-				properties.push(name);
-			} else {
-				properties[name] = value;
-			}
-			return this;
-		},
-		elements: function (callback) {
-			var elements = document.querySelectorAll(this.selector);
-			for (var i = 0; i < elements.length; i++) {
-				callback(elements[i]);
-			}
-		},
-		newElement: function () {
-			if (!this._initialized) {
-				this.init();
-			}
-			var element = document.createElement(this.tagName);
-			// simple conversion of CSS selector class names to space separated class names
-			element.className = this.selector.replace(/[^\.]+\.([\w-]+)/g, '$1 ');
-			var properties = this.properties || 0;
-			var context = new Context(this, element);
-			for (var i = 0, l = properties.length; i < l; i++) {
-				var name = properties[i];
-				element[name] = properties[name].valueOf(context);
-			}
-			this.renderStyles(element, context);
-			this.fillElement(element, context);
-			return element;
-		},
-		renderStyles: function (element, context) {
-			var inlineStyles = this.inlineStyles;
-			if (inlineStyles) {
-				// if initialized (although we might consider using a different variable for checking
-				// for initialization), we just apply the inline styles
-				for (var i = 0, l = inlineStyles.length; i < l; i++) {
-					var name = inlineStyles[i];
-					lang.when(inlineStyles[name].valueOf(context), function (value) {
-						element.style[name] = value;
-					});
-				}
-			} else {
-				// this is the first time through, so for each style we evaluate, and determine
-				// if it is element dependent
-				this.inlineStyles = [];
-				var addCssProperty = function(name) {
-					return function (value) {
-						if (ruleStyles) {
-							ruleStyles[name] = value;
-						} else {
-							ruleCssText += name + ':' + value;
-						}
-					};
-				};
-				var styles = this.styles || 0;
-				for (var i = 0; i < styles.length; i++) {
-					var name = this.styles[i];
-					var value = this.styles[name];
-					var ruleStyles;
-					var ruleCssText = '';
-					if (value && value.invalidate) {
-						// a variable
-						var elementType = this;
-						var updater = new Updater({
-							variable: value,
-							selector: this.selector,
-							renderUpdate: function(){
 
-							}
-						});
-						context = context || new Context(this);
-						context.get = function (contextKey) {
-							if (contextKey === 'element') {
-								// element was accessed, must be element dependent
-								var inlineStyles = elementType.inlineStyles || (elementType.inlineStyles = []);
-								updater.needsElement = true;
-								if (!inlineStyles[name]) {
-									inlineStyles.push(name);
-								}
-								inlineStyles[name] = value;
-								// apply the actual inline style for this element
-								lang.when(value.valueOf(context), function (value) {
-									element.style[name] = value;
-								});
-								return element;
-							}
-							return Context.prototype.get.apply(this, arguments);
-						};
-						lang.when(value.valueOf(context), addCssProperty(name));
-					} else {
-						addCssProperty(name)(value);
-					}
-
-					// copy styles to a rule
-					ruleStyles = createRule(selector, ruleCssText);
-				}
-			}
-		},
-		fillElement: function (element, context) {
-			if (this.children) {
-				this.renderChildren(element, context);
-			} else if (this.content) {
-				this.renderContent(element, context);
-			}
-		},
-		renderChildren: function (element, context) {
-			// make the content available to children
-			element.content = this.content;
-			// iterate through the children
-			var children = this.children;
-			children && createChildren(element, children);
-			function createChildren(parent, children) {
-				var element;
-				if (children) {
-					for (var i = 0, l = children.length; i < l; i++) {
-						var child = children[i];
-						if (child.newElement) {
-							element = parent.appendChild(child.newElement(context));
-						} else if (child instanceof Array) {
-							createChildren(element, child);
-						} else if (typeof child === 'string') {
-							parent.appendChild(document.createTextNode(child));
-						}
-					}
-				}
-			}
-			this.applyContent(element);
-			return element;
-		},
-		renderContent: function (element, context) {
-			var elementType = this;
-			var contentVariable = this.content;
-			var content = contentVariable.valueOf(context);
-			lang.when(content, function (content) {
-				if (element.tagName in inputs) {
-					// set the text
-					if (element.type === 'checkbox') {
-						element.checked = content;
-					} else if(element.type === 'radio') {
-						element.checked = (content == element.value);
-					} else {
-						element.value = content;
-					}
-					if(!rule._inputConnected){
-						rule._inputConnected = true;
-						dom.addInputConnector(elementType, contentVariable);
-					}
-				}else{
-					// render plain text
-					element.appendChild(doc.createTextNode(content));
-				}
-
-			});
-
+	function getClassName(Class) {
+		return Class.name || Class.toString().match(/function ([_\w]+)\(/)[0]
+	}
+	function getTagName(BaseClass) {
+		var className = (BaseClass.name || BaseClass.toString().slice(0,30)).match(/HTML(\w+)Element/);
+		if (className) {
+			var tagName = className[1]
+			return classToTag[tagName] || tagName
 		}
-	};
+		// try with the base class
+		return getTagName(Object.getPrototypeOf(BaseClass))
+	}
+
+
+	function layoutChildren(parent, children) {
+		var container
+		for(var i = 0, l = children.length; i < l; i++) {
+			var child = children[i]
+			var childNode
+			if (typeof child == 'string') {
+				childNode = document.createTextNode(child)
+			} else if (child instanceof Array) {
+				layoutChildren(childNode, child)
+			} else if (child.make) {
+				childNode = child.make(parent)
+			}
+		}
+	}
+
+	function applyProperties(element, properties) {
+		for (var key in properties) {
+			value = properties[value]
+			if (value && value.notifies) {
+        new PropertyUpdater({
+          name: key,
+          variable: value,
+          element: element
+        })
+			} else {
+				element[key] = value
+			}
+		}
+	}
+
+	function makeElement(Base, tagName, args) {
+		function Element(properties) {
+			makeElement(Element, arguments)
+		}
+		var prototype = Element.prototype = Object.create(Base.prototype)
+		for (var i = 0, l = args.length; i < l; i++) {
+			var argument = args[i]
+			if (argument instanceof Array) {
+				prototype.childrenToRender = argument
+			} else {
+				for (var key in argument) {
+					var value = argument[key]
+					if (typeof value === 'function') {
+						prototype[key] = value
+					}
+				}
+			}
+		}
+		var initialized
+		var className
+		Element.make || (Element.make = function(parent, properties, children) {
+			if (!initialized) {
+				className = getClassName(this).replace(/A-Z/g, function (letter) { return '-'.toLowerCase() })
+				className = className.indexOf('-') > -1 ? '' : 'x-'
+				var prototype = this.prototype;
+				initialized = true
+				for (var key in prototype) {
+					if (key.slice(0, 2) === 'on' && prototype[key]) {
+						(Element.events || (Element.events = {}))[key] = prototype[key]
+						doc.addEventListener(key.slice(2), function (event) {
+							var target = event.target
+							// TODO: find parent matching
+							target['on' + type](target, event)
+						})
+					}
+				}
+				var styles = this.styles
+				if (styles) {
+					var rule = createCssRule('.' + className)
+					for (var key in styles) {
+						rule.style[key] = styles[key]
+					}
+				}
+			}
+			tagName = tagName || getTagName(Base)
+			var element = document.createElement(tagName)
+			Object.setPrototypeOf(element, prototype)
+			element.className = className
+			element.createdCallback && element.createdCallback()
+			element.created && element.created()
+			if (parent.tagName) {
+				parent.appendChild(element)
+				element.attachedCallback && element.attachedCallback()
+				element.attached && element.attached()
+			}
+			// TODO: we may want to put these on the instance so it can be overriden
+			if (this.childrenToRender) {
+				layoutChildren(element, this.childrenToRender)
+			}
+			if (properties) {
+				applyProperties(element, properties)
+			}
+			if (children) {
+				layoutChildren(element, children)
+			}
+		})
+	}
+	Element.prototype 
+	Element.Div = Element(HTMLDivElement)
 	ElementType.refresh = Updater.refresh;
+	Element.container = function(){
+		// container marker
+	}
 	return ElementType;
 });
