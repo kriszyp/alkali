@@ -3,30 +3,32 @@ define([
 	'../Variable',
 	'intern!object',
 	'intern/chai!assert'
-], function (ElementType, Variable, registerSuite, assert) {
+], function (Element, Variable, registerSuite, assert) {
+	var div = Element.div
+	var span = Element.span
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {
-			var div = new ElementType('div');
-			var element = div.newElement();
-			assert.equal(element.tagName, 'DIV');
+			var div = ElementType.div
+			var testDiv = new div({id: 'test-div'})
+			assert.equal(testDiv.tagName, 'DIV')
+			assert.equal(testDiv.getAttribute('id'), 'test-div')
 		},
 		'change in variable': function () {
-			var variable = new Variable(4);
-			var div = new ElementType('div');
-			var withVariable = div.with({
+			var variable = new Variable(4)
+			var withVariable = div({
 				title: variable,
 				id: 'id-1'
-			});
-			var element = withVariable.newElement();
-			document.body.appendChild(element);
-			assert.strictEqual(element.id, 'id-1');
-			assert.strictEqual(element.title, '4');
-			variable.put(5);
+			})
+			var element = withVariable.create()
+			document.body.appendChild(element)
+			assert.strictEqual(element.id, 'id-1')
+			assert.strictEqual(element.title, '4')
+			variable.put(5)
 			return new Promise(requestAnimationFrame).then(function(){
-				assert.strictEqual(element.title, '5');
-			});
+				assert.strictEqual(element.title, '5')
+			})
 		}
 
-	});
+	})
 });
