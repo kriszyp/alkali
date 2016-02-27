@@ -1,8 +1,12 @@
 define([
 	'../Variable',
 	'intern!object',
-	'intern/chai!assert'
-], function (Variable, registerSuite, assert) {
+	'intern/chai!assert',
+	'./has!promise?:bluebird/js/browser/bluebird'
+], function (Variable, registerSuite, assert, bluebird) {
+	if (typeof window != 'undefined' && !window.Promise) {
+		window.Promise = bluebird
+	}
 	registerSuite({
 		name: 'Variable',
 

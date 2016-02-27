@@ -4,231 +4,231 @@ define([], function(){
 		requestAnimationFrame: typeof requestAnimationFrame != 'undefined',
 		defineProperty: Object.defineProperty && (function(){
 			try{
-				Object.defineProperty({}, 't', {});
-				return true;
+				Object.defineProperty({}, 't', {})
+				return true
 			}catch(e){
 			}
 		})(),
 		promise: typeof Promise !== 'undefined',
 		'WeakMap': typeof WeakMap === 'function'
-	};
+	}
 	function has(feature){
-		return hasFeatures[feature];
+		return hasFeatures[feature]
 	}
 	// This is an polyfill for Object.observe with just enough functionality
 	// for what Variables need
 	// An observe function, with polyfile
 	var observe = has('observe') ? function(target, listener){
-			Object.observe(target, listener);
+			Object.observe(target, listener)
 			return {
 				remove: function(){
-					Object.unobserve(target, listener);
+					Object.unobserve(target, listener)
 				}
-			};
+			}
 		} :
 		// for the case of setter support, but no Object.observe support (like IE9+, FF, Safari)
 		// this is much faster than polling
 			has('defineProperty') ? 
 		function observe(target, listener){
 			/*for(var i in target){
-				addKey(i);
+				addKey(i)
 			}*/
-			listener.addKey = addKey;
+			listener.addKey = addKey
 			listener.remove = function(){
-				listener = null;
-			};
-			return listener;
+				listener = null
+			}
+			return listener
 			function addKey(key){
-				var keyFlag = 'key' + key;
+				var keyFlag = 'key' + key
 				if(this[keyFlag]){
-					return;
+					return
 				}else{
-					this[keyFlag] = true;
+					this[keyFlag] = true
 				}
-				var currentValue = target[key];
-				var descriptor = Object.getOwnPropertyDescriptor(target, key);
+				var currentValue = target[key]
+				var descriptor = Object.getOwnPropertyDescriptor(target, key)
 				if(descriptor && descriptor.set){
-					var previousSet = descriptor.set;
-					var previousGet = descriptor.get;
+					var previousSet = descriptor.set
+					var previousGet = descriptor.get
 					Object.defineProperty(target, key, {
 						get: function(){
-							return (currentValue = previousGet.call(this));
+							return (currentValue = previousGet.call(this))
 						},
 						set: function(value){
-							previousSet.call(this, value);
+							previousSet.call(this, value)
 							if(currentValue !== value){
-								currentValue = value;
+								currentValue = value
 								if(listener){
-									queue(listener, this, key);
+									queue(listener, this, key)
 								}
 							}
 						},
 						enumerable: descriptor.enumerable
-					});
+					})
 				}else{
 					Object.defineProperty(target, key, {
 						get: function(){
-							return currentValue;
+							return currentValue
 						},
 						set: function(value){
 							if(currentValue !== value){
-								currentValue = value;
+								currentValue = value
 								if(listener){
-									queue(listener, this, key);
+									queue(listener, this, key)
 								}
 							}
 						},
 						enumerable: !descriptor || descriptor.enumerable
-					});
+					})
 				}
 			}
 		} :
 		// and finally a polling-based solution, for the really old browsers
 		function(target, listener){
 			if(!timerStarted){
-				timerStarted = true;
+				timerStarted = true
 				setInterval(function(){
 					for(var i = 0, l = watchedObjects.length; i < l; i++){
-						diff(watchedCopies[i], watchedObjects[i], listeners[i]);
+						diff(watchedCopies[i], watchedObjects[i], listeners[i])
 					}
-				}, 20);
+				}, 20)
 			}
-			var copy = {};
+			var copy = {}
 			for(var i in target){
 				if(target.hasOwnProperty(i)){
-					copy[i] = target[i];
+					copy[i] = target[i]
 				}
 			}
-			watchedObjects.push(target);
-			watchedCopies.push(copy);
-			listeners.push(listener);
-		};
-	var queuedListeners;
+			watchedObjects.push(target)
+			watchedCopies.push(copy)
+			listeners.push(listener)
+		}
+	var queuedListeners
 	function queue(listener, object, name){
 		if(queuedListeners){
 			if(queuedListeners.indexOf(listener) === -1){
-				queuedListeners.push(listener);
+				queuedListeners.push(listener)
 			}
 		}else{
-			queuedListeners = [listener];
+			queuedListeners = [listener]
 			lang.nextTurn(function(){
 				queuedListeners.forEach(function(listener){
-					var events = [];
+					var events = []
 					listener.properties.forEach(function(property){
-						events.push({target: listener.object, name: property});
-					});
-					listener(events);
-					listener.object = null;
-					listener.properties = null;
-				});
-				queuedListeners = null;
-			}, 0);
+						events.push({target: listener.object, name: property})
+					})
+					listener(events)
+					listener.object = null
+					listener.properties = null
+				})
+				queuedListeners = null
+			}, 0)
 		}
-		listener.object = object;
-		var properties = listener.properties || (listener.properties = []);
+		listener.object = object
+		var properties = listener.properties || (listener.properties = [])
 		if(properties.indexOf(name) === -1){
-			properties.push(name);
+			properties.push(name)
 		}
 	}
 	var unobserve = has('observe') ? Object.unobserve :
 		function(target, listener){
 			if(listener.remove){
-				listener.remove();
+				listener.remove()
 			}
 			for(var i = 0, l = watchedObjects.length; i < l; i++){
 				if(watchedObjects[i] === target && listeners[i] === listener){
-					watchedObjects.splice(i, 1);
-					watchedCopies.splice(i, 1);
-					listeners.splice(i, 1);
-					return;
+					watchedObjects.splice(i, 1)
+					watchedCopies.splice(i, 1)
+					listeners.splice(i, 1)
+					return
 				}
 			}
-		};
-	var watchedObjects = [];
-	var watchedCopies = [];
-	var listeners = [];
-	var timerStarted = false;
+		}
+	var watchedObjects = []
+	var watchedCopies = []
+	var listeners = []
+	var timerStarted = false
 	function diff(previous, current, callback){
 		// TODO: keep an array of properties for each watch for faster iteration
-		var queued;
+		var queued
 		for(var i in previous){
 			if(previous.hasOwnProperty(i) && previous[i] !== current[i]){
 				// a property has changed
-				previous[i] = current[i];
-				(queued || (queued = [])).push({name: i});
+				previous[i] = current[i]
+				(queued || (queued = [])).push({name: i})
 			}
 		}
 		for(var i in current){
 			if(current.hasOwnProperty(i) && !previous.hasOwnProperty(i)){
 				// a property has been added
-				previous[i] = current[i];
-				(queued || (queued = [])).push({name: i});
+				previous[i] = current[i]
+				(queued || (queued = [])).push({name: i})
 			}
 		}
 		if(queued){
-			callback(queued);
+			callback(queued)
 		}
 	}
 
-	var id = 1;
+	var id = 1
 	// a function that returns a function, to stop JSON serialization of an
 	// object
 	function toJSONHidden() {
-		return toJSONHidden;
+		return toJSONHidden
 	}
 	// An object that will be hidden from JSON serialization
 	var Hidden = function () {
-	};
-	Hidden.prototype.toJSON = toJSONHidden;
+	}
+	Hidden.prototype.toJSON = toJSONHidden
 
 	var lang = {
 		requestAnimationFrame: has('requestAnimationFrame') ? requestAnimationFrame :
 			(function(){
-				var toRender = [];
-				var queued = false;
+				var toRender = []
+				var queued = false
 				function processAnimationFrame() {
 					for (var i = 0; i < toRender.length; i++){
-						toRender[i]();
+						toRender[i]()
 					}
-					toRender = [];
-					queued = false;
+					toRender = []
+					queued = false
 				}
 				function requestAnimationFrame(renderer){
 				 	if (!queued) {
-						setTimeout(processAnimationFrame);
-						queued = true;
+						setTimeout(processAnimationFrame)
+						queued = true
 					}
-					toRender.push(renderer);
+					toRender.push(renderer)
 				}
-				return requestAnimationFrame;
+				return requestAnimationFrame
 			})(),
 		Promise: has('promise') ? Promise : (function(){
 			function Promise(execute){
-				var isResolved, resolution, errorResolution;
-				var queue = 0;
+				var isResolved, resolution, errorResolution
+				var queue = 0
 				function resolve(value){
 					// resolve function
 					if(value && value.then){
 						// received a promise, wait for it
-						value.then(resolve, reject);
+						value.then(resolve, reject)
 					}else{
-						resolution = value;
-						finished();
+						resolution = value
+						finished()
 					}
 				}
 				function reject(error){
 					// reject function
-					errorResolution = error;
-					finished();
+					errorResolution = error
+					finished()
 				}
-				execute(resolve, reject);
+				execute(resolve, reject)
 				function finished(){
-					isResolved = true;
+					isResolved = true
 					for(var i = 0, l = queue.length; i < l; i++){
-						queue[i]();
+						queue[i]()
 					}
 					// clean out the memory
-					queue = 0;
+					queue = 0
 				}
 				return {
 					then: function(callback, errback){
@@ -238,141 +238,141 @@ define([], function(){
 								try{
 									if(errorResolution && !errback){
 										// errors without a handler flow through
-										reject(errorResolution);
+										reject(errorResolution)
 									}else{
 										// resolve to the callback's result
 										resolve(errorResolution ?
 											errback(errorResolution) :
 											callback ?
-												callback(resolution) : resolution);
+												callback(resolution) : resolution)
 									}
 								}catch(newError){
 									// caught an error, reject the returned promise
-									reject(newError);
+									reject(newError)
 								}
 							}
 							if(isResolved){
 								// already resolved, immediately handle
-								handle();
+								handle()
 							}else{
-								(queue || (queue = [])).push(handle);
+								(queue || (queue = [])).push(handle)
 							}
-						});
+						})
 					}
-				};
+				}
 			}
-			return Promise;
+			return Promise
 		}()),
 
 		WeakMap: has('WeakMap') ? WeakMap :
 	 	function (values, name) {
-	 		var mapProperty = '__' + (name || '') + id++;
+	 		var mapProperty = '__' + (name || '') + id++
 	 		return has('defineProperty') ?
 	 		{
 	 			get: function (key) {
-	 				return key[mapProperty];
+	 				return key[mapProperty]
 	 			},
 	 			set: function (key, value) {
 	 				Object.defineProperty(key, mapProperty, {
 	 					value: value,
 	 					enumerable: false
-	 				});
+	 				})
 	 			}
 	 		} :
 	 		{
 	 			get: function (key) {
-	 				var intermediary = key[mapProperty];
-	 				return intermediary && intermediary.value;
+	 				var intermediary = key[mapProperty]
+	 				return intermediary && intermediary.value
 	 			},
 	 			set: function (key, value) {
 	 				// we use an intermediary that is hidden from JSON serialization, at least
-	 				var intermediary = key[mapProperty] || (key[mapProperty] = new Hidden());
-	 				intermediary.value = value;
+	 				var intermediary = key[mapProperty] || (key[mapProperty] = new Hidden())
+	 				intermediary.value = value
 	 			}
-	 		};
+	 		}
 	 	},
 
 		observe: observe,
 		unobserve: unobserve,
 		when: function(value, callback, errorHandler){
 			return value && value.then ?
-				(value.then(callback, errorHandler) || value) : callback(value);
+				(value.then(callback, errorHandler) || value) : callback(value)
 		},
 		whenAll: function(inputs, callback){
-			var promiseInvolved;
+			var promiseInvolved
 			for(var i = 0, l = inputs.length; i < l; i++){
 				if(inputs[i] && inputs[i].then){
-					promiseInvolved = true;
+					promiseInvolved = true
 				}
 			}
 			if(promiseInvolved){
 				// we have asynch inputs, do lazy loading
 				return {
 					then: function(onResolve, onError){
-						var remaining = 1;
-						var result;
-						var readyInputs = [];
-						var lastPromiseResult;
+						var remaining = 1
+						var result
+						var readyInputs = []
+						var lastPromiseResult
 						for(var i = 0; i < inputs.length; i++){
-							var input = inputs[i];
-							remaining++;
+							var input = inputs[i]
+							remaining++
 							if(input && input.then){
 								(function(i, previousPromiseResult){
 									lastPromiseResult = input.then(function(value){
-										readyInputs[i] = value;
-										onEach();
+										readyInputs[i] = value
+										onEach()
 										if(!remaining){
-											return result;
+											return result
 										}else{
-											return previousPromiseResult;
+											return previousPromiseResult
 										}
-									}, onError);
-								})(i, lastPromiseResult);
+									}, onError)
+								})(i, lastPromiseResult)
 							}else{
-								readyInputs[i] = input;
-								onEach();
+								readyInputs[i] = input
+								onEach()
 							}
 						}
-						onEach();
+						onEach()
 						function onEach(){
-							remaining--;
+							remaining--
 							if(!remaining){
-								result = onResolve(callback(readyInputs));
+								result = onResolve(callback(readyInputs))
 							}
 						}
-						return lastPromiseResult;
+						return lastPromiseResult
 					},
 					inputs: inputs
-				};
+				}
 			}
 			// just sync inputs
-			return callback(inputs);
+			return callback(inputs)
 
 		},
 		compose: function(Base, constructor, properties){
-			var prototype = constructor.prototype = new Base();
+			var prototype = constructor.prototype = new Base()
 			for(var i in properties){
-				prototype[i] = properties[i];
+				prototype[i] = properties[i]
 			}
-			return constructor;
+			return constructor
 		},
 		nextTurn: has('promise') ? 
 			function (callback) {
 				// promises resolve on the next micro turn
 				new Promise(function (resolve) {
 					resolve(); 
-				}).then(callback);
+				}).then(callback)
 			} :
 			function (callback) {
 				// TODO: we can do better for other, older browsers
-				setTimeout(callback, 0);
+				setTimeout(callback, 0)
 			},
 		copy: Object.assign || function(target, source){
 			for(var i in source){
-				target[i] = source[i];
+				target[i] = source[i]
 			}
-			return target;
+			return target
 		}
-	};
-	return lang;
+	}
+	return lang
 });

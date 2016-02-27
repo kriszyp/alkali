@@ -23,6 +23,7 @@
   "dojoBuild": "package.js",
   "devDependencies": {
     "dojo": "^1.10.2",
-    "intern-geezer": "^2.2.2"
+    "intern-geezer": "^2.2.2",
+    "bluebird": "3.3.3"
   }
 }
