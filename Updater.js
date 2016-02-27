@@ -202,6 +202,23 @@ define(function (require, exports, module) {
 		element.appendChild(document.createTextNode(newValue));
 	};
 	Updater.ContentUpdater = ContentUpdater;
+
+	function TextUpdater(options) {
+		this.position = options.position
+		this.textNode = options.textNode
+		ElementUpdater.apply(this, arguments);
+	}
+	TextUpdater.prototype = Object.create(ElementUpdater.prototype);
+	TextUpdater.prototype.type = 'TextUpdater';
+	TextUpdater.prototype.renderUpdate = function (newValue, element) {
+		if (newValue === undefined){
+			newValue = ''
+		}
+		(this.textNode || element.childNodes[this.position]).nodeValue = newValue
+	};
+	Updater.TextUpdater = TextUpdater;
+
+
 	Updater.onShowElement = function(shownElement){
 		requestAnimationFrame(function(){
 			invalidatedElements = null;

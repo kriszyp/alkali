@@ -7,7 +7,9 @@ define([
 	var div = Element.div
 	var span = Element.span
 	var checkbox = Element.checkbox
+	var radio = Element.radio
 	var input = Element.input
+	var content = Element.content
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {
@@ -39,7 +41,7 @@ define([
 				], {id: 'middle-1'}),
 				div('.middle-2')
 			])
-			var structureElement = new Structure()
+			var structureElement = Structure.create()
 			assert.strictEqual(structureElement.tagName, 'DIV')
 			assert.strictEqual(structureElement.className, 'top')
 			assert.strictEqual(structureElement.id, 'top')
@@ -53,9 +55,37 @@ define([
 			assert.strictEqual(structureElement.lastChild.className, 'middle-2')
 		},
 		inputs: function() {
-			var inputElement = new input()
-			var checkboxElement = new checkbox()
-			assert.strictEqual(checkboxElement.type, 'checkbox')
+			assert.strictEqual(new input().type, 'text')
+			assert.strictEqual(new checkbox().type, 'checkbox')
+			assert.strictEqual(new radio().type, 'radio')
+		},
+		contentNode: function() {
+			var title = new Variable('title')
+			var someContent = new Variable('content')
+			var Layout = div('.top', {id: 'top'}, [
+				div('.middle-1'), [
+					title,
+					content(div('.content-node'))
+				],
+				div('.middle-2')
+			])
+			var result = new Layout([
+				div('.inside-layout', [someContent])
+			])
+			document.body.appendChild(result)
+			var middle = result.firstChild
+			assert.strictEqual(middle.firstChild.nodeValue, 'title')
+			var container = middle.firstChild.nextSibling
+			assert.strictEqual(container.className, 'content-node')
+			assert.strictEqual(container.firstChild.className, 'inside-layout')
+			assert.strictEqual(container.firstChild.firstChild.nodeValue, 'content')
+			title.put('new title')
+			someContent.put('new content')
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(middle.firstChild.nodeValue, 'new title')
+				assert.strictEqual(container.firstChild.firstChild.nodeValue, 'new content')
+			})
+
 		}
 	})
 });

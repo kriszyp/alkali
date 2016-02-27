@@ -2,6 +2,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	var knownElementProperties = {
 	}
 	PropertyUpdater = Updater.PropertyUpdater
+	TextUpdater = Updater.TextUpdater
 	;['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
 		knownElementProperties[name] = true
 	})
@@ -36,18 +37,6 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	}
 	var invalidatedElements = new WeakMap(null, 'invalidated')
 	var queued
-	var baseDefinitions = {
-		class: {
-			is: function (className) {
-				return {
-					for: function(context) {
-						var elementType = context.get('type')
-						elementType.selector += '.' + className
-					}
-				}
-			}
-		}
-	}
 
 	var toRender = []
 	function flatten(target, part) {
@@ -60,43 +49,42 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		}
 	}
 
-	classToTag = {
-		Anchor: 'a',
-		UList: 'ul',
-		OList: 'ol',
-		DList: 'dl'
-	}
-
-	function getClassName(Class) {
-		return Class.name || Class.toString().match(/function ([_\w]+)\(/)[0]
-	}
-	function getTagName(BaseClass) {
-		var className = (BaseClass.name || BaseClass.toString().slice(0,30)).match(/HTML(\w+)Element/)
-		if (className) {
-			var tagName = className[1]
-			return classToTag[tagName] || tagName
-		}
-		// try with the base class
-		return getTagName(Object.getPrototypeOf(BaseClass))
-	}
-
-
 	function layoutChildren(parent, children, container) {
 		var fragment = children.length > 1 ? document.createDocumentFragment() : parent
 		for(var i = 0, l = children.length; i < l; i++) {
 			var child = children[i]
 			var childNode
-			if (typeof child == 'string') {
-				childNode = document.createTextNode(child)
-				fragment.appendChild(childNode)
-			} else if (child instanceof Array) {
-				container = container || parent
-				layoutChildren(childNode, child, container)
-			} else if (child.create) {
+			if (child && child.create) {
+				// an element constructor
 				childNode = child.create(fragment)
 				if (child.isContentNode) {
 					container.contentNode = childNode
 				}
+			} else if (typeof child == 'function') {
+				// an element constructor
+				childNode = new child()
+				fragment.appendChild(childNode)
+			} else if (typeof child == 'object') {
+				if (child instanceof Array) {
+					// array of sub-children
+					container = container || parent
+					layoutChildren(childNode, child, container)
+				} else if (child.notifies) {
+					// a variable
+					childNode = document.createTextNode(child.valueOf())
+					fragment.appendChild(childNode)
+					new TextUpdater({
+						element: parent,
+						textNode: childNode,
+						variable: child
+					})
+				} else {
+					throw new Error('Unknown child type ' + child)
+				}
+			} else {
+				// a primitive value
+				childNode = document.createTextNode(child)
+				fragment.appendChild(childNode)
 			}
 		}
 		if (fragment != parent) {
@@ -152,9 +140,10 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	}
 
 	function extend(selector, properties) {
-		function Element(properties) {
+		function Element(selector, properties) {
 			if (this instanceof Element){
 				// create DOM element
+				// Need to detect if we have registered the element and `this` is actually already the correct instance
 				return create.apply(Element, arguments)
 			} else {
 				// extend to create new class
@@ -176,7 +165,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 				}
 			})
 
-			i++ // skip the first argumnet
+			i++ // skip the first argument
 		}
 		var applyOnCreate
 
@@ -215,9 +204,12 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	function create(parentOrSelector, properties) {
 		// TODO: make this a symbol
 		var applyOnCreate = this._applyOnCreate
-		var tagName = this._tag || applyOnCreate.tagName
+		var tagName = this._tag
 		if (this._initialized != this) {
 			this._initialized = this
+			if (!tagName) {
+				throw new Error('No tag name defined for element')
+			}
 			var styles = this.styles
 			if (styles) {
 				var rule = createCssRule(getUniqueSelector(this))
@@ -257,12 +249,13 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		}
 		// TODO: we may want to put these on the instance so it can be overriden
 		if (this.childrenToRender) {
-			layoutChildren(element, this.childrenToRender)
+			layoutChildren(element, this.childrenToRender, element)
 		}
 		for (var l = arguments.length; i < l; i++) {
 			var argument = arguments[i]
 			if (argument instanceof Array) {
-				layoutChildren(element.container || element, argument)
+				var contentNode = element.contentNode || element
+				layoutChildren(contentNode, argument, contentNode)
 			} else {
 				applyProperties(element, argument, Object.keys(argument))
 			}
@@ -277,13 +270,16 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		return element
 	}
 
+	var Element = extend.call(HTMLElement)
+
 	Element.prototype.closest = function(element){
 		// find closest parent
 	}
 	Element.prototype.find = function(element){
 		// find closest child
 	}
-	generate(['video',
+	generate([
+		'video',
 		'source',
 		'media',
 		'audio',
@@ -361,7 +357,6 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		'details',
 		'datalist',
 		'dl',
-		'content',
 		'canvas',
 		'button',
 		'base',
@@ -416,4 +411,4 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		}
 	}
 	return Element
-});
+})
