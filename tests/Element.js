@@ -59,6 +59,16 @@ define([
 			assert.strictEqual(new checkbox().type, 'checkbox')
 			assert.strictEqual(new radio().type, 'radio')
 		},
+		events: function() {
+			var WithClick = div({
+				onclick: function() {
+					this.wasClicked = true
+				}
+			})
+			var divElement = new WithClick()
+			divElement.click()
+			assert.isTrue(divElement.wasClicked)
+		},
 		contentNode: function() {
 			var title = new Variable('title')
 			var someContent = new Variable('content')
@@ -85,7 +95,6 @@ define([
 				assert.strictEqual(middle.firstChild.nodeValue, 'new title')
 				assert.strictEqual(container.firstChild.firstChild.nodeValue, 'new content')
 			})
-
 		}
 	})
 });

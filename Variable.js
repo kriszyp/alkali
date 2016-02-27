@@ -530,7 +530,7 @@ define(['./lang', './Context'],
 	})
 	Variable.Property = Property
 
-	var Composite = lang.compose(Caching, function Composite(args){
+	var Composite = Variable.Composite = lang.compose(Caching, function Composite(args){
 		this.args = args
 	}, {
 		init: function(){

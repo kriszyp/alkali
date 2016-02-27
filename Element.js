@@ -68,7 +68,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 				if (child instanceof Array) {
 					// array of sub-children
 					container = container || parent
-					layoutChildren(childNode, child, container)
+					layoutChildren(childNode.contentNode || childNode, child, container)
 				} else if (child.notifies) {
 					// a variable
 					childNode = document.createTextNode(child.valueOf())
@@ -144,7 +144,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			if (this instanceof Element){
 				// create DOM element
 				// Need to detect if we have registered the element and `this` is actually already the correct instance
-				return create.apply(Element, arguments)
+				return create.apply(this.constructor, arguments)
 			} else {
 				// extend to create new class
 				return extend.apply(Element, arguments)
@@ -152,6 +152,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		}
 		setPrototypeOf(Element, this)
 		var prototype = Element.prototype = Object.create(this.prototype)
+		prototype.constructor = Element
 
 		var i = 0 // for arguments
 		if (typeof selector === 'string') {
@@ -167,14 +168,13 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 
 			i++ // skip the first argument
 		}
-		var applyOnCreate
+		var applyOnCreate = Element._applyOnCreate = Object.create(this._applyOnCreate || null)
 
 		for (var l = arguments.length; i < l; i++) {
 			var argument = arguments[i]
 			if (argument instanceof Array) {
 				Element.childrenToRender = argument
 			} else {
-				var base = this
 				Object.getOwnPropertyNames(argument).forEach(function(key) {
 					var descriptor = Object.getOwnPropertyDescriptor(argument, key)
 					var onClassPrototype = typeof descriptor.value === 'function' || descriptor.get || descriptor.set
@@ -182,13 +182,12 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 						Object.defineProperty(prototype, key, descriptor)
 					}
 					if (!onClassPrototype || key.slice(0, 2) == 'on') {
-						if (!applyOnCreate){
-							applyOnCreate = Element._applyOnCreate = Object.create(base._applyOnCreate || null)
+						if (!(key in applyOnCreate)) {
+							var lastLength = applyOnCreate.length || 0
+							applyOnCreate[lastLength] = key
+							applyOnCreate.length = lastLength + 1
 						}
 						applyOnCreate[key] = descriptor.value
-						var lastLength = applyOnCreate.length || 0
-						applyOnCreate[lastLength] = key
-						applyOnCreate.length = lastLength + 1
 					}
 				})
 			}
@@ -215,6 +214,22 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 				var rule = createCssRule(getUniqueSelector(this))
 				for (var key in styles) {
 					rule.style[key] = styles[key]
+				}
+			}
+			if (!this.hasOwnProperty('_applyOnCreate')) {
+				applyOnCreate = this._applyOnCreate = Object.create(applyOnCreate || null)
+				// this means we didn't extend and evaluate the prototype, so we need to at least check the prototype for event handlers
+				var keys = Object.getOwnPropertyNames(this.prototype)
+				for (var i = 0, l = keys.length; i < l; i++) {
+					var key = keys[i]
+					if (key.slice(0, 2) == 'on') {
+						if (!(key in applyOnCreate)) {
+							var lastLength = applyOnCreate.length || 0
+							applyOnCreate[lastLength] = key
+							applyOnCreate.length = lastLength + 1
+						}
+						applyOnCreate[key] = this.prototype[key]
+					}
 				}
 			}
 			if (tagName.indexOf('-') > -1) {

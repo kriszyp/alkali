@@ -2,6 +2,7 @@ define([
 	'./Variable',
 	'./Copy',
 	'./Updater',
-	'./Element'
+	'./Element',
+	'./es6'
 ], function () {
 });
