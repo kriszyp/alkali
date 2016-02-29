@@ -79,6 +79,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 						variable: child
 					})
 				} else {
+					// TODO: apply properties to last child, but with binding to the parent (for events)
 					throw new Error('Unknown child type ' + child)
 				}
 			} else {
@@ -90,6 +91,29 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		if (fragment != parent) {
 			parent.appendChild(fragment)
 		}
+	}
+
+	function renderEach(parent, variable, eachChild) {
+		var map = {}
+		new Updater({
+			element: parent,
+			variable: variable,
+			renderUpdate:
+			.eachUpdate(function(update) {
+			if (update.existed) {
+				var key = update.key
+				var element = map[key]
+				parent.removeChild(element)
+				delete map[key]
+			}
+			if (!update.deleted) {
+				update.value
+				var element = eachChild.create()
+				parent.insertBefore(element, map[update.before] || null)
+				map[key] = element
+			}
+			
+		})
 	}
 
 	function applyProperties(element, properties, keys) {
@@ -139,6 +163,55 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		return selector
 	}
 
+	function renderContent(content) {
+		if (this.each) {
+			// render as list
+			var fragment = document.createDocumentFragment()
+			var element = this
+			var each = this.each
+			content.forEach(function(item) {
+				if (typeof each === 'function') {
+					each.call(this, item)
+				} else {
+					each.create(fragment)
+				}
+			})
+			element.appendChild(fragment)
+		} else if ('value' in this) {
+			// render into input
+			this.renderInputContent(content)
+		} else {
+			// render as string
+			var textNode = document.createTextNode(content === undefined ? '' + ('' + content))
+			this.appendChild(textNode)
+			if (content && content.notifies) {
+				new TextUpdater({
+					variable: content,
+					element: this,
+					textNode: textNode
+				})
+			}
+		}
+	}
+
+	function renderInputContent(content) {
+		if (content && content.notifies) {
+			// a variable, respond to changes
+			new PropertyUpdater({
+				variable: content,
+				property: this.inputValueProperty,
+				element: this
+			})
+			// and bind the other way as well, updating the variable in response to input changes
+			this.addEventListener('onchange', function (event) {
+				content.put(this[this.inputValueProperty])
+			})
+		} else {
+			// primitive
+			this[this.inputValueProperty] = content
+		}
+	}
+
 	function extend(selector, properties) {
 		function Element(selector, properties) {
 			if (this instanceof Element){
@@ -172,30 +245,41 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 
 		for (var l = arguments.length; i < l; i++) {
 			var argument = arguments[i]
-			if (argument instanceof Array) {
-				Element.childrenToRender = argument
-			} else {
-				Object.getOwnPropertyNames(argument).forEach(function(key) {
-					var descriptor = Object.getOwnPropertyDescriptor(argument, key)
-					var onClassPrototype = typeof descriptor.value === 'function' || descriptor.get || descriptor.set
-					if (onClassPrototype) {
-						Object.defineProperty(prototype, key, descriptor)
-					}
-					if (!onClassPrototype || key.slice(0, 2) == 'on') {
-						if (!(key in applyOnCreate)) {
-							var lastLength = applyOnCreate.length || 0
-							applyOnCreate[lastLength] = key
-							applyOnCreate.length = lastLength + 1
+			if (argument && typeof argument === 'object') {
+				if (argument instanceof Array) {
+					Element.childrenToRender = argument
+				} else if (argument.notifies) {
+					prototype.content = argument
+				} else {
+					Object.getOwnPropertyNames(argument).forEach(function(key) {
+						var descriptor = Object.getOwnPropertyDescriptor(argument, key)
+						var onClassPrototype = typeof descriptor.value === 'function' || descriptor.get || descriptor.set
+						if (onClassPrototype) {
+							Object.defineProperty(prototype, key, descriptor)
 						}
-						applyOnCreate[key] = descriptor.value
-					}
-				})
+						if (!onClassPrototype || key.slice(0, 2) == 'on') {
+							if (!(key in applyOnCreate)) {
+								var lastLength = applyOnCreate.length || 0
+								applyOnCreate[lastLength] = key
+								applyOnCreate.length = lastLength + 1
+							}
+							// TODO: do deep merging of styles and classes, but not variables
+							applyOnCreate[key] = descriptor.value
+						}
+					})
+				}
+			} else {
+				prototype.content = argument
 			}
 		}
 		if (!Element.create) {
 			// if we are inheriting from a native prototype, we will create the inherited base static functions
 			Element.create = create
 			Element.extend = extend
+		}
+		if (!prototype.renderContent) {
+			this.renderContent = renderContent
+			this.renderInputContent = renderInputContent
 		}
 		return Element
 	}
@@ -266,13 +350,45 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		if (this.childrenToRender) {
 			layoutChildren(element, this.childrenToRender, element)
 		}
+		var contentNode = element.contentNode || element
 		for (var l = arguments.length; i < l; i++) {
 			var argument = arguments[i]
 			if (argument instanceof Array) {
-				var contentNode = element.contentNode || element
 				layoutChildren(contentNode, argument, contentNode)
 			} else {
 				applyProperties(element, argument, Object.keys(argument))
+			}
+		}
+		if (this.content) {
+			this.renderContent(this.content)
+		}
+		var classes = this.classes
+		if (classes) {
+			if (!(classes.length > -1)) {
+				// index the classes, if necessary
+				var i = 0
+				for (var key in classes) {
+					if (!classes[i]) {
+						classes[i] = key
+					}
+					i++
+				}
+				classes.length = i
+			}
+			for (var i = 0, l = classes.length; i < l; i++) {
+				// find each class name
+				var className = classes[i]
+				var flag = classes[className]
+				if (flag && flag.notifies) {
+					// if it is a variable, we react to it
+					new Updater({
+						element: this,
+						className: className,
+						variable: flag
+					})
+				} else if (flag || flag === undefined) {
+					this.className += ' ' + className
+				}
 			}
 		}
 		element.createdCallback && element.createdCallback()
@@ -412,7 +528,12 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			var ElementClass
 			Object.defineProperty(Element, inputType, {
 				get: function() {
-					return ElementClass || (ElementClass = extend.call(HTMLInputElement, 'input', {type: inputType}))
+					return ElementClass || (ElementClass = extend.call(HTMLInputElement, 'input', {
+						type: inputType,
+						inputValueProperty: inputType in {date: 1, datetime: 1, time: 1} ? 'valueAsDate' : 
+							inputType === 'number' ? 'valueAsNumber' :
+							inputType === 'checkbox' ? 'checked' : 'value'
+					}))
 				}
 			})
 		})
