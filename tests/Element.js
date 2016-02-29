@@ -9,6 +9,7 @@ define([
 	var checkbox = Element.checkbox
 	var radio = Element.radio
 	var input = Element.input
+	var number = Element.number
 	var content = Element.content
 	registerSuite({
 		name: 'Element',
@@ -55,9 +56,43 @@ define([
 			assert.strictEqual(structureElement.lastChild.className, 'middle-2')
 		},
 		inputs: function() {
-			assert.strictEqual(new input().type, 'text')
-			assert.strictEqual(new checkbox().type, 'checkbox')
+			var textVariable = new Variable('start')
+			var textInput = new input(textVariable)
+			assert.strictEqual(textInput.type, 'text')
+			assert.strictEqual(textInput.value, 'start')
+			textVariable.put('new value')
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(textInput.value, 'new value')
+
+				textInput.value = 'change from input'
+				var nativeEvent = document.createEvent('HTMLEvents')
+				nativeEvent.initEvent('change', true, true)
+				textInput.dispatchEvent(nativeEvent)
+				assert.strictEqual(textVariable.valueOf(), 'change from input')
+			})
+			var boolVariable = new Variable(true)
+			var checkboxInput = new checkbox(boolVariable)
+			assert.strictEqual(checkboxInput.type, 'checkbox')
+			assert.strictEqual(checkboxInput.checked, true)
+			checkboxInput.put(false)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(checkboxInput.checked, false)
+			})
+			var numberVariable = new Variable(2020)
+			var numberInput = new number(dateVariable)
+			assert.strictEqual(numberInput.type, 'number')
+			assert.strictEqual(numberInput.valueAsNumber, 2020)
+			checkboxInput.put(122)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(numberInput.valueAsNumber, 122)
+				numberInput.valueAsNumber = 10
+				var nativeEvent = document.createEvent('HTMLEvents')
+				nativeEvent.initEvent('change', true, true)
+				numberInput.dispatchEvent(nativeEvent)
+				assert.strictEqual(numberVariable.valueOf(), 10)
+			})
 			assert.strictEqual(new radio().type, 'radio')
+
 		},
 		events: function() {
 			var WithClick = div({
@@ -95,6 +130,16 @@ define([
 				assert.strictEqual(middle.firstChild.nodeValue, 'new title')
 				assert.strictEqual(container.firstChild.firstChild.nodeValue, 'new content')
 			})
+		},
+		list: function() {
+			var arrayVariable = new Variable(['a', 'b', 'c'])
+			var listElement = new ul({
+				content: arrayVariable,
+				each: li([
+					span(item.property('name'))
+				])
+			})
+			listElement
 		}
 	})
 });
