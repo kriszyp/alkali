@@ -18,9 +18,9 @@ define(['./lang', './Variable'], function(lang, Variable) {
 				var nextVariable = stepReturn.value
 				if (args[i] !== nextVariable) {
 					if (args[i]) {
-						args[i].stopNotifies(this)
+						args[i].unsubscribe(this)
 					}
-					nextVariable.notifies(this)
+					nextVariable.subscribe(this)
 					this.args[i] = nextVariable
 				}
 				i++

@@ -8,9 +8,9 @@ define(function (require, exports, module) {
 	var requestAnimationFrame = lang.requestAnimationFrame
 	function Updater(options) {
 		var variable = options.variable
-		if (variable.notifies) {
-			// if it has notifies, we don't need to instantiate a closure
-			variable.notifies(this)
+		if (variable.updated) {
+			// if it has update, we don't need to instantiate a closure
+			variable.subscribe(this)
 		} else {
 			// baconjs-esqe API
 			var updater = this
@@ -22,6 +22,7 @@ define(function (require, exports, module) {
 						return event.value()
 					}
 				}
+				updater.updated()
 			})
 		}
 
@@ -48,22 +49,22 @@ define(function (require, exports, module) {
 			}
 		}
 		if(options && options.updateOnStart !== false){
-			this.update(true)
+			this.updateRendering(true)
 		}
 	}
 	Updater.prototype = {
 		constructor: Updater,
-		update: function () {
-			throw new Error ('update must be implemented by sub class of Updater')
+		updateRendering: function () {
+			throw new Error ('updateRendering must be implemented by sub class of Updater')
 		},
-		invalidate: function (context) {
+		updated: function (updateEvent, context) {
 			if (!this.invalidated) {
 				// do this only once, until we render again
 				this.invalidated = true
 				var updater = this
 				requestAnimationFrame(function(){
 					invalidatedElements = null
-					updater.update(updater.alwaysUpdate)
+					updater.updateRendering(updater.alwaysUpdate)
 				})
 			}
 		},
@@ -100,13 +101,13 @@ define(function (require, exports, module) {
 	ElementUpdater.prototype.shouldRender = function (element) {
 		return document.body.contains(element)
 	}
-	ElementUpdater.prototype.update = function (always, element) {
+	ElementUpdater.prototype.updateRendering = function (always, element) {
 		element = this.element || element
 		if(!element){
 			if(this.selector){
 				var elements = document.querySelectorAll(this.selector)
 				for(var i = 0, l = elements.length; i < l; i++){
-					this.update(always, elements[i])
+					this.updateRendering(always, elements[i])
 				}
 			}else{
 				throw new Error('No element or selector was provided to the Updater')
@@ -263,7 +264,7 @@ define(function (require, exports, module) {
 			var renderers = element.alkaliRenderers
 			for(var i = 0; i < renderers.length; i++){
 				var renderer = renderers[i]
-				renderer.variable.stopNotifies(renderer)
+				renderer.variable.unsubscribe(renderer)
 			}
 		}
 	}

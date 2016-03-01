@@ -110,7 +110,7 @@ define([
 					// do some "work"
 					arr = [4,5,6];
 					// invalidate the data signal
-					signal.invalidate();
+					signal.updated();
 				}).then(function() {
 					// done processing
 					outer.put(false);

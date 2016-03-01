@@ -13,8 +13,8 @@ define([
 		'simple single value': function () {
 			var invalidated = false
 			var variable = new Variable(1)
-			variable.notifies({
-				invalidate: function(){
+			variable.subscribe({
+				updated: function(){
 					invalidated = true
 				}
 			})
@@ -33,8 +33,8 @@ define([
 			}, function (newValue) {
 				value = newValue
 			})
-			variable.notifies({
-				invalidate: function(){
+			variable.subscribe({
+				updated: function(){
 					invalidated = true
 				}
 			})
@@ -54,18 +54,18 @@ define([
 				value = newValue
 			})
 			var target = {
-				invalidate: function(){
+				updated: function(){
 					invalidated = true
 				}
 			}
-			variable.notifies(target)
+			variable.subscribe(target)
 			assert.equal(variable.valueOf(), 1)
 			assert.isFalse(invalidated)
 			variable.put(2)
 			assert.equal(variable.valueOf(), 2)
 			assert.equal(value, 2)
 			assert.isTrue(invalidated)
-			variable.stopNotifies(target)
+			variable.unsubscribe(target)
 			invalidated = false
 			variable.put(3)
 			assert.isFalse(invalidated);	
@@ -79,8 +79,8 @@ define([
 			Variable.observe(object)
 			var invalidated
 			var aProperty = variable.property('a')
-			aProperty.notifies({
-				invalidate: function(){
+			aProperty.subscribe({
+				updated: function(){
 					invalidated = true
 				}
 			})
@@ -108,8 +108,8 @@ define([
 			var b = new Variable(2)
 			var sum = add.apply(null, [a, b])
 			var invalidated
-			sum.notifies({
-				invalidate: function(){
+			sum.subscribe({
+				updated: function(){
 					invalidated = true
 				}
 			})
@@ -131,16 +131,16 @@ define([
 				})
 			})
 			var invalidated = false
-			sum.notifies({
-				invalidate: function() {
+			sum.subscribe({
+				updated: function() {
 					invalidated = true
 				}
 			})
 			var target = new Variable()
 			target.put(sum)
 			var targetInvalidated = false
-			target.notifies({
-				invalidate: function() {
+			target.subscribe({
+				updated: function() {
 					targetInvalidated = true
 				}
 			})
@@ -206,7 +206,7 @@ define([
 			assert.deepEqual(derived.valueOf(), [false, [2,4,6]])
 			outer.put(true)
 			arr = [4,5,6]
-			signal.invalidate()
+			signal.updated()
 			outer.put(false)
 			assert.deepEqual(derived.valueOf(), [false, [8,10,12]])
 		},
@@ -239,7 +239,7 @@ define([
 			assert.deepEqual(filter1.valueOf(), values, 'filter1 should return all values')
 			assert.deepEqual(filter2.valueOf(), [0], 'filter2 should return first element of all values')
 			returnSubset = true
-			filter1.invalidate()
+			filter1.updated()
 			assert.deepEqual(filter1.valueOf(), [2,3,4], 'filter1 should return subset of values')
 			assert.deepEqual(filter2.valueOf(), [2], 'filter2 should return first element of subset')
 		},
@@ -258,7 +258,7 @@ define([
 			assert.deepEqual(filter2.valueOf(), [0], 'filter2 should return first element of all values')
 			filter2.subscribe(function(){}); // trigger a dependency chain, to test the normal dependency based flow
 			returnSubset = true
-			filter1.invalidate()
+			filter1.updated()
 			assert.deepEqual(filter1.valueOf(), [2,3,4], 'filter1 should return subset of values')
 			assert.deepEqual(filter2.valueOf(), [2], 'filter2 should return first element of subset')
 		},
@@ -275,7 +275,7 @@ define([
 			parent.set('a', 2)
 			assert.isTrue(parentNotified)
 			parentNotified = false
-			parent.property('a').invalidate()
+			parent.property('a').updated()
 			assert.isTrue(parentNotified)
 		},
 		parentalParentalNotification: function(){
@@ -293,7 +293,7 @@ define([
 			parent.property('a').set('b', 2)
 			assert.isTrue(parentNotified)
 			parentNotified = false
-			parent.property('a').property('b').invalidate()
+			parent.property('a').property('b').updated()
 			assert.isTrue(parentNotified)
 		},
 		separateChildPath: function(){

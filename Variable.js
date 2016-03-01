@@ -3,10 +3,15 @@ define(['./lang', './Context'],
 	var deny = {}
 	var noChange = {}
 	var WeakMap = lang.WeakMap
-	// Invalidation types
-	var ToChild = 1
+	// update types
 	var ToParent = 2
 	var RequestChange = 3
+	var Refresh = Object.freeze({
+		type: 'refresh'
+	})
+	var ToChild = Object.freeze({
+		type: 'refresh'
+	})
 	var nextId = 1
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap')
 
@@ -51,6 +56,9 @@ define(['./lang', './Context'],
 		return context
 	}
 
+	function PropertyChange(key) {
+		this.key = key
+	}
 	function Variable(value){
 		this.value = value
 	}
@@ -76,13 +84,13 @@ define(['./lang', './Context'],
 					}
 					// if there was a another value that we were dependent on before, stop listening to it
 					// TODO: we may want to consider doing cleanup after the next rendering turn
-					previousNotifyingValue.stopNotifies(variable)
+					previousNotifyingValue.unsubscribe(variable)
 					variable.notifyingValue = null
 				}
-				if(value && value.notifies){
+				if(value && value.subscribe){
 					if(variable.dependents){
 						// the value is another variable, start receiving notifications
-						value.notifies(variable)
+						value.subscribe(variable)
 						variable.notifyingValue = value
 					}
 					value = value.valueOf(context)
@@ -111,10 +119,10 @@ define(['./lang', './Context'],
 				this.onPropertyChange(propertyName, context)
 			}
 			var property = propertyName && this._properties && this._properties[propertyName]
-			if(property && type !== ToParent){
-				property.invalidate(context, ToChild)
+			if(property && !(type instanceof PropertyChange)){
+				property.updated(ToChild, context)
 			}
-			this.invalidate(context, ToParent)
+			this.updated(new PropertyChange(propertyName), context)
 		},
 		eachKey: function(callback){
 			for(var i in this._properties){
@@ -129,7 +137,7 @@ define(['./lang', './Context'],
 		},
 		init: function(){
 			if(this.notifyingValue){
-				this.notifyingValue.notifies(this)
+				this.notifyingValue.subscribe(this)
 			}
 		},
 		cleanup: function(){
@@ -146,20 +154,20 @@ define(['./lang', './Context'],
 			}
 			var notifyingValue = this.notifyingValue
 			if(notifyingValue){
-				this.notifyingValue.stopNotifies(this)
+				this.notifyingValue.unsubscribe(this)
 				this.notifyingValue = null
 				// TODO: move this into the caching class
 				this.computedVariable = null
 			}
 		},
 
-		invalidate: function(context, type){
+		updated: function(updateEvent, context){
 			if(this.state === 'invalidated'){
 				return
 			}
 			this.state = 'invalidated'
 			var value = this.value
-			if(value && typeof value === 'object' && type !== ToParent){
+			if(value && typeof value === 'object' && !(updateEvent instanceof PropertyChange)){
 				deregisterListener(value, this)
 			}
 
@@ -171,33 +179,70 @@ define(['./lang', './Context'],
 					try{
 						var dependent = dependents[i]
 						// skip notifying property dependents if we are headed up the parent chain
-						if(type !== ToParent || dependent.parent !== this){
-							dependent.invalidate(context, dependent.parent === this ? ToChild : undefined)
+						if(!(updateEvent instanceof PropertyChange) || dependent.parent !== this){
+							dependent.updated(dependent.parent === this ? ToChild : Refresh, context)
 						}
 					}catch(e){
-						console.error(e, 'invalidating a variable')
+						console.error(e, 'updating a variable')
 					}
 				}
 			}
 		},
-		notifies: function(dependent){
-			if(!dependent.invalidate){
-				throw new Error('Invalid variable provided as notification receipient, a variable must have an invalidate method')
-			}
-			var dependents = this.dependents
-			if(!dependents){
-				this.init()
-				this.dependents = dependents = []
-			}
-			var variable = this
-			dependents.push(dependent)
-			return {
-				remove: function(){
-					variable.stopNotifies(dependent)
-				}
-			}
+
+		invalidate: function() {
+			// for back-compatibility for now
+			this.updated()
 		},
-		stopNotifies: function(dependent){
+
+		subscribe: function(listener){
+			// ES7 Observable (and baconjs) compatible API
+			var updated
+			var variable = this
+			// it is important to make sure you register for notifications before getting the value
+			if (typeof listener === 'function'){
+				// BaconJS compatible API
+				var variable = this
+				var event = {
+					value: function(){
+						return variable.valueOf()
+					}
+				}
+				updated = function() {
+					listener(event)
+				}
+			} else if (listener.updated) {
+				// An alkali compatible updateable listener, this is the ideal option
+				var dependents = this.dependents
+				if(!dependents){
+					this.init()
+					this.dependents = dependents = []
+				}
+				dependents.push(listener)
+				return {
+					unsubscribe: function(){
+						variable.unsubscribe(listener)
+					}
+				}
+
+			}	else if (listener.next) {
+				// Assuming ES7 Observable API. It is actually a streaming API, this pretty much violates all principles of reactivity, but we will support it
+				updated = function(){
+					listener.next(variable.valueOf())
+				}
+			} else {
+				throw new Error('Subscribing to an invalid listener, the listener must be a function, or have an update or next method')
+			}
+
+			var handle = this.subscribe({
+				updated: updated
+			})
+			var initialValue = this.valueOf()
+			if(initialValue !== undefined){
+				updated()
+			}
+			return handle
+		},
+		unsubscribe: function(dependent){
 			var dependents = this.dependents
 			for(var i = 0; i < dependents.length; i++){
 				if(dependents[i] === dependent){
@@ -220,11 +265,11 @@ define(['./lang', './Context'],
 					// if it is set to fixed, we see we can put in the current variable
 					oldValue && oldValue.put && // if we currently have a variable
 					// and it is always fixed, or not a new variable
-					(this.fixed == 'always' || !(value && value.notifies))){
+					(this.fixed == 'always' || !(value && value.subscribe))){
 				return oldValue.put(value)
 			}
 			this.setValue(value)
-			this.invalidate(context)
+			this.updated(Refresh, context)
 		},
 		get: function(key, context){
 			var object = this.valueOf(context)
@@ -237,39 +282,33 @@ define(['./lang', './Context'],
 		undefine: function(key, context){
 			this.set(key, undefined, context)
 		},
-		setValue: function(value){
-			this.value = value
+		next: function(value) {
+			// for ES7 observable compatibility
+			this.put(value)
 		},
-		subscribe: function(listener){
-			// ES7 Observable (and baconjs) compatible API
-			var variable = this
-			var invalidated
-			// it is important to make sure you register for notifications before getting the value
-			if (typeof listener === 'function'){
-				// BaconJS compatible API
-				var event = {
-					value: function(){
-						return variable.valueOf()
+		error: function(error) {
+			// for ES7 observable compatibility
+			var dependents = this.dependents
+			if(dependents){
+				// make a copy, in case they change
+				dependents = dependents.slice(0)
+				for(var i = 0, l = dependents.length; i < l; i++){
+					try{
+						var dependent = dependents[i]
+						// skip notifying property dependents if we are headed up the parent chain
+						dependent.error(error)
+					}catch(e){
+						console.error(e, 'sending an error')
 					}
 				}
-				invalidated = function(){
-					listener(event)
-				}
-			} else {
-				// Assuming ES7 Observable API. It is actually a streaming API, this pretty much violates all principles of reactivity, but we will support it
-				invalidated = function(){
-					listener.next(variable.valueOf())
-				}
 			}
-
-			var handle = this.notifies({
-				invalidate: invalidated
-			})
-			var initialValue = this.valueOf()
-			if(initialValue !== undefined){
-				invalidated()
-			}
-			return handle
+		},
+		complete: function(value) {
+			// for ES7 observable compatibility
+			this.put(value)
+		},
+		setValue: function(value){
+			this.value = value
 		},
 		onValue: function(listener){
 			return this.subscribe(function(event){
@@ -401,7 +440,7 @@ define(['./lang', './Context'],
 			}
 			var variable = this
 			return lang.when(this.getValue(watchedContext), function(computedValue){
-				if(computedValue && computedValue.notifies && this.dependents){
+				if(computedValue && computedValue.subscribe && this.dependents){
 					if(variable.computedVariable && variable.computedVariable !== computedValue){
 						throw new Error('Can pass in a different variable for a different context as the result of a single variable')
 					}
@@ -424,7 +463,7 @@ define(['./lang', './Context'],
 		getValue: function(){
 			return this.value && this.value.valueOf()
 		},
-		invalidate: function(context){
+		updated: function(updateEvent, context){
 			// TODO: there might actually be a collection of listeners
 			// clear the cache
 			if(context){
@@ -440,7 +479,7 @@ define(['./lang', './Context'],
 			if(this.computedVariable){
 				this.computedVariable = null
 			}
-			Variable.prototype.invalidate.call(this, context)
+			Variable.prototype.updated.call(this, Refresh, context)
 		},
 		cleanup: function(){
 			// once we are no longer "live", we no longer receive notifications, so can't keep the cache up-to-date, better empty it
@@ -459,11 +498,11 @@ define(['./lang', './Context'],
 	},
 	{
 		init: function(){
-			this.parent.notifies(this)
+			this.parent.subscribe(this)
 		},
 		cleanup: function(){
 			Variable.prototype.cleanup.call(this)
-			this.parent.stopNotifies(this)
+			this.parent.unsubscribe(this)
 		},
 		valueOf: function(context){
 			if(this.state){
@@ -487,11 +526,11 @@ define(['./lang', './Context'],
 		put: function(value, context){
 			return this._changeValue(context, RequestChange, value)
 		},
-		invalidate: function(context, type){
-			if(type !== ToChild){
-				this._changeValue(context, type)
+		updated: function(updateEvent, context){
+			if(updateEvent !== ToChild){
+				this._changeValue(context, updateEvent)
 			}
-			return Variable.prototype.invalidate.call(this, context, type)
+			return Variable.prototype.updated.call(this, updateEvent, context)
 		},
 		_changeValue: function(context, type, newValue){
 			var key = this.key
@@ -513,7 +552,7 @@ define(['./lang', './Context'],
 				}
 				var listeners = propertyListenersMap.get(object)
 				// at least make sure we notify the parent
-				// we need to do it before the other listeners, so we can invalidate it before
+				// we need to do it before the other listeners, so we can update it before
 				// we trigger a full clobbering of the object
 				parent._propertyChange(key, context, type)
 				if(listeners){
@@ -538,8 +577,8 @@ define(['./lang', './Context'],
 			var args = this.args
 			for(var i = 0, l = args.length; i < l; i++){
 				var arg = args[i]
-				if(arg.notifies){
-					arg.notifies(this)
+				if(arg.subscribe){
+					arg.subscribe(this)
 				}
 			}
 		},
@@ -550,8 +589,8 @@ define(['./lang', './Context'],
 			var args = this.args
 			for(var i = 0, l = args.length; i < l; i++){
 				var arg = args[i]
-				if(arg.notifies){
-					arg.stopNotifies(this)
+				if(arg.subscribe){
+					arg.unsubscribe(this)
 				}
 			}
 		},
@@ -575,12 +614,12 @@ define(['./lang', './Context'],
 	}, {
 		init: function(){
 			// depend on the function itself
-			this.functionVariable.notifies(this)
+			this.functionVariable.subscribe(this)
 			// depend on the args
 			Composite.prototype.init.call(this)
 		},
 		cleanup: function(){
-			this.functionVariable.stopNotifies(this)
+			this.functionVariable.unsubscribe(this)
 			Composite.prototype.cleanup.call(this)
 		},
 
@@ -665,11 +704,11 @@ define(['./lang', './Context'],
 		this.parent = parent
 	}, {
 		init: function(){
-			this.parent.notifies(this)
+			this.parent.subscribe(this)
 		},
 		cleanup: function(){
 			Variable.prototype.cleanup.call(this)
-			this.parent.stopNotifies(this)
+			this.parent.unsubscribe(this)
 		},
 		lastIndex: 0,
 		valueOf: function(context){
@@ -702,7 +741,7 @@ define(['./lang', './Context'],
 				if(variable.dependents){
 					lang.observeArray(array, function(events){
 						event.name
-						variable.invalidate(new ArrayContext(changedItem))
+						variable.updated(new ArrayContext(changedItem))
 					})
 				}
 			})
@@ -735,7 +774,7 @@ define(['./lang', './Context'],
 			var variable = this
 			return lang.when(this.valueOf(), function(array){
 				array.push.apply(array, args)
-				variable.invalidate()
+				variable.updated()
 			})
 		}
 	}
@@ -750,13 +789,13 @@ define(['./lang', './Context'],
 		this.targetSchema = schema
 	}, {
 		init: function(){
-			this.target.notifies(this)
-			this.targetSchema.notifies(this)
+			this.target.subscribe(this)
+			this.targetSchema.subscribe(this)
 		},
 		cleanup: function(){
 			Caching.prototype.cleanup.call(this)
-			this.target.stopNotifies(this)
-			this.targetSchema.stopNotifies(this);			
+			this.target.unsubscribe(this)
+			this.targetSchema.unsubscribe(this);			
 		},
 		getValue: function(context){
 			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context))
@@ -767,11 +806,11 @@ define(['./lang', './Context'],
 		this.target = target
 	}, {
 		init: function(){
-			this.target.notifies(this)
+			this.target.subscribe(this)
 		},
 		cleanup: function(){
 			Caching.prototype.cleanup.call(this)
-			this.target.notifies(this)
+			this.target.subscribe(this)
 		},
 		getValue: function(context){
 			if(this.value){ // if it has an explicit schema, we can use that.

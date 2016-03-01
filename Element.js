@@ -69,7 +69,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 					// array of sub-children
 					container = container || parent
 					layoutChildren(childNode.contentNode || childNode, child, container)
-				} else if (child.notifies) {
+				} else if (child.subscribe) {
 					// a variable
 					childNode = document.createTextNode(child.valueOf())
 					fragment.appendChild(childNode)
@@ -98,21 +98,20 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		new Updater({
 			element: parent,
 			variable: variable,
-			renderUpdate:
-			.eachUpdate(function(update) {
-			if (update.existed) {
-				var key = update.key
-				var element = map[key]
-				parent.removeChild(element)
-				delete map[key]
-			}
-			if (!update.deleted) {
-				update.value
-				var element = eachChild.create()
-				parent.insertBefore(element, map[update.before] || null)
-				map[key] = element
-			}
-			
+			updateRendering: function(){
+				if (update.existed) {
+					var key = update.key
+					var element = map[key]
+					parent.removeChild(element)
+					delete map[key]
+				}
+				if (!update.deleted) {
+					update.value
+					var element = eachChild.create()
+					parent.insertBefore(element, map[update.before] || null)
+					map[key] = element
+				}
+			}			
 		})
 	}
 
@@ -120,7 +119,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		for (var i = 0, l = keys.length; i < l; i++) {
 			var key = keys[i]
 			var value = properties[key]
-			if (value && value.notifies) {
+			if (value && value.subscribe) {
 				new PropertyUpdater({
 					name: key,
 					variable: value,
@@ -182,9 +181,9 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			this.renderInputContent(content)
 		} else {
 			// render as string
-			var textNode = document.createTextNode(content === undefined ? '' + ('' + content))
+			var textNode = document.createTextNode(content === undefined ? '' : ('' + content))
 			this.appendChild(textNode)
-			if (content && content.notifies) {
+			if (content && content.subscribe) {
 				new TextUpdater({
 					variable: content,
 					element: this,
@@ -195,15 +194,15 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	}
 
 	function renderInputContent(content) {
-		if (content && content.notifies) {
+		if (content && content.subscribe) {
 			// a variable, respond to changes
 			new PropertyUpdater({
 				variable: content,
-				property: this.inputValueProperty,
+				name: this.inputValueProperty,
 				element: this
 			})
 			// and bind the other way as well, updating the variable in response to input changes
-			this.addEventListener('onchange', function (event) {
+			this.addEventListener('change', function (event) {
 				content.put(this[this.inputValueProperty])
 			})
 		} else {
@@ -248,7 +247,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			if (argument && typeof argument === 'object') {
 				if (argument instanceof Array) {
 					Element.childrenToRender = argument
-				} else if (argument.notifies) {
+				} else if (argument.subscribe) {
 					prototype.content = argument
 				} else {
 					Object.getOwnPropertyNames(argument).forEach(function(key) {
@@ -278,8 +277,8 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			Element.extend = extend
 		}
 		if (!prototype.renderContent) {
-			this.renderContent = renderContent
-			this.renderInputContent = renderInputContent
+			prototype.renderContent = renderContent
+			prototype.renderInputContent = renderInputContent
 		}
 		return Element
 	}
@@ -355,12 +354,14 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			var argument = arguments[i]
 			if (argument instanceof Array) {
 				layoutChildren(contentNode, argument, contentNode)
+			} else if (argument.subscribe) {
+				element.content = argument
 			} else {
 				applyProperties(element, argument, Object.keys(argument))
 			}
 		}
-		if (this.content) {
-			this.renderContent(this.content)
+		if (element.content) {
+			element.renderContent(element.content)
 		}
 		var classes = this.classes
 		if (classes) {
@@ -379,15 +380,15 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 				// find each class name
 				var className = classes[i]
 				var flag = classes[className]
-				if (flag && flag.notifies) {
+				if (flag && flag.subscribe) {
 					// if it is a variable, we react to it
 					new Updater({
-						element: this,
+						element: element,
 						className: className,
 						variable: flag
 					})
 				} else if (flag || flag === undefined) {
-					this.className += ' ' + className
+					element.className += ' ' + className
 				}
 			}
 		}
@@ -456,7 +457,6 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		'label',
 		'li',
 		'keygen',
-		'input',
 		'image',
 		'iframe',
 		'h1',
@@ -495,7 +495,9 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		'area',
 		'a'
 	])
-	generateInputs(['checkbox',
+	generateInputs([
+		'input',
+		'checkbox',
 		'password',
 		'text',
 		'submit',
@@ -529,7 +531,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			Object.defineProperty(Element, inputType, {
 				get: function() {
 					return ElementClass || (ElementClass = extend.call(HTMLInputElement, 'input', {
-						type: inputType,
+						type: inputType === 'input' ? 'text' : inputType,
 						inputValueProperty: inputType in {date: 1, datetime: 1, time: 1} ? 'valueAsDate' : 
 							inputType === 'number' ? 'valueAsNumber' :
 							inputType === 'checkbox' ? 'checked' : 'value'

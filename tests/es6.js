@@ -14,16 +14,16 @@ define([
 				return (yield a) + (yield b)
 			})
 			var invalidated = false
-			sum.notifies({
-				invalidate: function() {
+			sum.subscribe({
+				updated: function() {
 					invalidated = true
 				}
 			})
 			var target = new Variable()
 			target.put(sum)
 			var targetInvalidated = false
-			target.notifies({
-				invalidate: function() {
+			target.subscribe({
+				updated: function() {
 					targetInvalidated = true
 				}
 			})

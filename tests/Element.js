@@ -11,6 +11,8 @@ define([
 	var input = Element.input
 	var number = Element.number
 	var content = Element.content
+	var ul = Element.ul
+	var li = Element.li
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {
@@ -58,6 +60,7 @@ define([
 		inputs: function() {
 			var textVariable = new Variable('start')
 			var textInput = new input(textVariable)
+			document.body.appendChild(textInput)
 			assert.strictEqual(textInput.type, 'text')
 			assert.strictEqual(textInput.value, 'start')
 			textVariable.put('new value')
@@ -72,6 +75,7 @@ define([
 			})
 			var boolVariable = new Variable(true)
 			var checkboxInput = new checkbox(boolVariable)
+			document.body.appendChild(checkboxInput)
 			assert.strictEqual(checkboxInput.type, 'checkbox')
 			assert.strictEqual(checkboxInput.checked, true)
 			checkboxInput.put(false)
@@ -80,6 +84,7 @@ define([
 			})
 			var numberVariable = new Variable(2020)
 			var numberInput = new number(dateVariable)
+			document.body.appendChild(numberInput)
 			assert.strictEqual(numberInput.type, 'number')
 			assert.strictEqual(numberInput.valueAsNumber, 2020)
 			checkboxInput.put(122)
@@ -136,7 +141,7 @@ define([
 			var listElement = new ul({
 				content: arrayVariable,
 				each: li([
-					span(item.property('name'))
+					span(/*item.property('name')*/)
 				])
 			})
 			listElement

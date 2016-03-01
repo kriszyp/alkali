@@ -76,8 +76,8 @@ define(['./Variable', './lang'],
 				this.copiedFrom.put && this.copiedFrom.put(newCopiedFrom)
 			} else {
 				// else we have modified an existing object, but we still need to notify
-				if (this.copiedFrom.invalidate) { // copiedFrom doesn't have to be a variable, it can be a plain object
-					this.copiedFrom.invalidate()
+				if (this.copiedFrom.subscribe && this.copiedFrom.updated) { // copiedFrom doesn't have to be a variable, it can be a plain object
+					this.copiedFrom.updated()
 				}
 			}
 			this.isDirty.put(false)
@@ -88,9 +88,9 @@ define(['./Variable', './lang'],
 			deepCopy(original, this.derivativeMap.get(value), this.derivativeMap)
 			this.isDirty.put(false)
 		},
-		invalidate: function(){
+		updated: function(){
 			this.isDirty.put(true)
-			return Variable.prototype.invalidate.apply(this, arguments)
+			return Variable.prototype.updated.apply(this, arguments)
 		}
 	})
 	return Copy
