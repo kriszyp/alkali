@@ -628,7 +628,9 @@ define(['./lang', './Context'],
 			var version = Variable.prototype.getVersion.call(this, context)
 			for(var i = 0, l = args.length; i < l; i++){
 				var arg = args[i]
-				version = Math.max(version, arg.getVersion(context))
+				if (arg && arg.getVersion) {
+					version = Math.max(version, arg.getVersion(context))
+				}
 			}
 			return version
 		},
