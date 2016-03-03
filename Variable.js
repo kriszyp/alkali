@@ -519,13 +519,7 @@ define(['./lang', './Context'],
 				this.computedVariable = null
 			}
 			Variable.prototype.updated.call(this, Refresh, context)
-		},
-		cleanup: function(){
-			// once we are no longer "live", we no longer receive notifications, so can't keep the cache up-to-date, better empty it
-			this.cache = {}
-			Variable.prototype.cleanup.call()
 		}
-
 	})
 
 	function GetCache(){
