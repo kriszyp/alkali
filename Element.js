@@ -3,6 +3,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	}
 	PropertyUpdater = Updater.PropertyUpdater
 	TextUpdater = Updater.TextUpdater
+	ListUpdater = Updater.ListUpdater
 	;['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
 		knownElementProperties[name] = true
 	})
@@ -165,17 +166,11 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	function renderContent(content) {
 		if (this.each) {
 			// render as list
-			var fragment = document.createDocumentFragment()
-			var element = this
-			var each = this.each
-			content.forEach(function(item) {
-				if (typeof each === 'function') {
-					each.call(this, item)
-				} else {
-					each.create(fragment)
-				}
+			new ListUpdater({
+				each: this.each,
+				variable: content,
+				element: this
 			})
-			element.appendChild(fragment)
 		} else if ('value' in this) {
 			// render into input
 			this.renderInputContent(content)
@@ -548,5 +543,6 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			create: element.create.bind(element)
 		}
 	}
+	Element.item = 3
 	return Element
 })

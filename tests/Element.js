@@ -141,10 +141,10 @@ define([
 			var listElement = new ul({
 				content: arrayVariable,
 				each: li([
-					span(/*item.property('name')*/)
+					span('item')
 				])
 			})
-			listElement
+			assert.strictEqual(listElement.childNodes.length, 3)
 		}
 	})
 });

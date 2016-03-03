@@ -141,7 +141,7 @@ define(function (require, exports, module) {
 	}
 	ElementUpdater.prototype.updateElement = function(element) {
 		this.invalidated = false
-		var value = this.variable.valueOf()
+		var value = !this.omitValueOf && this.variable.valueOf()
 		if(value !== undefined || this.started){
 			this.started = true
 			if(value && value.then){
@@ -225,10 +225,60 @@ define(function (require, exports, module) {
 		}
 		ElementUpdater.apply(this, arguments)
 	}
+	ListUpdater.prototype.updated = function (updateEvent, context) {
+		(this.updates || (this.updates = [])).push(updateEvent)
+		ElementUpdater.prototype.updated.call(this, updatedEvent, context)
+	}
 	ListUpdater.prototype = Object.create(ElementUpdater.prototype)
 	ListUpdater.prototype.type = 'ListUpdater'
+	ListUpdater.prototype.omitValueOf = true
 	ListUpdater.prototype.renderUpdate = function (newValue, element) {
-
+		var fragment = document.createDocumentFragment()
+		var each = this.each
+		var thisElement = this.element
+		var updater = this
+		if (!this.started) {
+			this.started = true
+			var childElements = this.childElements = []
+			this.variable.forEach(eachItem)
+			this.element.appendChild(fragment)
+		} else {
+			var childElements = this.childElements
+			var updates = this.updates
+			updates.forEach(function(update) {
+				if (update.type === 'refresh') {
+					this.started = false
+					for (var i = 0, l = childElements.length; i < l; i++) {
+						thisElement.removeChild(childElements[i])
+					}
+					this.renderUpdate()
+				} else {
+					if (update.previousIndex > -1) {
+						thisElement.removeChild(childElements[update.previousIndex])
+						childElements.splice(update.previousIndex, 1)
+					}
+					if (update.index > -1) {
+						var nextChild = childElements[update.index] || null
+						eachItem(update.value, update.index)
+					}
+				}
+			})
+		}
+		function eachItem(item, index, nextChild) {
+			var childElement
+			if (typeof each === 'function') {
+				childElement = fragment.appendChild(each(item, thisElement))
+			} else {
+				childElement = each.create(fragment, false)
+			}
+			if (nextChild) {
+				thisElement.insertBefore(childElement, nextChild)
+				childElements.splice(index, 0, childElement)
+			} else {
+				thisElement.appendChild(childElement)
+				childElements.push(childElement)
+			}
+		}
 	}
 	Updater.ListUpdater = ListUpdater
 
