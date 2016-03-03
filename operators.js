@@ -9,7 +9,7 @@ define(['./Variable'],
 			(operatingFunctions[expression] =
 				new Function('a', 'b', 'return ' + expression));
 	}
-	function operator(operator, precedence, forward, reverseA, reverseB){
+	function operator(operator, name, precedence, forward, reverseA, reverseB){
 		// defines the standard operators
 		var reverse = function(output, inputs){
 			var a = inputs[0],
@@ -29,15 +29,14 @@ define(['./Variable'],
 		// is available
 		var operatorHandler = {
 			apply: function(instance, args){
-				var operatorReactive;
 				forward = getOperatingFunction(forward);
 				reverseA = reverseA && getOperatingFunction(reverseA);
 				reverseB = reverseB && getOperatingFunction(reverseB);
 				forward.reverse = reverse;
-				operators[operator] = operatorReactive = new Variable(forward);
+				operators[operator] = operatorHandler = new Variable(forward);
 
-				addFlags(operatorReactive);
-				return operatorReactive.apply(instance, args);
+				addFlags(operatorHandler);
+				return operatorHandler.apply(instance, args);
 			}
 		};
 		function addFlags(operatorHandler){
@@ -46,24 +45,27 @@ define(['./Variable'],
 		}
 		addFlags(operatorHandler);
 		operators[operator] = operatorHandler;
+		operators[name] = function() {
+			return operatorHandler.apply(null, arguments)
+		}
 	}
 	// using order precedence from:
 	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-	operator('+', 6, 'a+b', 'a-b', 'a-b');
-	operator('-', 6, 'a-b', 'a+b', 'b-a');
-	operator('*', 5, 'a*b', 'a/b', 'a/b');
-	operator('/', 5, 'a/b', 'a*b', 'b/a');
+	operator('+', 'add', 6, 'a+b', 'a-b', 'a-b');
+	operator('-', 'subtract', 6, 'a-b', 'a+b', 'b-a');
+	operator('*', 'multiply', 5, 'a*b', 'a/b', 'a/b');
+	operator('/', 'divide', 5, 'a/b', 'a*b', 'b/a');
 //	operator('^', 7, 'a^b', 'a^(-b)', 'Math.log(a)/Math.log(b)');
-	operator('?', 16, 'b[a?0:1]', 'a===b[0]||(a===b[1]?false:deny)', '[a,b]');
-	operator(':', 15, '[a,b]', 'a[0]?a[1]:deny', 'a[1]');
-	operator('!', 4, '!a', '!a', false);
-	operator('%', 5, 'a%b');
-	operator('>', 8, 'a>b');
-	operator('>=', 8, 'a>=b');
-	operator('<', 8, 'a<b');
-	operator('<=', 8, 'a<=b');
-	operator('==', 9, 'a===b');
-	operator('&', 8, 'a&&b');
-	operator('|', 8, 'a||b');
+	operator('?', 'if', 16, 'b[a?0:1]', 'a===b[0]||(a===b[1]?false:deny)', '[a,b]');
+	operator(':', 'choose', 15, '[a,b]', 'a[0]?a[1]:deny', 'a[1]');
+	operator('!', 'not', 4, '!a', '!a', false);
+	operator('%', 'remainder', 5, 'a%b');
+	operator('>', 'greater', 8, 'a>b');
+	operator('>=', 'greaterOrEqual', 8, 'a>=b');
+	operator('<', 'less', 8, 'a<b');
+	operator('<=', 'lessOrEqual', 8, 'a<=b');
+	operator('==', 'equal', 9, 'a===b');
+	operator('&', 'and', 8, 'a&&b');
+	operator('|', 'or', 8, 'a||b');
 	return operators;
 });
