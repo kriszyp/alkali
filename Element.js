@@ -120,7 +120,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		for (var i = 0, l = keys.length; i < l; i++) {
 			var key = keys[i]
 			var value = properties[key]
-			if (value && value.subscribe) {
+			if (value && value.subscribe && key !== 'content') {
 				new PropertyUpdater({
 					name: key,
 					variable: value,

@@ -237,17 +237,19 @@ define(function (require, exports, module) {
 		var each = this.each
 		var thisElement = this.element
 		var updater = this
-		if (!this.started) {
-			this.started = true
+		if (!this.builtList) {
+			this.builtList = true
 			var childElements = this.childElements = []
-			this.variable.forEach(eachItem)
+			this.variable.forEach(function(item) {
+				eachItem(item)
+			})
 			this.element.appendChild(fragment)
 		} else {
 			var childElements = this.childElements
 			var updates = this.updates
 			updates.forEach(function(update) {
 				if (update.type === 'refresh') {
-					this.started = false
+					this.builtList = false
 					for (var i = 0, l = childElements.length; i < l; i++) {
 						thisElement.removeChild(childElements[i])
 					}
@@ -266,10 +268,10 @@ define(function (require, exports, module) {
 		}
 		function eachItem(item, index, nextChild) {
 			var childElement
-			if (typeof each === 'function') {
-				childElement = fragment.appendChild(each(item, thisElement))
-			} else {
+			if (each.create) {
 				childElement = each.create(fragment, false)
+			} else {
+				childElement = fragment.appendChild(each(item, thisElement))
 			}
 			if (nextChild) {
 				thisElement.insertBefore(childElement, nextChild)
