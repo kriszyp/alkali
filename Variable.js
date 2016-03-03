@@ -58,7 +58,9 @@ define(['./lang', './Context'],
 
 	function PropertyChange(key) {
 		this.key = key
+		this.version = nextId++
 	}
+	PropertyChange.prototype.type = 'update'
 	function Variable(value){
 		this.value = value
 	}
@@ -91,8 +93,8 @@ define(['./lang', './Context'],
 					if(variable.dependents){
 						// the value is another variable, start receiving notifications
 						value.subscribe(variable)
-						variable.notifyingValue = value
 					}
+					variable.notifyingValue = value
 					value = value.valueOf(context)
 				}
 				if(typeof value === 'object' && value && variable.dependents){
@@ -161,11 +163,44 @@ define(['./lang', './Context'],
 			}
 		},
 
+		updateVersion: function() {
+			this.version = nextId++
+		},
+
+		getVersion: function(context) {
+			return Math.max(this.version || 0, this.notifyingValue ? this.notifyingValue.getVersion(context) : 0)
+		},
+
+		getUpdates: function(since) {
+			var updates = []
+			var nextUpdateMap = this.nextUpdateMap
+			if (nextUpdateMap && since) {
+				while ((since = nextUpdateMap.get(since))) {
+					if (since === Refresh) {
+						// if it was refresh, we can clear any prior entries
+						updates = []
+					}
+					updates.push(since)
+				}
+			}
+			return updates
+		},
+
 		updated: function(updateEvent, context){
 			if(this.state === 'invalidated'){
 				return
 			}
 			this.state = 'invalidated'
+			if (this.lastUpdate) {
+				var nextUpdateMap = this.nextUpdateMap
+				if (!nextUpdateMap) {
+					nextUpdateMap = this.nextUpdateMap = new WeakMap()
+				}
+				nextUpdateMap.set(this.lastUpdate, updateEvent)
+			}
+
+			this.lastUpdate = updateEvent
+			this.updateVersion()
 			var value = this.value
 			if(value && typeof value === 'object' && !(updateEvent instanceof PropertyChange)){
 				deregisterListener(value, this)
@@ -244,16 +279,18 @@ define(['./lang', './Context'],
 		},
 		unsubscribe: function(dependent){
 			var dependents = this.dependents
-			for(var i = 0; i < dependents.length; i++){
-				if(dependents[i] === dependent){
-					dependents.splice(i--, 1)
+			if (dependents) {
+				for(var i = 0; i < dependents.length; i++){
+					if(dependents[i] === dependent){
+						dependents.splice(i--, 1)
+					}
 				}
-			}
-			if(dependents.length === 0){
-				// clear the dependents so it will be reinitialized if it has
-				// dependents again
-				this.dependents = dependents = false
-				this.cleanup()
+				if(dependents.length === 0){
+					// clear the dependents so it will be reinitialized if it has
+					// dependents again
+					this.dependents = dependents = false
+					this.cleanup()
+				}
 			}
 		},
 		put: function(value, context){
@@ -342,15 +379,15 @@ define(['./lang', './Context'],
 			})
 		},
 		map: function (operator) {
+			// TODO: eventually make this act on the array items instead
+			return this.to(operator)
+		},
+		to: function (operator) {
 			// TODO: create a more efficient map, we don't really need a full variable here
 			if(!operator){
 				throw new Error('No function provided to map')
 			}
 			return new Variable(operator).apply(null, [this])
-		},
-		get withDescendants(){
-			// deprecated
-			return this
 		},
 		get schema(){
 			var schema = new Schema(this)
@@ -397,22 +434,23 @@ define(['./lang', './Context'],
 			}
 			return cache
 		},
+
+		updateVersion: function () {}, // do nothing when it is derived from other sources
+
 		valueOf: function(context, cacheHolder){
 			// first check to see if we have the variable already computed
 			if(this.state){
 				this.state = null
 			}
 
-			var useCache = this.dependents || this._properties
-			if(!useCache){
-				return Variable.prototype.valueOf.apply(this, arguments)
-			}
 			var cache = this.getCache(context)
 			if('value' in cache){
 				if(cacheHolder && cacheHolder instanceof GetCache){
 					cacheHolder.cache = cache
 				}
-				return cache.value
+				if (cache.version === this.getVersion(context)){
+					return cache.value
+				}
 			}
 			var cache = this.cache
 			
@@ -453,6 +491,7 @@ define(['./lang', './Context'],
 					cache.variable = variable
 				}
 				cache.value = computedValue
+				cache.version = variable.getVersion()
 				if(cacheHolder && cacheHolder instanceof GetCache){
 					cacheHolder.cache = cache
 				}
@@ -583,6 +622,23 @@ define(['./lang', './Context'],
 			}
 		},
 
+		getUpdates: function(since) {
+			// this always issues updates, nothing incremental can flow through it
+			if (!since || since.version < getVersion()) {
+				return [new Refresh()]
+			}
+		},
+
+		getVersion: function(context) {
+			var args = this.args
+			var version = Variable.prototype.getVersion.call(this, context)
+			for(var i = 0, l = args.length; i < l; i++){
+				var arg = args[i]
+				version = Math.max(version, arg.getVersion(context))
+			}
+			return version
+		},
+
 		cleanup: function(){
 			Caching.prototype.cleanup.call(this)
 			// depend on the args
@@ -629,6 +685,12 @@ define(['./lang', './Context'],
 				return call.invoke(functionValue, call.args, context)
 			})
 		},
+
+		getVersion: function(context) {
+			// TODO: shortcut if we are live and since equals this.lastUpdate
+			return Math.max(Composite.prototype.getVersion.call(this, context), this.functionVariable.getVersion(context))
+		},
+
 		execute: function(context){
 			var call = this
 			return lang.when(this.functionVariable.valueOf(context), function(functionValue){
@@ -797,6 +859,9 @@ define(['./lang', './Context'],
 			this.target.unsubscribe(this)
 			this.targetSchema.unsubscribe(this);			
 		},
+		getVersion: function(context){
+			return Variable.prototype.getVersion.call(this, context) + this.target.getVersion(context) + this.targetSchema.getVersion(context)
+		},
 		getValue: function(context){
 			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context))
 		}
@@ -810,7 +875,10 @@ define(['./lang', './Context'],
 		},
 		cleanup: function(){
 			Caching.prototype.cleanup.call(this)
-			this.target.subscribe(this)
+			this.target.unsubscribe(this)
+		},
+		getVersion: function(context){
+			return Variable.prototype.getVersion.call(this, context) + this.target.getVersion(context)
 		},
 		getValue: function(context){
 			if(this.value){ // if it has an explicit schema, we can use that.

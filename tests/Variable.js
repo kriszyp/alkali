@@ -45,6 +45,25 @@ define([
 			assert.equal(value, 2)
 			assert.isTrue(invalidated)
 		},
+		'simple caching value, no subscribe': function () {
+			var recomputed = false
+			var value = 1
+			var variable = new Variable(1)
+			var result = variable.map(function(value){
+				return value * 2
+			}).map(function(value) {
+				recomputed = true
+				return value * 2
+			})
+			assert.equal(result.valueOf(), 4)
+			recomputed = false
+			assert.equal(result.valueOf(), 4)
+			// should be cached
+			assert.isFalse(recomputed)
+			variable.put(2)
+			assert.equal(result.valueOf(), 8)
+			assert.isTrue(recomputed)
+		},
 		'on/off': function () {
 			var invalidated = false
 			var value = 1
@@ -125,8 +144,8 @@ define([
 		map: function () {
 			var a = new Variable()
 			var b = new Variable()
-			var sum = a.map(function (a) {
-				return b.map(function(){
+			var sum = a.to(function (a) {
+				return b.to(function(){
 					return a + b
 				})
 			})
@@ -168,12 +187,12 @@ define([
 		derivedMap: function() {
 			var a = new Variable(2)
 			var b = new Variable(3)
-			var sum = a.map(function (a_val) {
-				return b.map(function(b_val){
+			var sum = a.to(function (a_val) {
+				return b.to(function(b_val){
 					return a_val + b_val
 				})
 			})
-			var mult = sum.map(function(s) { return s.valueOf() * 2; })
+			var mult = sum.to(function(s) { return s.valueOf() * 2; })
 			assert.equal(mult.valueOf(), 10)
 			b.put(4)
 			assert.equal(mult.valueOf(), 12)
@@ -181,13 +200,13 @@ define([
 		derivedMapWithArray: function() {
 			var a = new Variable([2])
 			var b = new Variable([3])
-			var sum = a.map(function (a_val) {
-				return b.map(function(b_val){
+			var sum = a.to(function (a_val) {
+				return b.to(function(b_val){
 					return [a_val[0] + b_val[0]]
 				})
 			})
 			assert.deepEqual(sum.valueOf(), [5])
-			var mult = sum.map(function(s) { return [s.valueOf()[0] * 2]; })
+			var mult = sum.to(function(s) { return [s.valueOf()[0] * 2]; })
 			assert.deepEqual(mult.valueOf(), [10])
 			b.put([4])
                         assert.deepEqual(mult.valueOf(), [12])
@@ -196,10 +215,10 @@ define([
 			var outer = new Variable(false)
 			var signal = new Variable()
 			var arr = [1,2,3]
-			var data = signal.map(function() { return arr; })
-			var inner = data.map(function(a) { return a.map(function(v) { return v*2; }); })
-			var derived = outer.map(function (o) {
-				return inner.map(function(i){
+			var data = signal.to(function() { return arr; })
+			var inner = data.to(function(a) { return a.map(function(v) { return v*2; }); })
+			var derived = outer.to(function (o) {
+				return inner.to(function(i){
 					return [o, i]
 				})
 			})
@@ -213,14 +232,14 @@ define([
 		mapWithArray: function() {
 			var values = [0,1,2,3,4,5]
 			var all = new Variable(values)
-			var odd = all.map(function(arr) {
+			var odd = all.to(function(arr) {
 				var result = [], i = 0
 				for (;i<arr.length; i++) {
 					if (arr[i] % 2 == 1) result.push(arr[i])
 				}
 				return result
 			})
-			var last = odd.map(function(arr) {
+			var last = odd.to(function(arr) {
 				return arr[arr.length-1]
 			})
 			assert.deepEqual(last.valueOf(), 5)
@@ -230,16 +249,16 @@ define([
 			var all = new Variable(values)
 			var subset = new Variable([2,3,4])
 			var returnSubset = false
-			var filter1 = all.map(function (all_val) {
-				return subset.map(function(subset_val) {
+			var filter1 = all.to(function (all_val) {
+				return subset.to(function(subset_val) {
 					return returnSubset ? subset_val : all_val
 				})
 			})
-			var filter2 = filter1.map(function(filter1_val) { return [filter1_val[0]]; }); 
+			var filter2 = filter1.to(function(filter1_val) { return [filter1_val[0]]; }); 
 			assert.deepEqual(filter1.valueOf(), values, 'filter1 should return all values')
 			assert.deepEqual(filter2.valueOf(), [0], 'filter2 should return first element of all values')
 			returnSubset = true
-			filter1.updated()
+			subset.updated()
 			assert.deepEqual(filter1.valueOf(), [2,3,4], 'filter1 should return subset of values')
 			assert.deepEqual(filter2.valueOf(), [2], 'filter2 should return first element of subset')
 		},
@@ -248,12 +267,12 @@ define([
 			var all = new Variable(values)
 			var subset = new Variable([2,3,4])
 			var returnSubset = false
-			var filter1 = all.map(function (all_val) {
-				return subset.map(function(subset_val) {
+			var filter1 = all.to(function (all_val) {
+				return subset.to(function(subset_val) {
 					return returnSubset ? subset_val : all_val
 				})
 			})
-			var filter2 = filter1.map(function(filter1_val) { return [filter1_val[0]]; }); 
+			var filter2 = filter1.to(function(filter1_val) { return [filter1_val[0]]; }); 
 			assert.deepEqual(filter1.valueOf(), values, 'filter1 should return all values')
 			assert.deepEqual(filter2.valueOf(), [0], 'filter2 should return first element of all values')
 			filter2.subscribe(function(){}); // trigger a dependency chain, to test the normal dependency based flow
@@ -342,7 +361,7 @@ define([
 				resolvePromise = resolve
 			})
 			var variable = new Variable(promise)
-			var plus2 = variable.map(function(value) {
+			var plus2 = variable.to(function(value) {
 				return value + 2
 			})
 			var sum
@@ -365,10 +384,10 @@ define([
                         var promiseVar = new Variable(promise)
 			outerCallbackInvoked = 0
 			innerCallbackInvoked = 0
-			var composed = promiseVar.map(function(promiseValue) {
+			var composed = promiseVar.to(function(promiseValue) {
 			    outerCallbackInvoked++
                             console.log('outer invoked')
-			    return inner.map(function(innerValue) {
+			    return inner.to(function(innerValue) {
 				innerCallbackInvoked++
                                 console.log('inner invoked')
 				return [promiseValue, innerValue]
@@ -408,9 +427,9 @@ define([
 			var propertyA = variable.property('a')
 			assert.equal(propertyA.schema.valueOf(), 'number')
 			assert.deepEqual(propertyA.validate.valueOf(), [])
-			object.a = 'not a number'
+			propertyA.put('not a number')
 			assert.deepEqual(propertyA.validate.valueOf(), ['error'])
-			object.a = 8
+			variable.set('a', 8)
 			assert.deepEqual(propertyA.validate.valueOf(), [])
 		},
 
