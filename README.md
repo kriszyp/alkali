@@ -1,4 +1,4 @@
-The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. The alkali library is a lightweight set of modules for accessing simple native JavaScript objects with modeling and reactivity capabilities. Alkali uses categorical models with contextualized calculations and caching, with an invalidation-based notification system. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
+The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. The alkali library is a lightweight set of modules for accessing simple native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native elements. Alkali uses categorical models with contextualized calculations and caching, with an invalidation-based notification system. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
 
 There are several key paradigms in alkali:
 
@@ -16,6 +16,12 @@ Variables also support promises as values, and the variable pipeline will handle
 
 ## Variable API
 
+The Variable constructor is returned from the `alkali/Variable` module.
+
+### Variable(initialValue)
+
+This is the constructor for a variable. You may create a variable with an initial value, provided as the argument.
+
 ### valueOf(context?)
 
 This returns the current value of the variable.
@@ -26,33 +32,76 @@ This allows us to update the value of a variable with a new value. This can be g
 
 If the `value` passed in is not different than the current value, no changes will be made and this will return `Variable.noChange`. If the value can be assigned (like a property of a `null` value), it will return `Variable.deny`.
 
+### property(propertyName)
+
+This returns a variable representing the property of the value of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in property variable will update the corresponding property on the parent object.
+
+### to(function)
+
+This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be used by the returned variable.
+
+For example:
+```
+let number = new Variable(3)
+number.valueOf() -> 3
+let doubled = number.to((value) => value * 2)
+doubled.valueOf() -> 6
+number.put(5)
+number.valueOf() -> 5
+doubled.valueOf() -> 10
+```
+
+A `to` function can return variables as well, in which case you can effectively chain variables together, merging their changes. For example:
+```
+let a = new Variable(1)
+let b = new Variable(2)
+let sum = a.to((aValue) => {
+	return b.to((bValue) => {
+		return aValue + bValue;
+	})
+})
+// sum will reactively update to changes in either a or b
+```
+
+### get(propertyName)
+
+This returns the value of the named property. The following are functionally equivalent:
+
+```
+variable.property(name).valueOf() === variable.get(name)
+```
+
+### set(propertyName, value)
+
+This sets the value of the named property.  The following are functionally equivalent:
+
+```
+variable.property(name).put(value)
+```
+and
+```
+variable.set(name, value)
+```
+
 ### subscribe(listener)
 
-This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subcriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` (in either form, but especially the latter) is generally discouraged, because of the API is not well-suited for alkali's optimized resource management, it is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
+This adds a listener for any changes to the variable. The `listener` can be an object with an `updated(updateEvent)` method that will be called with update notifications. The `updateEvent` has the following properties:
+`type` - This is the type of notification. The most common is `'refresh'`.
+`key`	- This is the name of the property or index of the position that was changed.
 
-### map(function)
+Alternately, if you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
 
-This maps the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be used by the returned variable.
+### unsubscribe(listener)
 
-### notifies(dependentVariable)
+This stops the notifications to the dependent variable, undoing the action of `subscribe`.
 
-This is called to indicate that the dependent variable is dependent on this variable, and will result in changes or invalidation on this variable to invalidate the provided dependent variable. If this variable changes, it will call the invalidate method on the dependent variable.
+### updated(updateEvent, context?)
 
-### stopNotifies(dependentVariable)
-
-This stops the notifications to the dependent variable, undoing the action of `notifies`.
-
-### invalidate(context?)
-
-This should be called to indicate that the variable's current value is no longer valid, (it has changed or dependency values have changed), and it should return a new value from valueOf in the future.
+This is the variable's implementation of a subscriber listeners interface for receiving notifications from other variables.
 
 ### apply(instance, functionVariable)
 
 This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables become invalidated (change), than the returned variable will invalidated. The function can be re-executed with the changed values on the next call to valueOf.
-
-### property(propertyName)
-
-This returns a variable representing the property of the value of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in property variable will update the corresponding property on the parent object.
 
 ### fixed
 
@@ -60,11 +109,63 @@ This property can be set to true, when a variable holds another variable (acting
 
 ### Variable.all(array)
 
-This function allows you to compose a new variable from an array of input variables, where the resulting variable will update in response to changes from any of the input variables. The return variable will hold an array of values that represent the value of each of the input variable's values (in the same order as the variables were provided). This is intended to mirror the `Promise.all()` API.
+This function allows you to compose a new variable from an array of input variables, where the resulting variable will update in response to changes from any of the input variables. The return variable will hold an array of values that represent the value of each of the input variable's values (in the same order as the variables were provided). This is intended to mirror the `Promise.all()` API. For example:
+
+```
+let a = Variable(1)
+let b = Variable(2)
+let sum = Variable.all(a, b).to(([a, b]) => a + b)
+```
+
+## Reactive Elements
+
+Alkali includes functionality for constructing and extending from native DOM elements, and binding these elements to variables for reactive UIs. The `Element` constructor is returned from the `alkali/Element` module, but this also includes a large set of native element constructors, as properties, to use for streamlined creation of DOM elements. For example, using EcmaScript's module format to import:
+
+```
+import { div, span } from 'alkali/Element'
+
+let divElement = new div()
+let spanElement = new span()
+document.body.appendChild(divElement).appendChild(spanElement)
+```
+
+In addition, an element has a `create` method that may be alternately called to create a new element. `new Element()` and `Element.create()` are equivalent.
+This constructors create native DOM elements that can be placed directly into the DOM. All the standardized element tags should be available from the module. These constructors can take several arguments for constructing elements. First argument is an optional string in CSS selector format that can be used to define the class, id, or tag. For example, to create a div with a class of `'my-class'` and id of `'my-id'`:
+
+```
+new div('.my-class#my-id')
+```
+
+All remaining arguments can be in any order and be any of these types:
+* An object with properties that will be copied to the target element. For example, we could create anchor element with a link:
+```
+new a({href: 'a url'})
+```
+If any of the values are alkali variables, they will be automatically bound to the element, reactively updating the element in response to any changes to the variable. For example:
+```
+let a = new Variable(1)
+document.body.appendChild(new div({title: a}))
+a.put(2) // will update the title of the div
+```
+Alkali uses an optimized strategy for updating elements, by waiting for the next animation frame to update, and only updating elements that are connected to the DOM.
+
+* An array that defines children elements.
+* A variable may be provided directly as an argument as well. This variable will be connected to the default "content" of the element. For most elements, this variable will be mapped to the text content of the element. For example:
+```
+let greeting = new Variable('Hello')
+new span(greeting)
+```
+However, for input elements, the "content" of the element is the value of the input. This makes it easy to setup bi-direction bindings from inputs to variables. For example:
+```
+let a = new Variable()
+new input(a)
+```
+The variable `a` will be mapped to this new input. This means that any changes made to `a` will cause the input to be updated, and any changes that the user makes to the input will update the variable (two-way binding).
+
 
 ## Updaters
 
-Updaters are the central mechanism for making UI components react to data changes. Updaters allow us to add reactive capabilities to existing components with minimal change. Updaters are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an updater's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. The `Updater` module includes several specific updaters, for updating attributes and the text of an element. The following Updaters are available from `alkali/Updater`:
+Updaters are an additional mechanism for making UI components react to data changes. Updaters allow us to add reactive capabilities to existing components with minimal change. Updaters are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an updater's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. The `Updater` module includes several specific updaters, for updating attributes and the text of an element. The following Updaters are available from `alkali/Updater`:
 
 Updater - This should be constructed with an options object that defines the source `variable`, the associated DOM `element`, and an `renderUpdate` method that will perform the rerender with the latest value from the variable.
 
