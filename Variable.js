@@ -86,7 +86,9 @@ define(['./lang', './Context'],
 					}
 					// if there was a another value that we were dependent on before, stop listening to it
 					// TODO: we may want to consider doing cleanup after the next rendering turn
-					previousNotifyingValue.unsubscribe(variable)
+					if (variable.dependents) {
+						previousNotifyingValue.unsubscribe(variable)
+					}
 					variable.notifyingValue = null
 				}
 				if(value && value.subscribe){
@@ -434,8 +436,6 @@ define(['./lang', './Context'],
 			}
 			return cache
 		},
-
-		updateVersion: function () {}, // do nothing when it is derived from other sources
 
 		valueOf: function(context, cacheHolder){
 			// first check to see if we have the variable already computed

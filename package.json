@@ -1,7 +1,7 @@
 {
   "name": "alkali",
   "author": "Kris Zyp",
-  "version": "0.0.1",
+  "version": "0.2.1",
   "description": "Interface for reactivity with native JavaScript objects",
   "licenses": [
     {
