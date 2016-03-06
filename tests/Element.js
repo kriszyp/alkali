@@ -136,15 +136,43 @@ define([
 				assert.strictEqual(container.firstChild.firstChild.nodeValue, 'new content')
 			})
 		},
+		addToPrototype: function() {
+			Element.addToElementPrototypes({
+				get foo() {
+					return 3
+				},
+				bar: function() {
+					return this
+				}
+			})
+			var divElement = new div()
+			assert.strictEqual(divElement.foo, 3)
+			assert.strictEqual(divElement.bar(), divElement)
+			var sectionElement = new Element.section()
+			assert.strictEqual(sectionElement.foo, 3)
+			assert.strictEqual(sectionElement.bar(), sectionElement)
+		},
 		list: function() {
 			var arrayVariable = new Variable(['a', 'b', 'c'])
+			var item = new Variable('placeholder')
 			var listElement = new ul({
 				content: arrayVariable,
 				each: li([
-					span('item')
+					span(item)
 				])
 			})
+			document.body.appendChild(listElement)
 			assert.strictEqual(listElement.childNodes.length, 3)
+			assert.strictEqual(listElement.childNodes[0].childNodes[0].innerHTML, 'placeholder')
+			arrayVariable.push('d')
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(listElement.childNodes.length, 4)
+				assert.strictEqual(listElement.childNodes[3].childNodes[0].innerHTML, 'placeholder')
+				arrayVariable.splice(2, 1)
+				return new Promise(requestAnimationFrame).then(function(){
+					assert.strictEqual(listElement.childNodes.length, 3)
+				})
+			})
 		}
 	})
 });

@@ -225,11 +225,11 @@ define(function (require, exports, module) {
 		}
 		ElementUpdater.apply(this, arguments)
 	}
+	ListUpdater.prototype = Object.create(ElementUpdater.prototype)
 	ListUpdater.prototype.updated = function (updateEvent, context) {
 		(this.updates || (this.updates = [])).push(updateEvent)
-		ElementUpdater.prototype.updated.call(this, updatedEvent, context)
+	ElementUpdater.prototype.updated.call(this, updateEvent, context)
 	}
-	ListUpdater.prototype = Object.create(ElementUpdater.prototype)
 	ListUpdater.prototype.type = 'ListUpdater'
 	ListUpdater.prototype.omitValueOf = true
 	ListUpdater.prototype.renderUpdate = function (newValue, element) {
@@ -261,10 +261,11 @@ define(function (require, exports, module) {
 					}
 					if (update.index > -1) {
 						var nextChild = childElements[update.index] || null
-						eachItem(update.value, update.index)
+						eachItem(update.value, update.index, nextChild)
 					}
 				}
 			})
+			this.updates = [] // clear the updates
 		}
 		function eachItem(item, index, nextChild) {
 			var childElement

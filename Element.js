@@ -515,7 +515,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			var ElementClass
 			Object.defineProperty(Element, tagName, {
 				get: function() {
-					return ElementClass || (ElementClass = extend.call(document.createElement(tagName).constructor, tagName))
+					return ElementClass || (ElementClass = augmentBaseElement(extend.call(document.createElement(tagName).constructor, tagName)))
 				}
 			})
 		})
@@ -525,12 +525,13 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			var ElementClass
 			Object.defineProperty(Element, inputType, {
 				get: function() {
-					return ElementClass || (ElementClass = extend.call(HTMLInputElement, 'input', {
+					// TODO: make all inputs extend from input generated from generate
+					return ElementClass || (ElementClass = augmentBaseElement(extend.call(HTMLInputElement, 'input', {
 						type: inputType === 'input' ? 'text' : inputType,
 						inputValueProperty: inputType in {date: 1, datetime: 1, time: 1} ? 'valueAsDate' : 
 							inputType === 'number' ? 'valueAsNumber' :
 							inputType === 'checkbox' ? 'checked' : 'value'
-					}))
+					})))
 				}
 			})
 		})
@@ -543,6 +544,26 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			create: element.create.bind(element)
 		}
 	}
-	Element.item = 3
+	var toAddToElementPrototypes = []
+	var createdBaseElements = []
+	function augmentBaseElement(Element) {
+		var prototype = Element.prototype
+		for(var i = 0, l = toAddToElementPrototypes.length; i < l; i++) {
+			var key = toAddToElementPrototypes[i]
+			Object.defineProperty(prototype, key, toAddToElementPrototypes[key])
+		}
+		createdBaseElements.push(Element)
+		return Element
+	}
+	Element.addToElementPrototypes = function(properties) {
+		var i = 0;
+		for (var key in properties) {
+			toAddToElementPrototypes.push(key)
+			toAddToElementPrototypes[key] = Object.getOwnPropertyDescriptor(properties, key)
+		}
+		for(var i = 0, l = createdBaseElements.length; i < l; i++) {
+			augmentBaseElement(createdBaseElements[i])
+		}
+	}
 	return Element
 })

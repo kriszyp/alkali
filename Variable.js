@@ -124,9 +124,9 @@ define(['./lang', './Context'],
 			}
 			var property = propertyName && this._properties && this._properties[propertyName]
 			if(property && !(type instanceof PropertyChange)){
-				property.updated(ToChild, context)
+				property.parentUpdated(ToChild, context)
 			}
-			this.updated(new PropertyChange(propertyName), context)
+			this.updated(new PropertyChange(propertyName), this, context)
 		},
 		eachKey: function(callback){
 			for(var i in this._properties){
@@ -188,7 +188,7 @@ define(['./lang', './Context'],
 			return updates
 		},
 
-		updated: function(updateEvent, context){
+		updated: function(updateEvent, by, context){
 			if(this.state === 'invalidated'){
 				return
 			}
@@ -217,7 +217,11 @@ define(['./lang', './Context'],
 						var dependent = dependents[i]
 						// skip notifying property dependents if we are headed up the parent chain
 						if(!(updateEvent instanceof PropertyChange) || dependent.parent !== this){
-							dependent.updated(dependent.parent === this ? ToChild : Refresh, context)
+							if (dependent.parent === this) {
+								dependent.parentUpdated(ToChild, context)
+							} else {
+								dependent.updated(updateEvent, this, context)
+							}
 						}
 					}catch(e){
 						console.error(e, 'updating a variable')
@@ -308,7 +312,7 @@ define(['./lang', './Context'],
 				return oldValue.put(value)
 			}
 			this.setValue(value)
-			this.updated(Refresh, context)
+			this.updated(Refresh, this, context)
 		},
 		get: function(key, context){
 			var object = this.valueOf(context)
@@ -503,7 +507,7 @@ define(['./lang', './Context'],
 		getValue: function(){
 			return this.value && this.value.valueOf()
 		},
-		updated: function(updateEvent, context){
+		updated: function(updateEvent, by, context){
 			// TODO: there might actually be a collection of listeners
 			// clear the cache
 			if(context){
@@ -519,7 +523,7 @@ define(['./lang', './Context'],
 			if(this.computedVariable){
 				this.computedVariable = null
 			}
-			Variable.prototype.updated.call(this, Refresh, context)
+			Variable.prototype.updated.call(this, Refresh, by, context)
 		}
 	})
 
@@ -560,11 +564,14 @@ define(['./lang', './Context'],
 		put: function(value, context){
 			return this._changeValue(context, RequestChange, value)
 		},
-		updated: function(updateEvent, context){
-			if(updateEvent !== ToChild){
+		parentUpdated: function(updateEvent, context){
+			return Variable.prototype.updated.call(this, updateEvent, this.parent, context)
+		},
+		updated: function(updateEvent, by, context){
+			//if(updateEvent !== ToChild){
 				this._changeValue(context, updateEvent)
-			}
-			return Variable.prototype.updated.call(this, updateEvent, context)
+			//}
+			return Variable.prototype.updated.call(this, updateEvent, by, context)
 		},
 		_changeValue: function(context, type, newValue){
 			var key = this.key
@@ -615,6 +622,14 @@ define(['./lang', './Context'],
 					arg.subscribe(this)
 				}
 			}
+		},
+
+		updated: function(updateEvent, by, context){
+			if (by !== this.notifyingValue && this.args.indexOf(by) > -1) {
+				// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
+				updateEvent = Refresh
+			}
+			Caching.prototype.updated.call(this, updateEvent, by, context)
 		},
 
 		getUpdates: function(since) {
@@ -816,6 +831,13 @@ define(['./lang', './Context'],
 				}
 			})
 		},
+		push: function(value) {
+			args = arguments
+			return lang.when(this.valueOf(), function(array) {
+				array.push.apply(array, args)
+
+			})
+		},
 		arrayContext: function(context){
 			return new ContextualArray(context, this)
 		}
@@ -827,21 +849,59 @@ define(['./lang', './Context'],
 	ContextualArray.prototype.valueOf = function(){
 		return this.parent.valueOf(this.context)
 	}
-	function arrayMethod(name){
+	function arrayMethod(name, sendUpdates){
 		Variable.prototype[name] = ContextualArray.prototype[name] = function(){
 			var args = arguments
 			var variable = this
 			return lang.when(this.valueOf(), function(array){
-				array.push.apply(array, args)
-				variable.updated()
+				var result = array[name].apply(array, args)
+				if (sendUpdates) {
+					sendUpdates.call(variable, args, result, array)
+				}
+				return result
 			})
 		}
 	}
-	arrayMethod('push')
-	arrayMethod('splice')
-	arrayMethod('shift')
-	arrayMethod('unshift')
-	arrayMethod('pop')
+	arrayMethod('splice', function(args, result) {
+		for(var i = 0; i < args[1]; i++) {
+			this.updated({
+				type: 'remove',
+				previousIndex: args[0]
+			})
+		}
+	})
+	arrayMethod('push', function(args, result) {
+		for(var i = 0, l = args.length; i < l; i++) {
+			var arg = args[i]
+			this.updated({
+				type: 'add',
+				index: result - i - 1,
+				value: arg
+			})
+		}
+	})
+	arrayMethod('unshift', function(args, result) {
+		for(var i = 0, l = args.length; i < l; i++) {
+			var arg = args[i]
+			this.updated({
+				type: 'add',
+				index: i,
+				value: arg
+			})
+		}
+	})
+	arrayMethod('shift', function(args, results) {
+		this.updated({
+			type: 'remove',
+			previousIndex: 0
+		})
+	})
+	arrayMethod('pop', function(args, results, array) {
+		this.updated({
+			type: 'remove',
+			previousIndex: array.length
+		})
+	})
 
 	var Validating = lang.compose(Caching, function(target, schema){
 		this.target = target
