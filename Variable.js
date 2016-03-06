@@ -375,11 +375,7 @@ define(['./lang', './Context'],
 				return array.map(callback)
 			})
 		},
-		newElement: function(){
-			return lang.when(this.valueOf(), function(value){
-				return value && value.newElement && value.newElement()
-			})
-		},
+
 		map: function (operator) {
 			// TODO: eventually make this act on the array items instead
 			return this.to(operator)
@@ -412,6 +408,11 @@ define(['./lang', './Context'],
 
 	}
 
+	if (typeof Symbol !== 'undefined') {
+		Variable.prototype[Symbol.iterator] = function() {
+			return this.valueOf()[Symbol.iterator]()
+		}
+	}
 	var Caching = Variable.Caching = lang.compose(Variable, function(getValue, setValue){
 		if(getValue){
 			this.getValue = getValue

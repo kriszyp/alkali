@@ -75,6 +75,14 @@ define([
 			mySubDiv.click()
 			assert.isTrue(mySubDiv.wasClicked)
 			assert.isTrue(mySubDiv.alsoFlagged)
+		},
+		forOf: function() {
+			var arrayVariable = new Variable(['a', 'b', 'c'])
+			var results = []
+			for (let letter of arrayVariable) {
+				results.push(letter)
+			}
+			assert.deepEqual(results, ['a', 'b', 'c'])
 		}
 	})
 })
