@@ -618,16 +618,24 @@ define(['./lang', './Context'],
 			var args = this.args
 			for(var i = 0, l = args.length; i < l; i++){
 				var arg = args[i]
-				if(arg.subscribe){
+				if(arg && arg.subscribe){
 					arg.subscribe(this)
 				}
 			}
 		},
 
 		updated: function(updateEvent, by, context){
-			if (by !== this.notifyingValue && this.args.indexOf(by) > -1) {
-				// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
-				updateEvent = Refresh
+			if (by !== this.notifyingValue) {
+				var args = this.args
+				// using a painful search instead of indexOf, because args my be an arguments object
+				for(var i = 0, l = args.length; i < l; i++){
+					var arg = args[i]
+					if (arg === by) {
+						// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
+						updateEvent = Refresh
+						continue
+					}
+				}
 			}
 			Caching.prototype.updated.call(this, updateEvent, by, context)
 		},
@@ -657,7 +665,7 @@ define(['./lang', './Context'],
 			var args = this.args
 			for(var i = 0, l = args.length; i < l; i++){
 				var arg = args[i]
-				if(arg.subscribe){
+				if(arg && arg.subscribe){
 					arg.unsubscribe(this)
 				}
 			}
@@ -667,7 +675,8 @@ define(['./lang', './Context'],
 			var results = []
 			var args = this.args
 			for(var i = 0, l = args.length; i < l; i++){
-				results[i] = args[i].valueOf(context)
+				var arg = args[i]
+				results[i] = arg && arg.valueOf(context)
 			}
 			return lang.whenAll(results, function(resolved) {
 				return resolved
@@ -735,7 +744,8 @@ define(['./lang', './Context'],
 			}else{
 				var results = []
 				for(var i = 0, l = args.length; i < l; i++){
-					results[i] = args[i].valueOf(context)
+					var arg = args[i]
+					results[i] = arg && arg.valueOf(context)
 				}
 				instance = instance && instance.valueOf(context)
 				if(functionValue.handlesPromises){
