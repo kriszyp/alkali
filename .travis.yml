@@ -1,0 +1,13 @@
+language: node_js
+node_js:
+  - 0.10
+
+env:
+  global:
+      - SAUCE_USERNAME: persvr-ci
+      - SAUCE_ACCESS_KEY: d8dc90f7-08ca-41a5-8055-c452116b9ef7
+
+install:
+  - travis_retry npm install
+
+script: npm test && npm run test.sauce
