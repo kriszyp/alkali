@@ -228,6 +228,24 @@ Data objects are plain JS objects: Variables can be used on their own, or the Va
 	myObject.name = 'new name'; // this will trigger a change on the nameProperty
 
 
+## Reverse Mappings
+
+Alkali supports assymetric, bi-directional bindings, which means that we can variables can no only pass data downstream, but data can flow back upstream. For examples, a variable can be bound to an input, but that input may be changed by the user, causing a new value flow back up into the variable. If this flow goes through variable function mappings, that transform data downstream, you may want to define a reverse transform for data flowing back upstream. This can be done by defining a `reverse` function attached to the primary mapping function. This takes two arguments, the incoming `output` variable with the change upstream, and the downstream `inputs` variables that may need to be updated in response to the change. For example:
+```
+function double(value) {
+	return value * 2
+}
+double.reverse = function(output, inputs) {
+	// in reverse, we divide the value by 2
+	inputs[0].put(output.valueOf() / 2)
+}
+let aNumber = new Variable(4)
+let doubled = aNumber.to(double)
+doubled.valueOf() // -> returns 8
+doubled.put(20) // change the output, this will feed back up, and change the original variable
+aNumber.valueOf() // -> returns 10
+```
+
 ## Contextualization
 
 The computations (and invalidations) can be all be executed with an optional context, which effectively allows variables to be parameterized. This means that a given variable does not have to be used to only represent a single value, but the variable may be used to represent set of different variables depending on their context. This also facilitates the construction of very powerful caching mechanisms that can intelligently cache based on determining which parameters may lead to different results.
