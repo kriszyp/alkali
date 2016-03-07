@@ -29,7 +29,10 @@ define(['./lang', './Variable'], function(lang, Variable) {
 		}
 	})
 
-	function react(generator) {
+	function react(generator, options) {
+		if (options && options.reverse) {
+			generator.reverse = options.reverse
+		}
 		return new GeneratorVariable(generator)
 	}
 	return react
