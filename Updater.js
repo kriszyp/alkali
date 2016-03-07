@@ -36,7 +36,7 @@ define(function (require, exports, module) {
 				(element.alkaliRenderers || (element.alkaliRenderers = [])).push(this)
 			}
 			if (options.update) {
-				this.update = options.update
+				this.updateRendering = options.update
 			}
 			if (options.shouldRender) {
 				this.shouldRender = options.shouldRender
