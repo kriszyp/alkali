@@ -3,6 +3,7 @@ define([
 	'./Copy',
 	'./Updater',
 	'./Element',
-	'./es6'
+	'./es6',
+	'./dstore'
 ], function () {
 });

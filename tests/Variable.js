@@ -407,7 +407,7 @@ define([
 			})
 		},
 
-		schema: function () {
+		schema: function() {
 			var object = {
 				a: 1,
 				b: 'foo'
@@ -433,7 +433,7 @@ define([
 			assert.deepEqual(propertyA.validate.valueOf(), [])
 		},
 
-		composite: function () {
+		composite: function() {
 			var a = new Variable(1)
 			var b = new Variable(2)
 			var c = new Variable(3)
@@ -448,6 +448,31 @@ define([
 			assert.deepEqual(result, [4, 2, 3])
 			c.put(6)
 			assert.deepEqual(result, [4, 2, 6])
+		},
+
+		incrementalUpdate: function() {
+			var array = new Variable([2, 4, 6])
+			var sum = array.to(function(array) {
+				return array.reduce(function(a, b) {return a + b})
+			})
+			var lastUpdate
+			array.subscribe({
+				updated: function(updateEvent) {
+					lastUpdate = updateEvent
+				}
+			})
+			assert.strictEqual(sum.valueOf(), 12)
+			array.push(8)
+			assert.strictEqual(sum.valueOf(), 20)
+			assert.deepEqual(lastUpdate, {type: 'add', index: 3, value: 8})
+			array.pop()
+			assert.deepEqual(lastUpdate, {type: 'delete', previousIndex: 3})
+			array.unshift(0)
+			assert.deepEqual(lastUpdate, {type: 'add', index: 0, value: 0})
+			array.shift()
+			assert.deepEqual(lastUpdate, {type: 'delete', previousIndex: 0})
+
+
 		}
 	})
 })

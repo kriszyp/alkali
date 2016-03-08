@@ -91,13 +91,24 @@ define(['./lang', './Context'],
 					}
 					variable.notifyingValue = null
 				}
-				if(value && value.subscribe){
-					if(variable.dependents){
-						// the value is another variable, start receiving notifications
-						value.subscribe(variable)
+				if(value){
+				 	if(value.subscribe){
+						if(variable.dependents){
+							// the value is another variable, start receiving notifications
+							value.subscribe(variable)
+						}
+						variable.notifyingValue = value
+						value = value.valueOf(context)
+					} else if(value.on){
+						// if it an object that can deliver notifications through `on` events, we listen for that (like dstore collections)
+						var handle = value.on(['add','update','delete'], function(event) {
+							variable.updated(event)
+						})
+						variable.notifyingValue = {
+							unsubscribe: handle.remove, // remove the listener when we unsubscribe
+							subscribe: function(){}
+						}
 					}
-					variable.notifyingValue = value
-					value = value.valueOf(context)
 				}
 				if(typeof value === 'object' && value && variable.dependents){
 					// set up the listeners tracking
@@ -170,7 +181,7 @@ define(['./lang', './Context'],
 		},
 
 		getVersion: function(context) {
-			return Math.max(this.version || 0, this.notifyingValue ? this.notifyingValue.getVersion(context) : 0)
+			return Math.max(this.version || 0, this.notifyingValue && this.notifyingValue.getVersion ? this.notifyingValue.getVersion(context) : 0)
 		},
 
 		getUpdates: function(since) {
@@ -875,8 +886,15 @@ define(['./lang', './Context'],
 	arrayMethod('splice', function(args, result) {
 		for(var i = 0; i < args[1]; i++) {
 			this.updated({
-				type: 'remove',
+				type: 'delete',
 				previousIndex: args[0]
+			})
+		}
+		for(i = 2, l = args.length; i < l; i++) {
+			this.updated({
+				type: 'add',
+				value: args[i],
+				index: args[0] + i - 2
 			})
 		}
 	})
@@ -902,13 +920,13 @@ define(['./lang', './Context'],
 	})
 	arrayMethod('shift', function(args, results) {
 		this.updated({
-			type: 'remove',
+			type: 'delete',
 			previousIndex: 0
 		})
 	})
 	arrayMethod('pop', function(args, results, array) {
 		this.updated({
-			type: 'remove',
+			type: 'delete',
 			previousIndex: array.length
 		})
 	})
