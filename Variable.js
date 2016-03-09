@@ -170,7 +170,6 @@ define(['./lang', './Context'],
 			var notifyingValue = this.notifyingValue
 			if(notifyingValue){
 				this.notifyingValue.unsubscribe(this)
-				this.notifyingValue = null
 				// TODO: move this into the caching class
 				this.computedVariable = null
 			}
