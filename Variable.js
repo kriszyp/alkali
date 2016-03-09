@@ -458,7 +458,6 @@ define(['./lang', './Context'],
 			if(this.state){
 				this.state = null
 			}
-
 			var cache = this.getCache(context)
 			if('value' in cache){
 				if(cacheHolder && cacheHolder instanceof GetCache){
@@ -547,6 +546,7 @@ define(['./lang', './Context'],
 	},
 	{
 		init: function(){
+			Variable.prototype.init.call(this)
 			this.parent.subscribe(this)
 		},
 		cleanup: function(){
@@ -626,6 +626,7 @@ define(['./lang', './Context'],
 	}, {
 		init: function(){
 			// depend on the args
+			Caching.prototype.init.call(this)
 			var args = this.args
 			for(var i = 0, l = args.length; i < l; i++){
 				var arg = args[i]
@@ -799,6 +800,7 @@ define(['./lang', './Context'],
 		this.parent = parent
 	}, {
 		init: function(){
+			Variable.prototype.init.call(this)
 			this.parent.subscribe(this)
 		},
 		cleanup: function(){
@@ -936,6 +938,7 @@ define(['./lang', './Context'],
 		this.targetSchema = schema
 	}, {
 		init: function(){
+			Variable.prototype.init.call(this)
 			this.target.subscribe(this)
 			this.targetSchema.subscribe(this)
 		},
@@ -956,6 +959,7 @@ define(['./lang', './Context'],
 		this.target = target
 	}, {
 		init: function(){
+			Variable.prototype.init.call(this)
 			this.target.subscribe(this)
 		},
 		cleanup: function(){
