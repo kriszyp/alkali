@@ -91,24 +91,13 @@ define(['./lang', './Context'],
 					}
 					variable.notifyingValue = null
 				}
-				if(value){
-				 	if(value.subscribe){
-						if(variable.dependents){
+				if(value && value.subscribe){
+					if(variable.dependents){
 							// the value is another variable, start receiving notifications
-							value.subscribe(variable)
-						}
-						variable.notifyingValue = value
-						value = value.valueOf(context)
-					} else if(value.on){
-						// if it an object that can deliver notifications through `on` events, we listen for that (like dstore collections)
-						var handle = value.on(['add','update','delete'], function(event) {
-							variable.updated(event)
-						})
-						variable.notifyingValue = {
-							unsubscribe: handle.remove, // remove the listener when we unsubscribe
-							subscribe: function(){}
-						}
+						value.subscribe(variable)
 					}
+					variable.notifyingValue = value
+					value = value.valueOf(context)
 				}
 				if(typeof value === 'object' && value && variable.dependents){
 					// set up the listeners tracking
@@ -532,7 +521,7 @@ define(['./lang', './Context'],
 			if(this.computedVariable){
 				this.computedVariable = null
 			}
-			Variable.prototype.updated.call(this, Refresh, by, context)
+			Variable.prototype.updated.call(this, updateEvent, by, context)
 		}
 	})
 
@@ -636,9 +625,9 @@ define(['./lang', './Context'],
 		},
 
 		updated: function(updateEvent, by, context){
-			if (by !== this.notifyingValue) {
+			if (by !== this.notifyingValue && updateEvent !== Refresh) {
 				var args = this.args
-				// using a painful search instead of indexOf, because args my be an arguments object
+				// using a painful search instead of indexOf, because args may be an arguments object
 				for(var i = 0, l = args.length; i < l; i++){
 					var arg = args[i]
 					if (arg === by) {

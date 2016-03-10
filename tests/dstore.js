@@ -1,10 +1,12 @@
 define([
 	'../Variable',
+	'../dstore',
 	'dstore/Memory',
 	'intern!object',
 	'intern/chai!assert',
 	'./has!promise?:bluebird/js/browser/bluebird'
-], function (Variable, Memory, registerSuite, assert, bluebird) {
+], function (Variable, dstore, Memory, registerSuite, assert, bluebird) {
+	var DstoreVariable = dstore.DstoreVariable
 	registerSuite({
 		name: 'dstore',
 		dstoreUpdates: function() {
@@ -15,7 +17,8 @@ define([
 					{id: 3, name: 'three'}
 				]
 			})
-			var array = new Variable(store)
+			// wrap an existing variable just to make sure we get flow through
+			var array = new DstoreVariable(new Variable(store))
 			var count = array.to(function(){
 				return store.fetchSync().length
 			})
