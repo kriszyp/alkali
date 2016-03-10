@@ -406,116 +406,116 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		// find closest child
 	}
 	generate([
-		'video',
-		'source',
-		'media',
-		'audio',
-		'ul',
-		'track',
-		'title',
-		'textarea',
-		'template',
-		'tbody',
-		'thead',
-		'tfoot',
-		'tr',
-		'table',
-		'col',
-		'colgroup',
-		'th',
-		'td',
-		'caption',
-		'style',
-		'span',
-		'shadow',
-		'select',
-		'script',
-		'quote',
-		'progress',
-		'pre',
-		'picture',
-		'param',
-		'paragraph',
-		'output',
-		'option',
-		'optgroup',
-		'object',
-		'ol',
-		'ins',
-		'del',
-		'meter',
-		'meta',
-		'menu',
-		'map',
-		'link',
-		'legend',
-		'label',
-		'li',
-		'keygen',
-		'image',
-		'iframe',
-		'h1',
-		'h2',
-		'h3',
-		'h4',
-		'h5',
-		'h6',
-		'hr',
-		'frameset',
-		'frame',
-		'form',
-		'font',
-		'embed',
-		'article',
-		'aside',
-		'figure',
-		'figcaption',
-		'header',
-		'main',
-		'mark',
-		'menuitem',
-		'nav',
-		'section',
-		'summary',
-		'wbr',
-		'div',
-		'dialog',
-		'details',
-		'datalist',
-		'dl',
-		'canvas',
-		'button',
-		'base',
-		'br',
-		'area',
-		'a'
+		'Video',
+		'Source',
+		'Media',
+		'Audio',
+		'Ul',
+		'Track',
+		'Title',
+		'Textarea',
+		'Template',
+		'Tbody',
+		'Thead',
+		'Tfoot',
+		'Tr',
+		'Table',
+		'Col',
+		'Colgroup',
+		'Th',
+		'Td',
+		'Caption',
+		'Style',
+		'Span',
+		'Shadow',
+		'Select',
+		'Script',
+		'Quote',
+		'Progress',
+		'Pre',
+		'Picture',
+		'Param',
+		'Paragraph',
+		'Output',
+		'Option',
+		'Optgroup',
+		'Object',
+		'Ol',
+		'Ins',
+		'Del',
+		'Meter',
+		'Meta',
+		'Menu',
+		'Map',
+		'Link',
+		'Legend',
+		'Label',
+		'Li',
+		'Keygen',
+		'Image',
+		'Iframe',
+		'H1',
+		'H2',
+		'H3',
+		'H4',
+		'H5',
+		'H6',
+		'Hr',
+		'Frameset',
+		'Frame',
+		'Form',
+		'Font',
+		'Embed',
+		'Article',
+		'Aside',
+		'Figure',
+		'Figcaption',
+		'Header',
+		'Main',
+		'Mark',
+		'Menuitem',
+		'Nav',
+		'Section',
+		'Summary',
+		'Wbr',
+		'Div',
+		'Dialog',
+		'Details',
+		'Datalist',
+		'Dl',
+		'Canvas',
+		'Button',
+		'Base',
+		'Br',
+		'Area',
+		'A'
 	])
 	generateInputs([
-		'input',
-		'checkbox',
-		'password',
-		'text',
-		'submit',
-		'radio',
-		'color',
-		'date',
-		'datetime',
-		'email',
-		'month',
-		'number',
-		'range',
-		'search',
-		'tel',
-		'time',
-		'url',
-		'week'])
+		'Input',
+		'Checkbox',
+		'Password',
+		'Text',
+		'Submit',
+		'Radio',
+		'Color',
+		'Date',
+		'Datetime',
+		'Email',
+		'Month',
+		'Number',
+		'Range',
+		'Search',
+		'Tel',
+		'Time',
+		'Url',
+		'Week'])
 
 	function generate(elements) {
-		elements.forEach(function(tagName) {
+		elements.forEach(function(elementName) {
 			var ElementClass
-			Object.defineProperty(Element, tagName, {
+			Object.defineProperty(Element, elementName, {
 				get: function() {
-					return ElementClass || (ElementClass = augmentBaseElement(extend.call(document.createElement(tagName).constructor, tagName)))
+					return ElementClass || (ElementClass = augmentBaseElement(extend.call(document.createElement(elementName.toLowerCase()).constructor, elementName.toLowerCase())))
 				}
 			})
 		})
@@ -527,15 +527,34 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 				get: function() {
 					// TODO: make all inputs extend from input generated from generate
 					return ElementClass || (ElementClass = augmentBaseElement(extend.call(HTMLInputElement, 'input', {
-						type: inputType === 'input' ? 'text' : inputType,
-						inputValueProperty: inputType in {date: 1, datetime: 1, time: 1} ? 'valueAsDate' : 
-							inputType === 'number' ? 'valueAsNumber' :
-							inputType === 'checkbox' ? 'checked' : 'value'
+						type: inputType === 'Input' ? 'Text' : inputType,
+						inputValueProperty: inputType in {Date: 1, Datetime: 1, Time: 1} ? 'valueAsDate' : 
+							inputType === 'Number' ? 'valueAsNumber' :
+							inputType === 'Checkbox' ? 'checked' : 'value'
 					})))
+				}
+			})
+			// alias all the inputs with an Input suffix
+			Object.defineProperty(Element, inputType + 'Input', {
+				get: function() {
+					return this[inputType]
 				}
 			})
 		})
 	}
+	var aliases = {
+		Anchor: 'A'
+	}
+	for (var alias in aliases) {
+		(function(alias, to) {
+			Object.defineProperty(Element, alias, {
+				get: function() {
+					return this[to]
+				}
+			})			
+		})(alias, aliases[alias])
+	}
+
 	Element.refresh = Updater.refresh
 	Element.content = function(element){
 		// container marker

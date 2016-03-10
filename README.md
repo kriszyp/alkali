@@ -122,10 +122,10 @@ let sum = Variable.all(a, b).to(([a, b]) => a + b)
 Alkali includes functionality for constructing and extending from native DOM elements, and binding these elements to variables for reactive UIs. The `Element` constructor is returned from the `alkali/Element` module, but this also includes a large set of native element constructors, as properties, to use for streamlined creation of DOM elements. For example, using EcmaScript's module format to import:
 
 ```
-import { div, span } from 'alkali/Element'
+import { Div, Span } from 'alkali/Element'
 
-let divElement = new div()
-let spanElement = new span()
+let divElement = new Div()
+let spanElement = new Span()
 document.body.appendChild(divElement).appendChild(spanElement)
 ```
 
@@ -133,13 +133,13 @@ In addition, an element has a `create` method that may be alternately called to 
 This constructors create native DOM elements that can be placed directly into the DOM. All the standardized element tags should be available from the module. These constructors can take several arguments for constructing elements. First argument is an optional string in CSS selector format that can be used to define the class, id, or tag. For example, to create a div with a class of `'my-class'` and id of `'my-id'`:
 
 ```
-new div('.my-class#my-id')
+new Div('.my-class#my-id')
 ```
 
 All remaining arguments can be in any order and be any of these types:
 * An object with properties that will be copied to the target element. For example, we could create anchor element with a link:
 ```
-new a({href: 'a url'})
+new Anchor({href: 'a url'})
 ```
 If any of the values are alkali variables, they will be automatically bound to the element, reactively updating the element in response to any changes to the variable. For example:
 ```

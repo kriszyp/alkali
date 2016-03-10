@@ -5,6 +5,7 @@ define([
 	'intern!object',
 	'intern/chai!assert'
 ], function (Element, Variable, react, registerSuite, assert) {
+	var Div = Element.Div
 	registerSuite({
 		name: 'es6',
 		react: function () {
@@ -51,8 +52,7 @@ define([
 		},
 
 		elementClass: function() {
-			var div = Element.div
-			class MyDiv extends div('.my-class', {title: 'my-title', wasClicked: false}) {
+			class MyDiv extends Div('.my-class', {title: 'my-title', wasClicked: false}) {
 				onclick() {
 					this.otherMethod()
 				}

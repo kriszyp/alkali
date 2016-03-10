@@ -4,25 +4,26 @@ define([
 	'intern!object',
 	'intern/chai!assert'
 ], function (Element, Variable, registerSuite, assert) {
-	var div = Element.div
-	var span = Element.span
-	var checkbox = Element.checkbox
-	var radio = Element.radio
-	var input = Element.input
-	var number = Element.number
+	var Div = Element.Div
+	var Span = Element.Span
+	var Checkbox = Element.Checkbox
+	var Radio = Element.Radio
+	var Anchor = Element.Anchor
+	var Input = Element.Input
+	var NumberInput = Element.NumberInput
 	var content = Element.content
-	var ul = Element.ul
-	var li = Element.li
+	var Ul = Element.Ul
+	var Li = Element.Li
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {
-			var testDiv = new div({id: 'test-div'})
+			var testDiv = new Div({id: 'test-div'})
 			assert.equal(testDiv.tagName, 'DIV')
 			assert.equal(testDiv.getAttribute('id'), 'test-div')
 		},
 		'change in variable': function () {
 			var variable = new Variable(4)
-			var withVariable = div({
+			var withVariable = Div({
 				title: variable,
 				id: 'id-1'
 			})
@@ -36,13 +37,13 @@ define([
 			})
 		},
 		nesting: function() {
-			var Structure = div('.top', {id: 'top'}, [
-				div('.middle-1', [
-					span('#bottom-1'),
+			var Structure = Div('.top', {id: 'top'}, [
+				Div('.middle-1', [
+					Span('#bottom-1'),
 					'a text node',
-					span('#bottom-2')
+					Span('#bottom-2')
 				], {id: 'middle-1'}),
-				div('.middle-2')
+				Div('.middle-2')
 			])
 			var structureElement = Structure.create()
 			assert.strictEqual(structureElement.tagName, 'DIV')
@@ -59,7 +60,7 @@ define([
 		},
 		inputs: function() {
 			var textVariable = new Variable('start')
-			var textInput = new input(textVariable)
+			var textInput = new Input(textVariable)
 			document.body.appendChild(textInput)
 			assert.strictEqual(textInput.type, 'text')
 			assert.strictEqual(textInput.value, 'start')
@@ -74,7 +75,7 @@ define([
 				assert.strictEqual(textVariable.valueOf(), 'change from input')
 			})
 			var boolVariable = new Variable(true)
-			var checkboxInput = new checkbox(boolVariable)
+			var checkboxInput = new Checkbox(boolVariable)
 			document.body.appendChild(checkboxInput)
 			assert.strictEqual(checkboxInput.type, 'checkbox')
 			assert.strictEqual(checkboxInput.checked, true)
@@ -83,7 +84,7 @@ define([
 				assert.strictEqual(checkboxInput.checked, false)
 			})
 			var numberVariable = new Variable(2020)
-			var numberInput = new number(dateVariable)
+			var numberInput = new NumberInput(dateVariable)
 			document.body.appendChild(numberInput)
 			assert.strictEqual(numberInput.type, 'number')
 			assert.strictEqual(numberInput.valueAsNumber, 2020)
@@ -96,11 +97,11 @@ define([
 				numberInput.dispatchEvent(nativeEvent)
 				assert.strictEqual(numberVariable.valueOf(), 10)
 			})
-			assert.strictEqual(new radio().type, 'radio')
+			assert.strictEqual(new Radio().type, 'radio')
 
 		},
 		events: function() {
-			var WithClick = div({
+			var WithClick = Div({
 				onclick: function() {
 					this.wasClicked = true
 				}
@@ -112,19 +113,21 @@ define([
 		contentNode: function() {
 			var title = new Variable('title')
 			var someContent = new Variable('content')
-			var Layout = div('.top', {id: 'top'}, [
-				div('.middle-1'), [
+			var Layout = Div('.top', {id: 'top'}, [
+				Div('.middle-1'), [
 					title,
-					content(div('.content-node'))
+					content(Div('.content-node'))
 				],
-				div('.middle-2')
+				Anchor('.middle-2', {href: 'https://github.com/kriszyp/alkali'})
 			])
 			var result = new Layout([
-				div('.inside-layout', [someContent])
+				Div('.inside-layout', [someContent])
 			])
 			document.body.appendChild(result)
 			var middle = result.firstChild
 			assert.strictEqual(middle.firstChild.nodeValue, 'title')
+			assert.strictEqual(middle.nextSibling.tagName, 'A')
+			assert.strictEqual(middle.nextSibling.href, 'https://github.com/kriszyp/alkali')
 			var container = middle.firstChild.nextSibling
 			assert.strictEqual(container.className, 'content-node')
 			assert.strictEqual(container.firstChild.className, 'inside-layout')
@@ -145,20 +148,20 @@ define([
 					return this
 				}
 			})
-			var divElement = new div()
+			var divElement = new Div()
 			assert.strictEqual(divElement.foo, 3)
 			assert.strictEqual(divElement.bar(), divElement)
-			var sectionElement = new Element.section()
+			var sectionElement = new Element.Section()
 			assert.strictEqual(sectionElement.foo, 3)
 			assert.strictEqual(sectionElement.bar(), sectionElement)
 		},
 		list: function() {
 			var arrayVariable = new Variable(['a', 'b', 'c'])
 			var item = new Variable('placeholder')
-			var listElement = new ul({
+			var listElement = new Ul({
 				content: arrayVariable,
-				each: li([
-					span(item)
+				each: Li([
+					Span(item)
 				])
 			})
 			document.body.appendChild(listElement)
