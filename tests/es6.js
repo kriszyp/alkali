@@ -83,6 +83,14 @@ define([
 				results.push(letter)
 			}
 			assert.deepEqual(results, ['a', 'b', 'c'])
+		},
+		Symbol: function() {
+			let mySymbol = Symbol('my')
+			let obj = {
+				[mySymbol]: 'test'
+			}
+			let v = new Variable(obj)
+			assert.strictEqual(v.property(mySymbol).valueOf(), 'test')
 		}
 	})
 })
