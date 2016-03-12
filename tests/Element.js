@@ -10,6 +10,7 @@ define([
 	var Radio = Element.Radio
 	var Anchor = Element.Anchor
 	var Input = Element.Input
+	var Textarea = Element.Textarea
 	var NumberInput = Element.NumberInput
 	var content = Element.content
 	var Ul = Element.Ul
@@ -58,7 +59,7 @@ define([
 			assert.strictEqual(middle1.firstChild.nextSibling.nextSibling.id, 'bottom-2')
 			assert.strictEqual(structureElement.lastChild.className, 'middle-2')
 		},
-		inputs: function() {
+		textInput: function() {
 			var textVariable = new Variable('start')
 			var textInput = new Input(textVariable)
 			document.body.appendChild(textInput)
@@ -74,21 +75,25 @@ define([
 				textInput.dispatchEvent(nativeEvent)
 				assert.strictEqual(textVariable.valueOf(), 'change from input')
 			})
+		},
+		checkbox: function() {
 			var boolVariable = new Variable(true)
 			var checkboxInput = new Checkbox(boolVariable)
 			document.body.appendChild(checkboxInput)
 			assert.strictEqual(checkboxInput.type, 'checkbox')
 			assert.strictEqual(checkboxInput.checked, true)
-			checkboxInput.put(false)
+			boolVariable.put(false)
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(checkboxInput.checked, false)
 			})
+		},
+		numberInput: function() {
 			var numberVariable = new Variable(2020)
-			var numberInput = new NumberInput(dateVariable)
+			var numberInput = new NumberInput(numberVariable)
 			document.body.appendChild(numberInput)
 			assert.strictEqual(numberInput.type, 'number')
 			assert.strictEqual(numberInput.valueAsNumber, 2020)
-			checkboxInput.put(122)
+			numberVariable.put(122)
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(numberInput.valueAsNumber, 122)
 				numberInput.valueAsNumber = 10
@@ -98,6 +103,24 @@ define([
 				assert.strictEqual(numberVariable.valueOf(), 10)
 			})
 			assert.strictEqual(new Radio().type, 'radio')
+
+		},
+		textarea: function() {
+			var textVariable = new Variable('start')
+			var textInput = new Textarea(textVariable)
+			document.body.appendChild(textInput)
+			assert.strictEqual(textInput.tagName, 'TEXTAREA')
+			assert.strictEqual(textInput.value, 'start')
+			textVariable.put('new value')
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(textInput.value, 'new value')
+
+				textInput.value = 'change from input'
+				var nativeEvent = document.createEvent('HTMLEvents')
+				nativeEvent.initEvent('change', true, true)
+				textInput.dispatchEvent(nativeEvent)
+				assert.strictEqual(textVariable.valueOf(), 'change from input')
+			})
 
 		},
 		events: function() {
@@ -139,6 +162,14 @@ define([
 				assert.strictEqual(container.firstChild.firstChild.nodeValue, 'new content')
 			})
 		},
+		nestedElements: function() {
+			var result = new Div('.top', [
+				new Div('.middle-1')
+			])
+			var middle = result.firstChild
+			assert.strictEqual(middle.className, 'middle-1')
+		},
+		
 		addToPrototype: function() {
 			Element.addToElementPrototypes({
 				get foo() {

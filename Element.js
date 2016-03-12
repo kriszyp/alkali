@@ -7,6 +7,8 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	;['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
 		knownElementProperties[name] = true
 	})
+	var toAddToElementPrototypes = []
+	var createdBaseElements = []
 	var testStyle = document.createElement('div').style
 	var childTagForParent = {
 		TABLE: ['tr','td'],
@@ -79,6 +81,9 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 						textNode: childNode,
 						variable: child
 					})
+				} else if (child.nodeType) {
+					// an element itself
+					fragment.appendChild(child)
 				} else {
 					// TODO: apply properties to last child, but with binding to the parent (for events)
 					throw new Error('Unknown child type ' + child)
@@ -326,13 +331,15 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		var parent
 		if (typeof parentOrSelector == 'string') {
 			i++
-			if (operator == '.') {
-				element.className = (element.className ? this.className + ' ' : '') + name
-			} else if (operator == '#') {
-				element.id = name
-			} else {
-				throw new Error('Can not assign tag name when directly create an element')
-			}
+			parentOrSelector.replace(/(\.|#)?([-\w]+)/g, function(t, operator, name) {
+				if (operator == '.') {
+					element.className = (element.className ? this.className + ' ' : '') + name
+				} else if (operator == '#') {
+					element.id = name
+				} else {
+					throw new Error('Can not assign tag name when directly create an element')
+				}
+			})
 		} else if (parentOrSelector && parentOrSelector.appendChild) {
 			parent = parentOrSelector
 			i++
@@ -510,6 +517,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 		'Url',
 		'Week'])
 
+	Element.Textarea.prototype.inputValueProperty = Element.Select.prototype.inputValueProperty = 'value'
 	function generate(elements) {
 		elements.forEach(function(elementName) {
 			var ElementClass
@@ -563,8 +571,6 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			create: element.create.bind(element)
 		}
 	}
-	var toAddToElementPrototypes = []
-	var createdBaseElements = []
 	function augmentBaseElement(Element) {
 		var prototype = Element.prototype
 		for(var i = 0, l = toAddToElementPrototypes.length; i < l; i++) {
