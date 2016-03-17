@@ -117,12 +117,12 @@ let b = Variable(2)
 let sum = Variable.all(a, b).to(([a, b]) => a + b)
 ```
 
-## Reactive Elements
+## Element Construction
 
 Alkali includes functionality for constructing and extending from native DOM elements, and binding these elements to variables for reactive UIs. The `Element` constructor is returned from the `alkali/Element` module, but this also includes a large set of native element constructors, as properties, to use for streamlined creation of DOM elements. For example, using EcmaScript's module format to import:
 
 ```
-import { Div, Span } from 'alkali/Element'
+import { Div, Span, Anchor, TextInput } from 'alkali/Element'
 
 let divElement = new Div()
 let spanElement = new Span()
@@ -130,38 +130,134 @@ document.body.appendChild(divElement).appendChild(spanElement)
 ```
 
 In addition, an element has a `create` method that may be alternately called to create a new element. `new Element()` and `Element.create()` are equivalent.
-This constructors create native DOM elements that can be placed directly into the DOM. All the standardized element tags should be available from the module. These constructors can take several arguments for constructing elements. First argument is an optional string in CSS selector format that can be used to define the class, id, or tag. For example, to create a div with a class of `'my-class'` and id of `'my-id'`:
+
+This classes create native DOM elements that can be placed directly into the DOM. All the standardized element tags should be available from the module (they are all properties of the module, and if you are not using ES6, you can access them like `Element.Div`). These classes can take several arguments for constructing elements. The first argument is an optional string in CSS selector format that can be used to define the class, id, or tag. For example, to create a div with a class of `'my-class'` and id of `'my-id'`:
 
 ```
-new Div('.my-class#my-id')
+let divElement = new Div('.my-class#my-id')
 ```
-
 All remaining arguments can be in any order and be any of these types:
-* An object with properties that will be copied to the target element. For example, we could create anchor element with a link:
+
+#### Properties Argument
+An argument can be an object with properties that will be copied to the target element. For example, we could create anchor element with a link:
 ```
 new Anchor({href: 'a url'})
 ```
+Each of the property values will be assigned to the newly created element.
+
 If any of the values are alkali variables, they will be automatically bound to the element, reactively updating the element in response to any changes to the variable. For example:
 ```
 let a = new Variable(1)
-document.body.appendChild(new div({title: a}))
+document.body.appendChild(new Div({title: a}))
 a.put(2) // will update the title of the div
 ```
 Alkali uses an optimized strategy for updating elements, by waiting for the next animation frame to update, and only updating elements that are connected to the DOM.
 
-* An array that defines children elements.
-* A variable may be provided directly as an argument as well. This variable will be connected to the default "content" of the element. For most elements, this variable will be mapped to the text content of the element. For example:
+#### Children Array Argument
+An argument can be array that defines children nodes. An array should consist of items where each item corresponds to the node that will be created as a child. This array can contain any of the following:
+** Element classes - These will generate new elements
+** Element instances - This is will be directly inserted
+** Variables or primitives - These will be converted to text nodes
+** Or nested arrays -  This will result in nested elements (within the last element before the array).
+For example, we could create a table:
+```
+import { Table, Tr, Td } from 'alkali/Element'
+let table = new Table([
+	Tr, [
+		Td, [
+			'First Cell'
+		]
+	],
+	Tr, [
+		Td, [
+			'Second Cell'
+		]
+	]
+])
+```
+
+#### Variable Argument
+A variable may be provided directly as an argument as well. This variable will be connected to the default "content" of the element. For most elements, this variable will be mapped to the text content of the element. For example:
 ```
 let greeting = new Variable('Hello')
-new span(greeting)
+new Span(greeting)
 ```
 However, for input elements, the "content" of the element is the value of the input. This makes it easy to setup bi-direction bindings from inputs to variables. For example:
 ```
 let a = new Variable()
-new input(a)
+new TextInput(a)
 ```
 The variable `a` will be mapped to this new input. This means that any changes made to `a` will cause the input to be updated, and any changes that the user makes to the input will update the variable (two-way binding).
 
+#### String Argument
+You can also simply provide a string (or any primitive, including numbers or booleans), and this will also be directly inserted as a text node. However, this can't be the first argument, as it would be interpreted as a selector. For example:
+```
+new Div('.my-class', 'Some text to put in the div')
+```
+
+### Event Handlers
+The properties argument may also define event handlers. These event handlers are simply functions defined with the same event handler names as used by event attributes (however, these are not implemented using DOM0 event registration, Alkali uses modern event registration to setup the handlers). For example, we could create a span that listens for clicks:
+```
+new Span({
+	onclick(event) {
+		// click event occurred
+	}
+})
+```
+
+## Class Extension (Components)
+
+Element classes are designed to be extended so that you can easily create your own custom classes or components. Extended element classes can define default properties, bindings, and children elements as well. When you call a class with the `new` operator or call the `create` method, you are creating a new element instance. But, if you call a class without the `new` operator or if you use the `extend` method, you will create a new subclass of the called element class. Calling the classes to extend a class works much like create new instances, taking the same types of arguments. For example, we could create a custom div class with a pre-defined HTML class attribute:
+```
+let MyDiv = Div('.my-class')
+// and we can create new elements from this, just like with standard element classes
+let myDivElement = new MyDiv()
+```
+We can also define default property values and define a children layout, to create our own complex components. For example, we could go further in extending a Div:
+```
+let MyComponent = Div({
+	title: 'a default title'
+}, [
+	Span,
+	P
+])
+```
+These resulting extended classes can be used like any other element classes, including in child layouts, making it easy to create a hierarchy of layout:
+```
+let AnotherComponent = Div([
+	H2(someVariable),
+	MyComponent('.add-a-class', {
+		onclick() { // ...
+		}
+	})
+])
+```
+Element classes can also be extended using the native class extension mechanism. For example, we could write:
+```
+class MyDiv extends Div {
+	onclick() {
+		this.doSomething()
+	}
+	doSomething() {
+	}
+}
+```
+Note that there are some limitations to using native class syntax. EcmaScript does not currently support properties, nor does it support direct constructor calls, so classes created this way must be extended through the `extend` method (instances can still be created with the `new` operator). Assigning default properties or children can be done by using the call existing mechanism before extending:
+```
+class MyDiv extends Div({title: 'default title'}) {
+	// class methods
+}
+```
+
+## EcmaScript Generator Support
+
+EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that adds to other variables by simply writing:
+```
+let sumOfAAndB = react(*function{
+	return (yield a) + (yield b)
+})
+```
+The resulting variable will reactively update in response to changes in the variable `a` or `b`.
 
 ## Updaters
 
