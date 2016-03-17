@@ -196,7 +196,7 @@ new Div('.my-class', 'Some text to put in the div')
 ```
 
 ### Event Handlers
-The properties argument may also define event handlers. These event handlers are simply functions defined with the same event handler names as used by event attributes (however, these are not implemented using DOM0 event registration, Alkali uses modern event registration to setup the handlers). For example, we could create a span that listens for clicks:
+The properties argument may also define event handlers. These event handlers are simply functions defined with the same event handler names as used by event attributes (however, these are not implemented using "DOM0" event registration, Alkali uses modern event registration to setup these handlers). For example, we could create a span that listens for clicks:
 ```
 new Span({
 	onclick(event) {
@@ -239,10 +239,11 @@ class MyDiv extends Div {
 		this.doSomething()
 	}
 	doSomething() {
+		super.click()
 	}
 }
 ```
-Note that there are some limitations to using native class syntax. EcmaScript does not currently support properties, nor does it support direct constructor calls, so classes created this way must be extended through the `extend` method (instances can still be created with the `new` operator). Assigning default properties or children can be done by using the call existing mechanism before extending:
+One of the advantages with using classes is that it allows you to use the `super` operator to call super class methods, permitting more sophisticated element class composition. Note that there are some limitations to using native class syntax. EcmaScript does not currently support properties, nor does it support direct constructor calls, so classes created this way must be extended through the `extend` method (instances can still be created with the `new` operator). Assigning default properties or children can be done by using the call existing mechanism before or after extending:
 ```
 class MyDiv extends Div({title: 'default title'}) {
 	// class methods
@@ -251,13 +252,17 @@ class MyDiv extends Div({title: 'default title'}) {
 
 ## EcmaScript Generator Support
 
-EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that adds to other variables by simply writing:
+EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that computes the maximum of two other variables by simply writing:
 ```
-let sumOfAAndB = react(*function{
-	return (yield a) + (yield b)
+import react from 'alkali/react'
+
+let sumOfAAndB = react(function*(){
+	return Math.max(yield a, yield b)
 })
 ```
 The resulting variable will reactively update in response to changes in the variable `a` or `b`.
+
+This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
 
 ## Updaters
 
