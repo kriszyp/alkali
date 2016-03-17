@@ -8,11 +8,22 @@
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+    <script src="http://requirejs.org/docs/release/2.1.22/minified/require.js"></script>
+    <script>
+  require.config({
+    baseUrl: ".",
+    paths: {
+      "alkali": "https://rawgit.com/kriszyp/alkali/master",
+      "alkali-page": "."
+    }
+  });
+  require(["alkali-page/index"])
+  </script>
   </head>
   <body>
     <section class="page-header">
       <h1 class="project-name">Alkali</h1>
-      <h2 class="project-tagline">Alkali is a lightweight reactive library for building fast, high-performance UIs using native objects and extending native DOM elements</h2>
+      <h2 class="project-tagline">Lightweight. Pure. And highly reactive.</h2>
       <a href="https://github.com/kriszyp/alkali" class="btn">View on GitHub</a>
       <a href="https://github.com/kriszyp/alkali/zipball/master" class="btn">Download .zip</a>
       <a href="https://github.com/kriszyp/alkali/tarball/master" class="btn">Download .tar.gz</a>
@@ -22,12 +33,71 @@
       <h3>
 <a id="alkali" class="anchor" href="#alkali" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Alkali</h3>
 
-<p>The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. The alkali library is a lightweight set of modules for accessing simple native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native elements. Alkali uses categorical models with contextualized calculations and caching, with an invalidation-based notification system. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.</p>
+<p>The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. Likewise, the alkali library provides reactive, conductive data flows, with pure JavaScript objects, native element extensibility, for nimble, fast, responsive applications. Build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.</p>
+
+<ul>
+  <li>
+    <h4>Consistent, encapsulated bi-direction reactive data flow</h4>
+    <p>Assymetrical bi-directional reactivity provides robust, but simple easy data bindings to inputs and even reversible functions</p>
+    <pre class='example'>
+let fahrenheit = new Variable(0)
+let celcius = fahrenheit.minus(32).multiplyBy(5).dividedBy(9)
+new Form([
+  Label([
+    'Fahrenheit: ',
+    NumberInput(fahrenheit)])
+  Label([
+    'Celcius: ',
+    NumberInput(celcius)])
+])
+    </pre>
+  </li>
+  <li>
+    <h4>High-perfomance granular lazy-execution for optimized rendering</h4>
+    <p>End-to-end optimization, using rendering frame-driven lazy execution, cached computations, granular data flows, and incremental updates that make your applications fast by default, without the memory bloat of virtual doms.</p>
+    <pre class='example'>
+someNumbers = new Variable([1, 2])
+// define a transform
+sum = someNumbers.reduce((a, b) => a + b)
+// make all the changes you once
+
+// and the renderer will only recompute as needed for the rendering frame
+    </pre>
+  </li>
+  <li>
+    <h4>Simple, elegant, declarative syntax for defining visual/UI structure</h4>
+    <p>Element constructor based layouts, with reactive variables, produces a declarative syntax fully define components and structures, defining what you want, instead of how you want, making it easier to write and easier to understand.</p>
+    <pre class='example'>
+Table([
+  Tr([
+    Td('Hello'), Td('World')
+  ])
+])
+    </pre>
+  </li>
+  <li>
+    <h4>Extensible, web component-based architecture</h4>
+    <p>Extend native elements, for to-the-metal interaction. Leave behind leaky, heavy abstractions and wrappers. The native component system is the last component system you will ever need to adopt.</p>
+  <li>
+    <h4>Leverages new EcmaScript generator and class syntax</h4>
+    <p>Use generator syntax for reactive functions, and class syntax to extend native elements.</p>
+  </li>
+  <li>
+    <h4>Reactive nested objects/properties, collections, and validation</h4>
+    <p>A robust data model designed for complex object structures, and built-in validation.</p>
+  </li>
+  <li>
+    <h4>Inspectable, deterministic dependencies</h4>
+    <p>With the <a href="http://kriszyp.github.io/litmus/">Litmus</a> explorer for Alkali, you can directly inspect elements, and see and even modify variables and their dependencies that drive the elements, with full property and mapping structures.</p>
+</ul>
+<p>Try it out:
+<div id="main-demo"></div>
+</p>
+
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/kriszyp/alkali">Alkali</a> is maintained by <a href="https://github.com/kriszyp">kriszyp</a>.</span>
 
-        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
       </footer>
 
     </section>

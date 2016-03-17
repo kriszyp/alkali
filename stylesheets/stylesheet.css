@@ -15,6 +15,13 @@ a {
   a:hover {
     text-decoration: underline; }
 
+body h1 {
+  font-weight: 100;
+  letter-spacing: 0.3em;
+}
+body h1.project-name {
+  font-size: 4em;
+}
 .btn {
   display: inline-block;
   margin-bottom: 1rem;
@@ -56,20 +63,21 @@ a {
 .page-header {
   color: #fff;
   text-align: center;
-  background-color: #159957;
-  background-image: linear-gradient(120deg, #155799, #159957); }
+  background-color: #568;
+  background-image: linear-gradient(120deg, #89a, #456 20%, #568 30%, #789 50%, #667 60%, #578 85%, #9ab 90%, #abc);
+ }
 
 @media screen and (min-width: 64em) {
   .page-header {
-    padding: 5rem 6rem; } }
+    padding: 2rem 6rem; } }
 
 @media screen and (min-width: 42em) and (max-width: 64em) {
   .page-header {
-    padding: 3rem 4rem; } }
+    padding: 1rem 4rem; } }
 
 @media screen and (max-width: 42em) {
   .page-header {
-    padding: 2rem 1rem; } }
+    padding: 1rem 1rem; } }
 
 .project-name {
   margin-top: 0;
@@ -205,7 +213,7 @@ a {
 
 @media screen and (min-width: 64em) {
   .main-content {
-    max-width: 64rem;
+    max-width: 60rem;
     padding: 2rem 6rem;
     margin: 0 auto;
     font-size: 1.1rem; } }
