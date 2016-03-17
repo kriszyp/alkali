@@ -64,9 +64,14 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 					container.contentNode = childNode
 				}
 			} else if (typeof child == 'function') {
-				// an element constructor
-				childNode = new child()
-				fragment.appendChild(childNode)
+				if (child.for) {
+					// a variable constructor that can be contextualized
+					fragment.appendChild(variableAsText(parent, child.for(parent)))
+				} else {
+					// an element constructor
+					childNode = new child()
+					fragment.appendChild(childNode)
+				}
 			} else if (typeof child == 'object') {
 				if (child instanceof Array) {
 					// array of sub-children
@@ -74,13 +79,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 					layoutChildren(childNode.contentNode || childNode, child, container)
 				} else if (child.subscribe) {
 					// a variable
-					childNode = document.createTextNode(child.valueOf())
-					fragment.appendChild(childNode)
-					new TextUpdater({
-						element: parent,
-						textNode: childNode,
-						variable: child
-					})
+					fragment.appendChild(variableAsText(parent, child))
 				} else if (child.nodeType) {
 					// an element itself
 					fragment.appendChild(child)
@@ -98,7 +97,19 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			parent.appendChild(fragment)
 		}
 	}
+	function variableAsText(parent, variable) {
+		var childNode = document.createTextNode(variable.valueOf())
+		new TextUpdater({
+			element: parent,
+			textNode: childNode,
+			variable: variable
+		})
+		return childNode
+	}
 
+	function getInstanceOf(parent, Class) {
+
+	}
 	function renderEach(parent, variable, eachChild) {
 		var map = {}
 		new Updater({
@@ -169,6 +180,9 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 	}
 
 	function renderContent(content) {
+		if (typeof content === 'function' && content.for) {
+			content = content.for(this)
+		}
 		if (this.each) {
 			// render as list
 			new ListUpdater({
@@ -176,7 +190,7 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 				variable: content,
 				element: this
 			})
-		} else if ('value' in this) {
+		} else if (this.inputValueProperty) {
 			// render into input
 			this.renderInputContent(content)
 		} else {
@@ -275,10 +289,13 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			// if we are inheriting from a native prototype, we will create the inherited base static functions
 			Element.create = create
 			Element.extend = extend
+			Element.for = forTarget
+			Element.hasOwn = hasOwn
 		}
 		if (!prototype.renderContent) {
 			prototype.renderContent = renderContent
 			prototype.renderInputContent = renderInputContent
+			prototype.get = getForClass
 		}
 		return Element
 	}
@@ -571,6 +588,36 @@ define(['./Updater', './lang', './Context'], function (Updater, lang, Context) {
 			create: element.create.bind(element)
 		}
 	}
+	function forTarget(target) {
+		return target.get(this)
+	}
+	function hasOwn(Target, createForInstance) {
+		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
+		// TODO: assign to super classes
+		var Class = this
+		ownedClasses.set(Target, createForInstance || function() { return new Class() })
+		return this
+	}
+
+	var globalInstances = {}
+	function getForClass(Target) {
+		var element = this
+		var createForInstance
+		while (element && !(createForInstance = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
+			element = element.parentNode
+		}
+		if (!createForInstance) {
+			element = globalInstances
+			createForInstance = function() { return new Target() }
+		}
+		var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
+		var instance = ownedInstances.get(Target)
+		if (!instance) {
+			ownedInstances.set(Target, instance = createForInstance(element))
+		}
+		return instance
+	}
+
 	function augmentBaseElement(Element) {
 		var prototype = Element.prototype
 		for(var i = 0, l = toAddToElementPrototypes.length; i < l; i++) {

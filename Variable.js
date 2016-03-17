@@ -315,6 +315,9 @@ define(['./lang', './Context'],
 		},
 		get: function(key, context){
 			var object = this.valueOf(context)
+			if (typeof key === 'function') {
+				return getForClass.call(object, key)
+			}
 			return object && object[key]
 		},
 		set: function(key, value, context){
@@ -1034,6 +1037,31 @@ define(['./lang', './Context'],
 		}
 		throw new TypeError('Variable.all requires an array')
 	}
+
+	function forAssociate(associate) {
+		return associate.get(this)
+	}
+	function hasOwn(Target, createForInstance) {
+		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
+		// TODO: assign to super classes
+		var Class = this
+		ownedClasses.set(Target, createForInstance || function() { return new Class() })
+		return this
+	}
+	function getForClass(Target) {
+		var createForInstance = this.constructor.ownedClasses.get(Target)
+		if (createForInstance) {
+			var ownedInstances = this.ownedInstances || (this.ownedInstances = new WeakMap())
+			var instance = ownedInstances.get(Target)
+			if (!instance) {
+				ownedInstances.set(Target, instance = createForInstance(this))
+			}
+			return instance
+		}
+	}
+
+	Variable.for = forAssociate
+	Variable.hasOwn = hasOwn
 	Variable.all = all
 	Variable.observe = observe
 	return Variable
