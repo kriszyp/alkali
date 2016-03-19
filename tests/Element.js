@@ -11,10 +11,12 @@ define([
 	var Anchor = Element.Anchor
 	var Input = Element.Input
 	var Textarea = Element.Textarea
+	var H6 = Element.H6
+	var P = Element.P
 	var NumberInput = Element.NumberInput
 	var content = Element.content
-	var Ul = Element.Ul
-	var Li = Element.Li
+	var UL = Element.UL
+	var LI = Element.LI
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {
@@ -78,7 +80,8 @@ define([
 		},
 		checkbox: function() {
 			var boolVariable = new Variable(true)
-			var checkboxInput = new Checkbox(boolVariable)
+			var BoundCheckbox = Checkbox(boolVariable)
+			var checkboxInput = new BoundCheckbox()
 			document.body.appendChild(checkboxInput)
 			assert.strictEqual(checkboxInput.type, 'checkbox')
 			assert.strictEqual(checkboxInput.checked, true)
@@ -189,9 +192,9 @@ define([
 		list: function() {
 			var arrayVariable = new Variable(['a', 'b', 'c'])
 			var item = new Variable('placeholder')
-			var listElement = new Ul({
+			var listElement = new UL({
 				content: arrayVariable,
-				each: Li([
+				each: LI([
 					Span(item)
 				])
 			})
@@ -206,6 +209,56 @@ define([
 				return new Promise(requestAnimationFrame).then(function(){
 					assert.strictEqual(listElement.childNodes.length, 3)
 				})
+			})
+		},
+		applyPropertyToChild: function() {
+			var MyComponent = Div(function() {
+				return [
+					H6(MyComponent.property('title')),
+					P(MyComponent.property('body'))
+				]})
+			var myComponent = new MyComponent({
+				title: 'Hello',
+				body: 'World'
+			})
+			document.body.appendChild(myComponent)
+			assert.strictEqual(myComponent.firstChild.textContent, 'Hello')
+			assert.strictEqual(myComponent.lastChild.textContent, 'World')
+			myComponent.title = 'New Title'
+			return new Promise(requestAnimationFrame).then(function(){
+				return new Promise(requestAnimationFrame).then(function(){
+					assert.strictEqual(myComponent.firstChild.textContent, 'New Title')
+				})
+			})
+		},
+		lookupForSingleInstanceVariable: function() {
+			var MyVariable = Variable.extend()
+			var MyDiv = Div(MyVariable)
+			var div1 = new MyDiv()
+			document.body.appendChild(div1)
+			var div2 = new MyDiv()
+			document.body.appendChild(div2)
+			var variable = MyVariable.for(div1)
+			variable.put(3)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(div1.textContent, '3')
+				assert.strictEqual(div2.textContent, '3')
+			})
+		},
+		lookupForMultipleInstanceVariable: function() {
+			var MyVariable = Variable.extend()
+			var MyDiv = Div(MyVariable).hasOwn(MyVariable)
+			var div1 = new MyDiv()
+			document.body.appendChild(div1)
+			var div2 = new MyDiv()
+			document.body.appendChild(div2)
+			var variable1 = MyVariable.for(div1)
+			variable1.put(1)
+			var variable2 = MyVariable.for(div2)
+			variable2.put(2)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(div1.textContent, '1')
+				assert.strictEqual(div2.textContent, '2')
 			})
 		}
 	})

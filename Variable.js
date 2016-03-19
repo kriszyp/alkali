@@ -3,6 +3,8 @@ define(['./lang', './Context'],
 	var deny = {}
 	var noChange = {}
 	var WeakMap = lang.WeakMap
+	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
+	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	// update types
 	var ToParent = 2
 	var RequestChange = 3
@@ -1038,14 +1040,14 @@ define(['./lang', './Context'],
 		throw new TypeError('Variable.all requires an array')
 	}
 
-	function forAssociate(associate) {
-		return associate.get(this)
+	function forRelated(related) {
+		return related.get(this)
 	}
 	function hasOwn(Target, createForInstance) {
 		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
 		// TODO: assign to super classes
 		var Class = this
-		ownedClasses.set(Target, createForInstance || function() { return new Class() })
+		ownedClasses.set(Target, createForInstance || function() { return new Target() })
 		return this
 	}
 	function getForClass(Target) {
@@ -1060,9 +1062,45 @@ define(['./lang', './Context'],
 		}
 	}
 
-	Variable.for = forAssociate
+	Variable.for = forRelated
 	Variable.hasOwn = hasOwn
 	Variable.all = all
 	Variable.observe = observe
+	Variable.extend = function () {
+		// TODO: handle arguments
+		var Base = this
+		function ExtendedVariable() {
+			return Base.apply(this, arguments)
+		}
+		ExtendedVariable.prototype = Object.create(this.prototype)
+		setPrototypeOf(ExtendedVariable, this)
+		return ExtendedVariable
+	}
+
+	function setStaticHandler(name) {
+		Variable[name] = function() {
+			var Base = this
+			var args = arguments
+			// we create a new class, that applies the method call to the base instance after being created from the base
+			function AppliedVariable() {
+				var baseInstance = Base.apply(this, arguments)
+				return baseInstance[name].apply(baseInstance, args)
+			}
+			AppliedVariable.for = function(related) {
+				var baseInstance = Base.for(related)
+				return baseInstance[name].apply(baseInstance, args)
+			}
+			/* not sure if we really need this
+			AppliedVariable.queuedAction = {
+				name: name,
+				args: arguments
+			}*/
+			AppliedVariable.prototype = Object.create(this.prototype)
+			setPrototypeOf(AppliedVariable, this)
+			return AppliedVariable
+		}
+	}
+	['property', 'to', 'map'].forEach(setStaticHandler)
+
 	return Variable
 });
