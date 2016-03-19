@@ -161,15 +161,15 @@ An argument can be array that defines children nodes. An array should consist of
 ** Or nested arrays -  This will result in nested elements (within the last element before the array).
 For example, we could create a table:
 ```
-import { Table, Tr, Td } from 'alkali/Element'
+import { Table, TR, TD } from 'alkali/Element'
 let table = new Table([
-	Tr, [
-		Td, [
+	TR, [
+		TD, [
 			'First Cell'
 		]
 	],
-	Tr, [
-		Td, [
+	TR, [
+		TD, [
 			'Second Cell'
 		]
 	]
