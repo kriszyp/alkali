@@ -1041,7 +1041,7 @@ define(['./lang', './Context'],
 	}
 
 	function forRelated(related) {
-		return related.get(this)
+		return related ? related.get(this) : this.defaultInstance
 	}
 	function hasOwn(Target, createForInstance) {
 		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
@@ -1076,6 +1076,11 @@ define(['./lang', './Context'],
 		setPrototypeOf(ExtendedVariable, this)
 		return ExtendedVariable
 	}
+	Object.defineProperty(Variable, 'defaultInstance', {
+		get: function() {
+			return this._defaultInstance || (this._defaultInstance = new this())
+		}
+	})
 
 	function setStaticHandler(name) {
 		Variable[name] = function() {

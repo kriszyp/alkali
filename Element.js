@@ -639,8 +639,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
 		if (!createForInstance) {
-			element = globalInstances
-			createForInstance = function() { return new Target() }
+			return Target.defaultInstance
 		}
 		var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
 		var instance = ownedInstances.get(Target)
