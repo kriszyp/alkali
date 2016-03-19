@@ -1,6 +1,6 @@
 define([], function(){
+	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	var hasFeatures = {
-		observe: Object.observe,
 		requestAnimationFrame: typeof requestAnimationFrame != 'undefined',
 		defineProperty: Object.defineProperty && (function(){
 			try{
@@ -18,17 +18,8 @@ define([], function(){
 	// This is an polyfill for Object.observe with just enough functionality
 	// for what Variables need
 	// An observe function, with polyfile
-	var observe = has('observe') ? function(target, listener){
-			Object.observe(target, listener)
-			return {
-				remove: function(){
-					Object.unobserve(target, listener)
-				}
-			}
-		} :
-		// for the case of setter support, but no Object.observe support (like IE9+, FF, Safari)
-		// this is much faster than polling
-			has('defineProperty') ? 
+	var observe =
+		has('defineProperty') ? 
 		function observe(target, listener){
 			/*for(var i in target){
 				addKey(i)
@@ -46,7 +37,12 @@ define([], function(){
 					this[keyFlag] = true
 				}
 				var currentValue = target[key]
-				var descriptor = Object.getOwnPropertyDescriptor(target, key)
+				var targetAncestor = target
+				var descriptor
+				do {
+					descriptor = Object.getOwnPropertyDescriptor(targetAncestor, key)
+				} while(!descriptor && (targetAncestor = getPrototypeOf(targetAncestor)))
+
 				if(descriptor && descriptor.set){
 					var previousSet = descriptor.set
 					var previousGet = descriptor.get
