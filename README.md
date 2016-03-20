@@ -379,6 +379,14 @@ http://kriszyp.name/2015/01/13/reactivity-and-caching/
 The two phase rendering approach of alkali is described here:
 http://kriszyp.name/2015/11/25/rendering-efficiently-with-two-phase-ui-updates/
 
+# Contributing
+
+## Testing
+
+This package uses the [Intern test framework](https://theintern.github.io/intern/#what-is-intern) installed via `npm`.  To run tests, after installing intern-geezer dependency, serve the project directory and open the url in a browser:
+
+`http://localhost:<port>/node_modules/intern-geezer/client.html?config=tests/intern` (add `&grep=...` to filter tests)
+
 ## License
 Alkali is freely available under *either* the terms of the modified BSD license *or* the
 Academic Free License version 2.1. More details can be found in the [LICENSE](LICENSE).
