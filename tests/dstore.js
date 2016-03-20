@@ -41,6 +41,30 @@ define([
 			store.put({id: 4, name: 'FOUR'})
 			assert.strictEqual(count.valueOf(), 3)			
 			assert.deepEqual(lastCountUpdate, {type: 'refresh'})
+		},
+		resolveDStoreAsyncPromise: function() {
+			var store = new Memory({
+				data: [
+					{id: 1, name: 'one'},
+					{id: 2, name: 'two'},
+					{id: 3, name: 'three'}
+				]
+			})
+			//var storeVar = new DstoreVariable(store)
+			var storeVar = new Variable(store)
+			var fetchedVar = storeVar.to((storeVal) => storeVal.fetch())
+			var transformed = fetchedVar.to(function(array) {
+					assert.equal(array.constructor, Array)
+					var result = []
+					// perform a simple transformation
+					for (const item of array) {
+							result.push({i: item.id, n: item.name})
+					}
+					return result
+			})
+			var value = transformed.valueOf()
+			console.log(value.constructor)
+			assert.deepEqual(value, [{i:1,n:'one'},{i:2,n:'two'},{i:3,n:'three'}])
 		}
 	})
 })
