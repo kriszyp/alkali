@@ -58,6 +58,7 @@ define({
 		requestProvider: 'dojo/request/registry',
 		packages: [
 			{ name: 'dojo', location: 'dojo' },
+			{ name: 'dstore', location: 'dojo-dstore' },
 			{
 				name: 'alkali',
 				location: typeof process === 'undefined' ?
