@@ -55,7 +55,7 @@ define([], function(){
 							if(currentValue !== value){
 								currentValue = value
 								if(listener){
-									queue(listener, this, key)
+									listener([{target: this, name: key}])
 								}
 							}
 						},
@@ -70,7 +70,7 @@ define([], function(){
 							if(currentValue !== value){
 								currentValue = value
 								if(listener){
-									queue(listener, this, key)
+									listener([{target: this, name: key}])
 								}
 							}
 						},
