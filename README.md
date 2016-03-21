@@ -379,6 +379,129 @@ http://kriszyp.name/2015/01/13/reactivity-and-caching/
 The two phase rendering approach of alkali is described here:
 http://kriszyp.name/2015/11/25/rendering-efficiently-with-two-phase-ui-updates/
 
+# Element Constructors
+
+`alkali/Element` exports the following element constructors:
+
+## Standard Elements
+Video
+Source
+Media
+Audio
+UL
+Track
+Title
+TextArea
+Template
+TBody
+THead
+TFoot
+TR
+Table
+Col
+ColGroup
+TH
+TD
+Caption
+Style
+Span
+Shadow
+Select
+Script
+Quote
+Progress
+Pre
+Picture
+Param
+P
+Output
+Option
+Optgroup
+Object
+OL
+Ins
+Del
+Meter
+Meta
+Menu
+Map
+Link
+Legend
+Label
+LI
+KeyGen
+Image
+IFrame
+H1
+H2
+H3
+H4
+H5
+H6
+Hr
+FrameSet
+Frame
+Form
+Font
+Embed
+Article
+Aside
+Figure
+FigCaption
+Header
+Main
+Mark
+MenuItem
+Nav
+Section
+Summary
+WBr
+Div
+Dialog
+Details
+DataList
+DL
+Canvas
+Button
+Base
+Br
+Area
+A
+
+Anchor (same as A)
+Paragraph (same as P)
+Textarea (same as TextArea)
+DList (same as Dl)
+UList (same as Ul)
+OList (same as Ol)
+ListItem (same as LI)
+Input (same as TextInput)
+TableRow (same as TR)
+TableCell (same as TD)
+TableHeaderCell (same as TH)
+TableHeader (same as THead)
+TableBody (same as TBody)
+
+
+## Inputs
+Checkbox (also CheckboxInput)
+Password (also PasswordInput)
+Text (also TextInput)
+Submit (also SubmitInput)
+Radio (also RadioInput)
+Color (also ColorInput)
+Date (also DateInput)
+DateTime (also DateTimeInput)
+Email (also EmailInput)
+Month (also MonthInput)
+Number (also NumberInput)
+Range (also RangeInput)
+Search (also SearchInput)
+Tel (also TelInput)
+Time (also TimeInput)
+Url (also UrlInput)
+Week (also WeekInput)
+
 # Contributing
 
 ## Testing
@@ -387,7 +510,7 @@ This package uses the [Intern test framework](https://theintern.github.io/intern
 
 `http://localhost:<port>/node_modules/intern-geezer/client.html?config=tests/intern` (add `&grep=...` to filter tests)
 
-## License
+# License
 Alkali is freely available under *either* the terms of the modified BSD license *or* the
 Academic Free License version 2.1. More details can be found in the [LICENSE](LICENSE).
 The alkali project follows the IP guidelines of Dojo foundation packages and all contributions require a Dojo CLA. 

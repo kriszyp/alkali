@@ -1,0 +1,24 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+	<meta charset="UTF-8">
+	<title>Alkali Form</title>
+	</head>
+
+	<body>
+		<a href="javascript:require(['litmus/explorer'], function(litmus){litmus();});void(0);">Litmus Link</a>
+		<input id='test' />
+		<script src="../../dojo/dojo.js" data-dojo-config="async:true"></script>
+
+		<script>
+			require(['alkali/Variable', 'alkali/Updater', 'alkali/explorer'], function (Variable, Updater) {
+				var rootVariable = new Variable(window. root = {});
+				var name = rootVariable.property('name');
+				new Updater.ContentUpdater({
+					variable: name,
+					element: document.getElementById('test')
+				});
+			});
+		</script>
+	</body>
+</html>

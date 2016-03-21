@@ -1,0 +1,7 @@
+  "settings":
+    {
+        "typescript":
+        [
+            "interfaces.d.ts"
+        ]
+    }
