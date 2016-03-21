@@ -14,9 +14,13 @@ define([
 	var H6 = Element.H6
 	var P = Element.P
 	var NumberInput = Element.NumberInput
+	var DateInput = Element.DateInput
+	var Select = Element.Select
+	var Option = Element.Option
 	var content = Element.content
 	var UL = Element.UL
 	var LI = Element.LI
+	var Item = Element.Item
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {
@@ -106,7 +110,67 @@ define([
 				assert.strictEqual(numberVariable.valueOf(), 10)
 			})
 			assert.strictEqual(new Radio().type, 'radio')
-
+		},
+		dateInput: function() {
+			var startingDate = new Date(1458345600000)
+			var dateVariable = new Variable(startingDate)
+			var dateInput = new DateInput(dateVariable)
+			document.body.appendChild(dateInput)
+			assert.strictEqual(dateInput.type, 'date')
+			assert.strictEqual(dateInput.valueAsDate.getTime(), startingDate.getTime())
+			dateVariable.put(new Date(0))
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(dateInput.valueAsDate.getTime(), 0)
+				dateInput.valueAsDate = startingDate
+				var nativeEvent = document.createEvent('HTMLEvents')
+				nativeEvent.initEvent('change', true, true)
+				dateInput.dispatchEvent(nativeEvent)
+				assert.strictEqual(dateVariable.valueOf().getTime(), startingDate.getTime())
+			})
+		},
+		radios: function() {
+			var radioGroup = new Div([
+				new Radio({
+					name: 'radio-group',
+					value: 'a'
+				}),
+				new Radio({
+					name: 'radio-group',
+					value: 'b'
+				})
+			])
+			assert.strictEqual(radioGroup.firstChild.type, 'radio')
+		},
+		select: function() {
+			var options = [{id: 1, text: 'One'}, {id: 2, text: 'Two'}, {id: 3, text: 'Three'}]
+			var selected = new Variable(3)
+			var select = new Select({
+				content: options,
+				value: selected,
+				each: Option({
+					value: Item.property('id'),
+					content: Item.property('text')
+				})
+			})
+			document.body.appendChild(select)
+			assert.strictEqual(select.firstChild.tagName, 'OPTION')
+			assert.strictEqual(select.firstChild.value, '1')
+			assert.strictEqual(select.firstChild.textContent, 'One')
+			//assert.strictEqual(select.firstChild.selected, false)
+			assert.strictEqual(select.lastChild.tagName, 'OPTION')
+			assert.strictEqual(select.lastChild.value, '3')
+			assert.strictEqual(select.lastChild.textContent, 'Three')
+			//assert.strictEqual(select.lastChild.selected, true)
+			select.firstChild.selected = true
+			var nativeEvent = document.createEvent('HTMLEvents')
+			nativeEvent.initEvent('change', true, true)
+			select.dispatchEvent(nativeEvent)
+			//assert.strictEqual(selected.valueOf(), '1')
+			selected.put(2)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(select.firstChild.nextSibling.selected, true)
+				assert.strictEqual(select.value, '2')
+			})
 		},
 		textarea: function() {
 			var textVariable = new Variable('start')
@@ -191,43 +255,61 @@ define([
 		},
 		list: function() {
 			var arrayVariable = new Variable(['a', 'b', 'c'])
-			var item = new Variable('placeholder')
 			var listElement = new UL({
 				content: arrayVariable,
 				each: LI([
-					Span(item)
+					Span(Item)
 				])
 			})
 			document.body.appendChild(listElement)
 			assert.strictEqual(listElement.childNodes.length, 3)
-			assert.strictEqual(listElement.childNodes[0].childNodes[0].innerHTML, 'placeholder')
+			assert.strictEqual(listElement.childNodes[0].firstChild.innerHTML, 'a')
+			assert.strictEqual(listElement.childNodes[1].firstChild.innerHTML, 'b')
 			arrayVariable.push('d')
+			arrayVariable.push('e')
 			return new Promise(requestAnimationFrame).then(function(){
-				assert.strictEqual(listElement.childNodes.length, 4)
-				assert.strictEqual(listElement.childNodes[3].childNodes[0].innerHTML, 'placeholder')
-				arrayVariable.splice(2, 1)
+				assert.strictEqual(listElement.childNodes.length, 5)
+				assert.strictEqual(listElement.childNodes[3].firstChild.innerHTML, 'd')
+				assert.strictEqual(listElement.childNodes[4].firstChild.innerHTML, 'e')
+				arrayVariable.splice(2, 2)
 				return new Promise(requestAnimationFrame).then(function(){
 					assert.strictEqual(listElement.childNodes.length, 3)
+					arrayVariable.splice(1, 0, 'f')
+					return new Promise(requestAnimationFrame).then(function(){
+						assert.strictEqual(listElement.childNodes.length, 4)
+						assert.strictEqual(listElement.childNodes[1].firstChild.innerHTML, 'f')
+					})
 				})
 			})
 		},
 		applyPropertyToChild: function() {
 			var MyComponent = Div(function() {
 				return [
-					H6(MyComponent.property('title')),
-					P(MyComponent.property('body'))
+					Anchor(MyComponent.property('title'), {
+						href: MyComponent.property('link')
+					}),
+					P(MyComponent.property('title').to(function(title) {
+						return MyComponent.property('body').to(function(body) {
+							return title + ', ' + body
+						})
+					}))
 				]})
 			var myComponent = new MyComponent({
 				title: 'Hello',
+				link: 'https://github.com/kriszyp/alkali',
 				body: 'World'
 			})
 			document.body.appendChild(myComponent)
 			assert.strictEqual(myComponent.firstChild.textContent, 'Hello')
-			assert.strictEqual(myComponent.lastChild.textContent, 'World')
+			assert.strictEqual(myComponent.firstChild.href, 'https://github.com/kriszyp/alkali')
+			assert.strictEqual(myComponent.lastChild.textContent, 'Hello, World')
 			myComponent.title = 'New Title'
+			myComponent.link = 'https://kriszyp.github.com/alkali'
 			return new Promise(requestAnimationFrame).then(function(){
 				return new Promise(requestAnimationFrame).then(function(){
 					assert.strictEqual(myComponent.firstChild.textContent, 'New Title')
+					assert.strictEqual(myComponent.firstChild.href, 'https://kriszyp.github.com/alkali')
+					assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
 				})
 			})
 		},
@@ -238,7 +320,7 @@ define([
 			document.body.appendChild(div1)
 			var div2 = new MyDiv()
 			document.body.appendChild(div2)
-			var variable = MyVariable.for(div1)
+			var variable = MyVariable.defaultInstance
 			variable.put(3)
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(div1.textContent, '3')
