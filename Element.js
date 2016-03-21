@@ -20,8 +20,8 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 	}
 	var inputs = {
 		INPUT: 1,
-		TEXTAREA: 1,
-		SELECT: 1
+		TEXTAREA: 1
+		// SELECT: 1, we exclude this, so the default "content" of the element can be the options
 	}
 	var doc = document
 	var cssRules
@@ -67,14 +67,14 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 					container.contentNode = childNode
 				}
 			} else if (typeof child == 'function') {
-				if (child.for) {
+//				if (child.for) {
 					// a variable constructor that can be contextualized
-					fragment.appendChild(variableAsText(parent, child.for(parent)))
-				} else {
+	//				fragment.appendChild(variableAsText(parent, child.for(parent)))
+		//		} else {
 					// an element constructor
 					childNode = new child()
 					fragment.appendChild(childNode)
-				}
+			//	}
 			} else if (typeof child == 'object') {
 				if (child instanceof Array) {
 					// array of sub-children
@@ -101,38 +101,13 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		}
 	}
 	function variableAsText(parent, variable) {
-		var childNode = document.createTextNode(variable.valueOf())
+		var childNode = document.createTextNode(variable.valueOf(parent))
 		new TextUpdater({
 			element: parent,
 			textNode: childNode,
 			variable: variable
 		})
 		return childNode
-	}
-
-	function getInstanceOf(parent, Class) {
-
-	}
-	function renderEach(parent, variable, eachChild) {
-		var map = {}
-		new Updater({
-			element: parent,
-			variable: variable,
-			updateRendering: function(){
-				if (update.existed) {
-					var key = update.key
-					var element = map[key]
-					parent.removeChild(element)
-					delete map[key]
-				}
-				if (!update.deleted) {
-					update.value
-					var element = eachChild.create()
-					parent.insertBefore(element, map[update.before] || null)
-					map[key] = element
-				}
-			}			
-		})
 	}
 
 	function applyProperties(element, properties, keys) {
@@ -183,22 +158,39 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 	}
 
 	function renderContent(content) {
-		if (typeof content === 'function' && content.for) {
-			content = content.for(this)
-		}
-		if (this.each) {
+		var each = this.each
+		if (each && content) {
 			// render as list
-			new ListUpdater({
-				each: this.each,
-				variable: content,
-				element: this
-			})
-		} else if (this.inputValueProperty) {
+			if (each.hasOwn) {
+				each.hasOwn(this.itemAs || Item, function (element) {
+					return element._item
+				})
+			}
+			if (content.subscribe) {
+				new ListUpdater({
+					each: each,
+					variable: content,
+					element: this
+				})
+			} else {
+				var fragment = document.createDocumentFragment()
+				var element = this
+				content.forEach(function(item) {
+					if (each.create) {
+						childElement = each.create(element, {_item: item}) // TODO: make a faster object here potentially
+					} else {
+						childElement = each(item, element)
+					}
+					fragment.appendChild(childElement)
+				})
+				this.appendChild(fragment)
+			}
+		} else if (inputs[this.tagName]) {
 			// render into input
 			this.renderInputContent(content)
 		} else {
 			// render as string
-			var textNode = document.createTextNode(content === undefined ? '' : ('' + content))
+			var textNode = document.createTextNode(content === undefined ? '' : (content.valueOf(this)))
 			this.appendChild(textNode)
 			if (content && content.subscribe) {
 				new TextUpdater({
@@ -215,16 +207,16 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			// a variable, respond to changes
 			new PropertyUpdater({
 				variable: content,
-				name: this.inputValueProperty,
+				name: 'typedValue' in this ? 'typedValue' : 'value',
 				element: this
 			})
 			// and bind the other way as well, updating the variable in response to input changes
 			this.addEventListener('change', function (event) {
-				content.put(this[this.inputValueProperty])
+				content.put(this['typedValue' in this ? 'typedValue' : 'value'])
 			})
 		} else {
 			// primitive
-			this[this.inputValueProperty] = content
+			this['typedValue' in this ? 'typedValue' : 'value'] = content
 		}
 	}
 
@@ -381,6 +373,11 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			presumptiveParentMap.set(element, parent)
 			i++
 		}
+		if (properties && properties._item) {
+			// this is kind of hack, to get the Item available before the properties, eventually we may want to
+			// order static properties before variable binding applications, but for now.
+			element._item = properties._item
+		}
 		if (applyOnCreate) {
 			applyProperties(element, applyOnCreate, applyOnCreate)
 		}
@@ -444,12 +441,33 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 
 	var Element = extend.call(HTMLElement)
 
-	Element.prototype.closest = function(element){
+	Element.closest = function(element){
 		// find closest parent
 	}
-	Element.prototype.find = function(element){
+	Element.find = function(element){
 		// find closest child
 	}
+
+	var typedValueDescriptor = {
+		// TODO: eventually make this a getter/setter
+		get: function() {
+			var inputType = this.type
+			return inputType in {date: 1, datetime: 1, time: 1} ?
+				this.valueAsDate :
+				inputType === 'number' ?
+					parseFloat(this.value) :
+					inputType === 'checkbox' ? this.checked : this.value
+		},
+		set: function(value) {
+			var inputType = this.type
+			inputType in {date: 1, datetime: 1, time: 1} ?
+				this.valueAsDate = value :
+				inputType === 'checkbox' ?
+					this.checked = value :
+					this.value = value
+		}
+	}
+	var typedValuePrototype = Object.create(null, {typedValue: typedValueDescriptor})
 	generate([
 		'Video',
 		'Source',
@@ -496,7 +514,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		'Legend',
 		'Label',
 		'LI',
-		'Keygen',
+		'KeyGen',
 		'Image',
 		'IFrame',
 		'H1',
@@ -506,7 +524,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		'H5',
 		'H6',
 		'Hr',
-		'Frameset',
+		'FrameSet',
 		'Frame',
 		'Form',
 		'Font',
@@ -518,11 +536,11 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		'Header',
 		'Main',
 		'Mark',
-		'Menuitem',
+		'MenuItem',
 		'Nav',
 		'Section',
 		'Summary',
-		'Wbr',
+		'WBr',
 		'Div',
 		'Dialog',
 		'Details',
@@ -543,7 +561,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		'Radio',
 		'Color',
 		'Date',
-		'Datetime',
+		'DateTime',
 		'Email',
 		'Month',
 		'Number',
@@ -554,7 +572,6 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		'Url',
 		'Week'])
 
-	Element.TextArea.prototype.inputValueProperty = Element.Select.prototype.inputValueProperty = 'value'
 	function generate(elements) {
 		elements.forEach(function(elementName) {
 			var ElementClass
@@ -572,11 +589,8 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 				get: function() {
 					// TODO: make all inputs extend from input generated from generate
 					return ElementClass || (ElementClass = augmentBaseElement(extend.call(HTMLInputElement, 'input', {
-						type: inputType.toLowerCase(),
-						inputValueProperty: inputType in {Date: 1, Datetime: 1, Time: 1} ? 'valueAsDate' : 
-							inputType === 'Number' ? 'valueAsNumber' :
-							inputType === 'Checkbox' ? 'checked' : 'value'
-					})))
+						type: inputType.toLowerCase()
+					}, typedValuePrototype)))
 				}
 			})
 			// alias all the inputs with an Input suffix
@@ -587,6 +601,9 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			})
 		})
 	}
+
+	Object.defineProperty(Element.TextArea.prototype, 'typedValue', typedValueDescriptor)
+	Object.defineProperty(Element.Select.prototype, 'typedValue', typedValueDescriptor)
 	var aliases = {
 		Anchor: 'A',
 		Paragraph: 'P',
@@ -623,30 +640,45 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 	function forTarget(target) {
 		return target.get(this)
 	}
-	function hasOwn(Target, createForInstance) {
+	function identity(value) {
+		return value
+	}
+	function hasOwn(Target, handleValue) {
 		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
 		// TODO: assign to super classes
 		var Class = this
-		ownedClasses.set(Target, createForInstance || function() { return new Target() })
+		ownedClasses.set(Target, handleValue || identity)
 		return this
 	}
 
 	var globalInstances = {}
 	function getForClass(Target) {
 		var element = this
-		var createForInstance
-		while (element && !(createForInstance = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
+		var handleValue
+		while (element && !(handleValue = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
-		if (!createForInstance) {
-			return Target.defaultInstance
+		if (!handleValue) {
+			return Target.defaultInstance.valueOf()
 		}
 		var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
 		var instance = ownedInstances.get(Target)
 		if (!instance) {
-			ownedInstances.set(Target, instance = createForInstance(element))
+			ownedInstances.set(Target, instance = handleValue(element))
 		}
 		return instance
+	}
+	function setForClass(Target, value) {
+		var element = this
+		var handleValue
+		while (element && !(handleValue = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
+			element = element.parentNode || presumptiveParentMap.get(element)
+		}
+		if (!handleValue) {
+			return Target.defaultInstance.put(value)
+		}
+		var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
+		ownedInstances.set(Target, value)
 	}
 
 	function propertyForElement(key) {
@@ -659,14 +691,16 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			this.hasOwn(ThisElementVariable, function(element) {
 				// when we create the instance, immediately observe it
 				// TODO: we might want to do this in init instead
-				var variable = new ThisElementVariable(element)
 				Variable.observe(element)
-				return variable
+				return element
 			})
 		}
 		// now actually get the property class
 		return ThisElementVariable.property(key)
 	}
+
+	// variable class for each item in array
+	var Item = Element.Item = Variable.extend()
 
 	function augmentBaseElement(Element) {
 		var prototype = Element.prototype
