@@ -43,7 +43,7 @@ define(['./lang', './Variable'], function(lang, Variable) {
 					}
 				}
 				i++
-				lastValue = nextVariable && nextVariable.valueOf()
+				lastValue = nextVariable && nextVariable.valueOf(context)
 				if (lastValue && lastValue.then) {
 					// if it is a promise, we will wait on it
 					var variable = this

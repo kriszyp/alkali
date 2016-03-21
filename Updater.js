@@ -141,7 +141,7 @@ define(function (require, exports, module) {
 	}
 	ElementUpdater.prototype.updateElement = function(element) {
 		this.invalidated = false
-		var value = !this.omitValueOf && this.variable.valueOf()
+		var value = !this.omitValueOf && this.variable.valueOf(element)
 		if(value !== undefined || this.started){
 			this.started = true
 			if(value && value.then){
@@ -233,20 +233,22 @@ define(function (require, exports, module) {
 	ListUpdater.prototype.type = 'ListUpdater'
 	ListUpdater.prototype.omitValueOf = true
 	ListUpdater.prototype.renderUpdate = function (newValue, element) {
-		var fragment = document.createDocumentFragment()
+		var container
 		var each = this.each
 		var thisElement = this.element
 		var updater = this
 		if (!this.builtList) {
 			this.builtList = true
+			container = document.createDocumentFragment()
 			var childElements = this.childElements = []
 			this.variable.forEach(function(item) {
 				eachItem(item)
 			})
-			this.element.appendChild(fragment)
+			this.element.appendChild(container)
 		} else {
 			var childElements = this.childElements
 			var updates = this.updates
+			container = this.element
 			updates.forEach(function(update) {
 				if (update.type === 'refresh') {
 					this.builtList = false
@@ -270,21 +272,20 @@ define(function (require, exports, module) {
 		function eachItem(item, index, nextChild) {
 			var childElement
 			if (each.create) {
-				childElement = each.create(fragment, false)
+				childElement = each.create(thisElement, {_item: item}) // TODO: make a faster object here potentially
 			} else {
-				childElement = fragment.appendChild(each(item, thisElement))
+				childElement = each(item, thisElement)
 			}
 			if (nextChild) {
-				thisElement.insertBefore(childElement, nextChild)
+				container.insertBefore(childElement, nextChild)
 				childElements.splice(index, 0, childElement)
 			} else {
-				thisElement.appendChild(childElement)
+				container.appendChild(childElement)
 				childElements.push(childElement)
 			}
 		}
 	}
 	Updater.ListUpdater = ListUpdater
-
 
 	Updater.onShowElement = function(shownElement){
 		requestAnimationFrame(function(){
