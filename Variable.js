@@ -816,6 +816,38 @@ define(['./lang', './Context'],
 	})
 	Variable.Call = Call
 
+	// TODO: at some point, we want to dymanically extend from extend Variable classes, so for() returned instances
+	// are instances of this extension of the Variable
+	var ContextualizedVariable = lang.compose(Variable, function(Class, context) {
+		this.constructor = Class
+		this.context = context
+	}, {
+		valueOf: function() {
+			return this.constructor.valueOf(this.context)
+		},
+		put: function(value) {
+			return this.constructor.put(value, this.context)
+		},
+		updated: function(event, by, context) {
+			if (by === this.constructor) {
+				// if we receive an update from the constructor, filter it
+				if (context === this.context || context && context.contains && context.contains(this.context)) {
+					Variable.prototype.updated.apply(this, arguments)
+				}
+			} else {
+				// if we receive an outside update, send it to the constructor
+				this.constructor.updated(event, by, this.context)
+			}
+		},
+		init: function() {
+			this.subscribe(this.constructor)
+		},
+		cleanup: function() {
+			this.unsubscribe(this.constructor)
+		}
+	})
+
+	// TODO: I think this can go away
 	var Items = lang.compose(Variable, function(parent) {
 		this.parent = parent
 	}, {
@@ -1058,6 +1090,9 @@ define(['./lang', './Context'],
 			}
 		}
 	}
+
+
+
 	function all(array) {
 		// This is intended to mirror Promise.all. It actually takes
 		// an iterable, but for now we are just looking for array-like
@@ -1067,8 +1102,8 @@ define(['./lang', './Context'],
 		throw new TypeError('Variable.all requires an array')
 	}
 
-	function forRelated(related) {
-		return related ? related.get(this) : this.defaultInstance
+	function forContext(context) {
+		return context ? new ContextualizedVariable(this, context) : this
 	}
 	function hasOwn(Target, createForInstance) {
 		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
@@ -1096,7 +1131,14 @@ define(['./lang', './Context'],
 		}
 		return Variable.prototype.getValue.call(this, context)
 	}
-	Variable.for = forRelated
+	Variable.setValue = function(context, value) {
+		// contextualized getValue
+		if (context && context.set) {
+			return context.set(this, value)
+		}
+		Variable.prototype.setValue.call(this, context)
+	}
+	Variable.for = forContext
 	Variable.hasOwn = hasOwn
 	Variable.all = all
 	Variable.observe = observe
@@ -1118,30 +1160,6 @@ define(['./lang', './Context'],
 			return this._defaultInstance || (this._defaultInstance = new this())
 		}
 	})
-
-	function setStaticHandler(name) {
-		Variable[name] = function() {
-			var Base = this
-			var args = arguments
-			// we create a new class, that applies the method call to the base instance after being created from the base
-			function AppliedVariable() {
-				var baseInstance = Base.apply(this, arguments)
-				return baseInstance[name].apply(baseInstance, args)
-			}
-			AppliedVariable.for = function(related) {
-				var baseInstance = Base.for (related)
-				return baseInstance[name].apply(baseInstance, args)
-			}
-			/* not sure if we really need this
-			AppliedVariable.queuedAction = {
-				name: name,
-				args: arguments
-			}*/
-			AppliedVariable.prototype = Object.create(this.prototype)
-			setPrototypeOf(AppliedVariable, this)
-			return AppliedVariable
-		}
-	}
 
 	return Variable
 });
