@@ -155,10 +155,10 @@ Alkali uses an optimized strategy for updating elements, by waiting for the next
 
 #### Children Array Argument
 An argument can be array that defines children nodes. An array should consist of items where each item corresponds to the node that will be created as a child. This array can contain any of the following:
-** Element classes - These will generate new elements
-** Element instances - This is will be directly inserted
-** Variables or primitives - These will be converted to text nodes
-** Or nested arrays -  This will result in nested elements (within the last element before the array).
+* Element classes - These will generate new elements
+* Element instances - This is will be directly inserted
+* Variables or primitives - These will be converted to text nodes
+* Or nested arrays -  This will result in nested elements (within the last element before the array).
 For example, we could create a table:
 ```
 import { Table, TR, TD } from 'alkali/Element'
@@ -518,6 +518,10 @@ Week (also WeekInput)
 This package uses the [Intern test framework](https://theintern.github.io/intern/#what-is-intern) installed via `npm`.  To run tests, after installing intern-geezer dependency, serve the project directory and open the url in a browser:
 
 `http://localhost:<port>/node_modules/intern-geezer/client.html?config=tests/intern` (add `&grep=...` to filter tests)
+
+# Browser Support
+
+Basic variable will work on virtually any browser, but the Alkali elements require at least IE11+ or any other modern browser.
 
 # License
 Alkali is freely available under *either* the terms of the modified BSD license *or* the
