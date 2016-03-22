@@ -52,19 +52,11 @@ define([
 			})
 			//var storeVar = new DstoreVariable(store)
 			var storeVar = new Variable(store)
-			var fetchedVar = storeVar.to((storeVal) => storeVal.fetch())
-			var transformed = fetchedVar.to(function(array) {
-					assert.equal(array.constructor, Array)
-					var result = []
-					// perform a simple transformation
-					for (const item of array) {
-							result.push({i: item.id, n: item.name})
-					}
-					return result
+			var result = []
+			storeVar.forEach(function(item){
+				result.push({i: item.id, n: item.name})
 			})
-			var value = transformed.valueOf()
-			console.log(value.constructor)
-			assert.deepEqual(value, [{i:1,n:'one'},{i:2,n:'two'},{i:3,n:'three'}])
+			assert.deepEqual(result, [{i:1,n:'one'},{i:2,n:'two'},{i:3,n:'three'}])
 		}
 	})
 })
