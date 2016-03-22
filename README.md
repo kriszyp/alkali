@@ -364,6 +364,14 @@ Alkali includes a variable Copy constructor, that allows you to maintain a copy 
 		workingCopy.save(); // now save the changes back to the original object
 	})
 
+
+## Which Listener To Use?
+
+There are several ways to listen for variable updates with Alkali, and which are designed and optimized for different situations. Here are a list of the main ways to listen for changes, and which is preferred (starting with the most preferred):
+* `to`, (and `map` and `filter`) - These are passive listeners or transforms, that are only called lazily when needed. These are used to transform the value or values of one variable into an other variable. When a variable changes, these transform functions are only called when a downstream subscriber actually needs the value to be computed. As a passive, or lazy callback function, the function will not be executed by merely calling `to(callback)`, but as needed. Ideally with Alkali, an application should consist of variables, which then are transformed to other downstream variables, which are eventually used directly by elements without any other imperative listeners (the elements handle listening themselves). This is the preferred mechanism for defining functions that response to variables, but, of course there are always other needs, so we have other mechanisms.
+* `Updater` - The Updaters are designed as a reactive listening endpoint to a variable, and is optimized for rendering variable changes into DOM elements. An Updater will respond to changes in variables, but will debounce updates, waiting for the next rendering frame, to ensure that unnecessary variable access (through the lazy transform functions) is avoided. Updaters will also avoid accessing variables to update elements, when an element is detached from the DOM.
+* `subscribe(callback)` - This is an active listener to updates from variables. This will be called for each update made to a variable (or any upstream variable). This is not lazy, and does not need to wait for a downstream listener to request a value. This will not immediately trigger upstream transform functions. However, once you can `event.value()`, you will trigger the upstream transform functions. If you call this to retrieve the value, for every update event, without any debouncing, you can potentially incur a lot of thrashing if you have multiple updates taking place in immediate sequence. However, if you have a function that you really want to be directly notified of variable changes, this is the most direct and reliable way to be notified.
+
 # Design Philosophy
 
  This has several key architectural advantages:
