@@ -307,7 +307,7 @@ define(['./lang', './Context'],
 			}
 		},
 		put: function(value, context) {
-			var oldValue = this.getValue()
+			var oldValue = this.getValue(context)
 			if (oldValue === value) {
 				return noChange
 			}
@@ -316,9 +316,9 @@ define(['./lang', './Context'],
 					oldValue && oldValue.put && // if we currently have a variable
 					// and it is always fixed, or not a new variable
 					(this.fixed == 'always' || !(value && value.subscribe))) {
-				return oldValue.put(value)
+				return oldValue.put(value, context)
 			}
-			this.setValue(value)
+			this.setValue(value, context)
 			this.updated(Refresh, this, context)
 		},
 		get: function(key, context) {
@@ -377,7 +377,7 @@ define(['./lang', './Context'],
 					value.forEach(callback)
 				}else{
 					for (var i in value) {
-						callback(value[i])
+						callback(value[i], i)
 					}
 				}
 			})
@@ -1131,12 +1131,12 @@ define(['./lang', './Context'],
 		}
 		return Variable.prototype.getValue.call(this, context)
 	}
-	Variable.setValue = function(context, value) {
+	Variable.setValue = function(value, context) {
 		// contextualized getValue
 		if (context && context.set) {
 			return context.set(this, value)
 		}
-		Variable.prototype.setValue.call(this, context)
+		Variable.prototype.setValue.call(this, value)
 	}
 	Variable.for = forContext
 	Variable.hasOwn = hasOwn

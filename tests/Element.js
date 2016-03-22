@@ -320,8 +320,7 @@ define([
 			document.body.appendChild(div1)
 			var div2 = new MyDiv()
 			document.body.appendChild(div2)
-			var variable = MyVariable.defaultInstance
-			variable.put(3)
+			MyVariable.put(3)
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(div1.textContent, '3')
 				assert.strictEqual(div2.textContent, '3')

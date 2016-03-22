@@ -47,13 +47,13 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		}
 	}
 	var px = hasUnit('px')
-	function identify(value) {
+	function identity(value) {
 		return value
 	}
 	var styleDefinitions = {
 		display: booleanStyle(['', 'none']),
 		visibility: booleanStyle(['visible', 'hidden']),
-		float: identify,
+		float: identity,
 		width: px,
 		height: px,
 		left: px,
@@ -708,14 +708,14 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 	function forTarget(target) {
 		return target.get(this)
 	}
-	function identity(value) {
-		return value
+	function nothing(value) {
 	}
+
 	function hasOwn(Target, handleValue) {
 		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
 		// TODO: assign to super classes
 		var Class = this
-		ownedClasses.set(Target, handleValue || identity)
+		ownedClasses.set(Target, handleValue || nothing)
 		return this
 	}
 
@@ -727,7 +727,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
 		if (!handleValue) {
-			return Target.defaultInstance.valueOf()
+			return Target.valueOf()
 		}
 		var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
 		var instance = ownedInstances.get(Target)
@@ -743,7 +743,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
 		if (!handleValue) {
-			return Target.defaultInstance.put(value)
+			return Target.put(value)
 		}
 		var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
 		ownedInstances.set(Target, value)
