@@ -23,22 +23,66 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		TEXTAREA: 1
 		// SELECT: 1, we exclude this, so the default "content" of the element can be the options
 	}
+	var bidirectionalProperties = {
+		value: 1,
+		typedValue: 1,
+		valueAsNumber: 1,
+		valueAsDate: 1
+	}
+	function booleanStyle(options) {
+		return function(value) {
+			if (typeof value === 'boolean') {
+				// has a boolean conversion
+				return options[value ? 0 : 1]
+			}
+			return value
+		}
+	}
+	function hasUnit(unit) {
+		return function(value) {
+			if (typeof value === 'number') {
+				return value + unit
+			}
+			return value
+		}
+	}
+	var px = hasUnit('px')
+	function identify(value) {
+		return value
+	}
+	var styleDefinitions = {
+		display: booleanStyle(['', 'none']),
+		visibility: booleanStyle(['visible', 'hidden']),
+		float: identify,
+		width: px,
+		height: px,
+		left: px,
+		right: px,
+		top: px,
+		bottom: px,
+		color: identity,
+		opacity: identity,
+		position: booleanStyle(['absolute', ''])
+	}
+	var propertyHandlers = {
+
+	}
 	var doc = document
-	var cssRules
+	var styleSheet
 	var presumptiveParentMap = new WeakMap()
 
 	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	function createCssRule(selector) {
-		if (!cssRules) {
-			var styleSheet = document.createElement("style")
-			styleSheet.setAttribute("type", "text/css")
-			styleSheet.appendChild(document.createTextNode(css))
-			document.head.insertBefore(styleSheet, document.head.firstChild)
-			cssRules = styleSheet.cssRules || styleSheet.rules
+		if (!styleSheet) {
+			var styleSheetElement = document.createElement("style")
+			styleSheetElement.setAttribute("type", "text/css")
+//			styleSheet.appendChild(document.createTextNode(css))
+			document.head.insertBefore(styleSheetElement, document.head.firstChild)
+			styleSheet = styleSheetElement.sheet
 		}
-		var ruleNumber = cssRules.length
-		return styleSheet.addRule(selector, ' ', ruleNumber)
+		var cssRules = styleSheet.cssRules || styleSheet.rules
+		return cssRules[styleSheet.addRule(selector, ' ', cssRules.length)]
 	}
 	var invalidatedElements = new WeakMap(null, 'invalidated')
 	var queued
@@ -114,12 +158,18 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		for (var i = 0, l = keys.length; i < l; i++) {
 			var key = keys[i]
 			var value = properties[key]
-			if (value && value.subscribe && key !== 'content') {
+			var styleDefinition = styleDefinitions[key]
+			if (styleDefinition) {
+				element.style[key] = styleDefinition(value)
+			} else if (value && value.subscribe && key !== 'content') {
 				new PropertyUpdater({
 					name: key,
 					variable: value,
 					element: element
 				})
+				if (bidirectionalProperties[key]) {
+					bindChanges(element, value)
+				}
 			} else if (key.slice(0, 2) === 'on') {
 				element.addEventListener(key.slice(2), value)
 			} else {
@@ -202,6 +252,11 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		}
 	}
 
+	function bindChanges(element, variable) {
+		element.addEventListener('change', function (event) {
+			variable.put(element['typedValue' in element ? 'typedValue' : 'value'])
+		})
+	}
 	function renderInputContent(content) {
 		if (content && content.subscribe) {
 			// a variable, respond to changes
@@ -211,9 +266,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 				element: this
 			})
 			// and bind the other way as well, updating the variable in response to input changes
-			this.addEventListener('change', function (event) {
-				content.put(this['typedValue' in this ? 'typedValue' : 'value'])
-			})
+			bindChanges(this, content)
 		} else {
 			// primitive
 			this['typedValue' in this ? 'typedValue' : 'value'] = content
@@ -236,13 +289,20 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 						Object.defineProperty(prototype, key, descriptor)
 					}
 					if (!onClassPrototype || key.slice(0, 2) == 'on') {
-						if (!(key in applyOnCreate)) {
-							var lastLength = applyOnCreate.length || 0
-							applyOnCreate[lastLength] = key
-							applyOnCreate.length = lastLength + 1
-						}
-						// TODO: do deep merging of styles and classes, but not variables
-						applyOnCreate[key] = descriptor.value
+						// TODO: eventually we want to be able to set these as rules statically per element
+						/*if (styleDefinitions[key]) {
+							var styles = Element.styles || (Element.styles = [])
+							styles.push(key)
+							styles[key] = descriptor.value
+						} else {*/
+							if (!(key in applyOnCreate)) {
+								var lastLength = applyOnCreate.length || 0
+								applyOnCreate[lastLength] = key
+								applyOnCreate.length = lastLength + 1
+							}
+							// TODO: do deep merging of styles and classes, but not variables
+							applyOnCreate[key] = descriptor.value
+						//}
 					}
 				})
 			}
@@ -286,6 +346,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			prototype.renderContent = renderContent
 			prototype.renderInputContent = renderInputContent
 			prototype.get = getForClass
+			prototype.set = setForClass
 		}
 
 		var i = 0 // for arguments
@@ -323,8 +384,15 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			var styles = this.styles
 			if (styles) {
 				var rule = createCssRule(getUniqueSelector(this))
-				for (var key in styles) {
-					rule.style[key] = styles[key]
+				for (var i = 0, l = styles.length; i < l; i++) {
+					var key = styles[i]
+					var value = styles[key]
+					// TODO: if it is a contextualized variable, do this on the element
+					var styleDefinition = styleDefinitions[key]
+					if (styleDefinition) {
+						value = styleDefinition(value)
+						rule.style[key] = value
+					}
 				}
 			}
 			if (!this.hasOwnProperty('_applyOnCreate')) {
@@ -701,6 +769,29 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 
 	// variable class for each item in array
 	var Item = Element.Item = Variable.extend()
+
+	// setup the mutation observer so we can be notified of attachments and removals
+	/*var observer = new MutationObserver(function(mutations) {
+		mutations.forEach(function(mutation) {
+			var addedNodes = mutation.addedNodes
+			for (var i = 0, l = addedNodes.length; i < l; i++) {
+				var node = addedNodes[i]
+				if (node.attached) {
+					node.attached()
+				}
+			}
+			var removedNodes = mutation.removedNodes
+			for (var i = 0, l = removedNodes.length; i < l; i++) {
+				var node = removedNodes[i]
+				if (node.detached) {
+					node.detached()
+				}
+			}
+		})
+	})
+	observer.observe(document.body, {
+		childList: true
+	})*/
 
 	function augmentBaseElement(Element) {
 		var prototype = Element.prototype
