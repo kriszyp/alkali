@@ -509,10 +509,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 
 	var Element = extend.call(HTMLElement)
 
-	Element.closest = function(element){
-		// find closest parent
-	}
-	Element.find = function(element){
+	Element.within = function(element){
 		// find closest child
 	}
 

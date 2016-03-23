@@ -325,6 +325,33 @@ new MyComponent({
 })
 ```
 
+## Element Lists/Loops
+
+Often you may want to create a set of child elements, based on an array or list of values or objects. You can provide an array, or a variable with an array, as the `content` of an element, and then define a child element structure to be generated for item in the array with an `each` property. The child element structure can then access the current item in the array loop through the `Item` variable class. For example, we could create a `ul` element with `li` children by doing:
+
+```
+import {UL, Li, Item} from 'alkali/Element';
+
+new UL({
+	content: ['One', 'Two'],
+	each: Li(Item)
+})
+```
+Like any other variable class, we can access properties from the `Item` class as well, and create more sophisticated child structures. Here is how to create a select dropdown:
+```
+import {Select, Option, Item} from 'alkali/Element';
+new Select({
+	content: [{id: 1, name: 'One'}, {id: 2, name: 'Two'}],
+	each: Option({
+		value: Item.property('id'),
+		content: Item.property('name')
+	})
+})
+
+```
+Again, we can also use a variable that contains an array as the content to drive the list. When using a variable, the child elements will reactively be added, removed, or updated as the variable is modified in the future.
+
+
 ## EcmaScript Generator Support
 
 EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that computes the maximum of two other variables by simply writing:
@@ -596,7 +623,7 @@ This package uses the [Intern test framework](https://theintern.github.io/intern
 
 # Browser Support
 
-Basic variable will work on virtually any browser, but the Alkali elements require at least IE11+ or any other modern browser.
+Basic variables will work on virtually any browser, but the Alkali elements require at least IE11+ or any other modern browser.
 
 # License
 Alkali is freely available under *either* the terms of the modified BSD license *or* the
