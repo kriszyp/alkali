@@ -13,7 +13,7 @@ define([
 		'simple single value': function () {
 			var invalidated = false
 			var variable = new Variable(1)
-			variable.subscribe({
+			variable.notifies({
 				updated: function(){
 					invalidated = true
 				}
@@ -33,7 +33,7 @@ define([
 			}, function (newValue) {
 				value = newValue
 			})
-			variable.subscribe({
+			variable.notifies({
 				updated: function(){
 					invalidated = true
 				}
@@ -77,14 +77,14 @@ define([
 					invalidated = true
 				}
 			}
-			variable.subscribe(target)
+			variable.notifies(target)
 			assert.equal(variable.valueOf(), 1)
 			assert.isFalse(invalidated)
 			variable.put(2)
 			assert.equal(variable.valueOf(), 2)
 			assert.equal(value, 2)
 			assert.isTrue(invalidated)
-			variable.unsubscribe(target)
+			variable.stopNotifies(target)
 			invalidated = false
 			variable.put(3)
 			assert.isFalse(invalidated);	
@@ -98,7 +98,7 @@ define([
 			Variable.observe(object)
 			var invalidated
 			var aProperty = variable.property('a')
-			aProperty.subscribe({
+			aProperty.notifies({
 				updated: function(){
 					invalidated = true
 				}
@@ -127,7 +127,7 @@ define([
 			var b = new Variable(2)
 			var sum = add.apply(null, [a, b])
 			var invalidated
-			sum.subscribe({
+			sum.notifies({
 				updated: function(){
 					invalidated = true
 				}
@@ -150,7 +150,7 @@ define([
 				})
 			})
 			var invalidated = false
-			sum.subscribe({
+			sum.notifies({
 				updated: function() {
 					invalidated = true
 				}
@@ -158,7 +158,7 @@ define([
 			var target = new Variable()
 			target.put(sum)
 			var targetInvalidated = false
-			target.subscribe({
+			target.notifies({
 				updated: function() {
 					targetInvalidated = true
 				}
@@ -456,7 +456,7 @@ define([
 				return array.reduce(function(a, b) {return a + b})
 			})
 			var lastUpdate
-			array.subscribe({
+			array.notifies({
 				updated: function(updateEvent) {
 					lastUpdate = updateEvent
 				}

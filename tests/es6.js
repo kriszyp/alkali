@@ -15,7 +15,7 @@ define([
 				return (yield a) + (yield b)
 			})
 			var invalidated = false
-			sum.subscribe({
+			sum.notifies({
 				updated: function() {
 					invalidated = true
 				}
@@ -23,7 +23,7 @@ define([
 			var target = new Variable()
 			target.put(sum)
 			var targetInvalidated = false
-			target.subscribe({
+			target.notifies({
 				updated: function() {
 					targetInvalidated = true
 				}

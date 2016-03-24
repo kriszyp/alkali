@@ -23,7 +23,7 @@ define([
 				return store.fetchSync().length
 			})
 			var lastCountUpdate
-			count.subscribe({
+			count.notifies({
 				updated: function(updateEvent) {
 					lastCountUpdate = updateEvent
 				}

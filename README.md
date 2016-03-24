@@ -85,15 +85,17 @@ variable.set(name, value)
 
 ### subscribe(listener)
 
-This adds a listener for any changes to the variable. The `listener` can be an object with an `updated(updateEvent)` method that will be called with update notifications. The `updateEvent` has the following properties:
+This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
+
+### notifies(target)
+
+The `target` can be another variable, or any object with an `updated(updateEvent)` method that will be called with update notifications. The `updateEvent` has the following properties:
 `type` - This is the type of notification. The most common is `'refresh'`.
 `key`	- This is the name of the property or index of the position that was changed.
 
-Alternately, if you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
+### stopNotifies(target)
 
-### unsubscribe(listener)
-
-This stops the notifications to the dependent variable, undoing the action of `subscribe`.
+This stops the notifications to the dependent variable, undoing the action of `notifies`.
 
 ### updated(updateEvent, context?)
 

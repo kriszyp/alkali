@@ -12,8 +12,8 @@ define(['./lang', './Variable'], function(lang, Variable){
 					variable.updated(event)
 				})
 				this.notifyingValue = {
-					unsubscribe: handle.remove, // remove the listener when we unsubscribe
-					subscribe: function(){}
+					stopNotifies: handle.remove, // remove the listener when we unsubscribe
+					notifies: function(){}
 				}
 			}
 			return value

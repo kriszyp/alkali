@@ -17,13 +17,13 @@ define([
 			var copy = new Copy(variable);			
 			var copyA = copy.property('a');
 			var invalidated = false;
-			a.subscribe({
+			a.notifies({
 				updated: function(){
 					invalidated = true;
 				}
 			});
 			var copyInvalidated = false;
-			copyA.subscribe({
+			copyA.notifies({
 				updated: function(){
 					copyInvalidated = true;
 				}
@@ -47,13 +47,13 @@ define([
 			var copy = new Copy(variable);			
 			var copyC = copy.property('b').property('c');
 			var invalidated = false;
-			c.subscribe({
+			c.notifies({
 				updated: function(){
 					invalidated = true;
 				}
 			});
 			var copyInvalidated = false;
-			copyC.subscribe({
+			copyC.notifies({
 				updated: function(){
 					copyInvalidated = true;
 				}

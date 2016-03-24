@@ -10,7 +10,7 @@ define(function (require, exports, module) {
 		var variable = options.variable
 		if (variable.updated) {
 			// if it has update, we don't need to instantiate a closure
-			variable.subscribe(this)
+			variable.notifies(this)
 		} else {
 			// baconjs-esqe API
 			var updater = this
@@ -318,7 +318,7 @@ define(function (require, exports, module) {
 			var renderers = element.alkaliRenderers
 			for(var i = 0; i < renderers.length; i++){
 				var renderer = renderers[i]
-				renderer.variable.unsubscribe(renderer)
+				renderer.variable.stopNotifies(renderer)
 			}
 		}
 	}

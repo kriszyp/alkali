@@ -94,14 +94,14 @@ define(['./lang', './Context'],
 				// if there was a another value that we were dependent on before, stop listening to it
 				// TODO: we may want to consider doing cleanup after the next rendering turn
 				if (variable.dependents) {
-					previousNotifyingValue.unsubscribe(variable)
+					previousNotifyingValue.stopNotifies(variable)
 				}
 				variable.notifyingValue = null
 			}
-			if (value && value.subscribe) {
+			if (value && value.notifies) {
 				if (variable.dependents) {
 						// the value is another variable, start receiving notifications
-					value.subscribe(variable)
+					value.notifies(variable)
 				}
 				variable.notifyingValue = value
 				value = value.valueOf(context)
@@ -147,7 +147,7 @@ define(['./lang', './Context'],
 		},
 		init: function() {
 			if (this.notifyingValue) {
-				this.notifyingValue.subscribe(this)
+				this.notifyingValue.notifies(this)
 			}
 		},
 		cleanup: function() {
@@ -164,7 +164,7 @@ define(['./lang', './Context'],
 			}
 			var notifyingValue = this.notifyingValue
 			if (notifyingValue) {
-				this.notifyingValue.unsubscribe(this)
+				this.notifyingValue.stopNotifies(this)
 				// TODO: move this into the caching class
 				this.computedVariable = null
 			}
@@ -242,6 +242,20 @@ define(['./lang', './Context'],
 			this.updated()
 		},
 
+		notifies: function(target) {
+			var dependents = this.dependents
+			if (!dependents) {
+				this.init()
+				this.dependents = dependents = []
+			}
+			dependents.push(target)
+			var variable = this
+			return {
+				unsubscribe: function() {
+					variable.stopNotifies(target)
+				}
+			}
+		},
 		subscribe: function(listener) {
 			// ES7 Observable (and baconjs) compatible API
 			var updated
@@ -258,20 +272,6 @@ define(['./lang', './Context'],
 				updated = function() {
 					listener(event)
 				}
-			} else if (listener.updated) {
-				// An alkali compatible updateable listener, this is the ideal option
-				var dependents = this.dependents
-				if (!dependents) {
-					this.init()
-					this.dependents = dependents = []
-				}
-				dependents.push(listener)
-				return {
-					unsubscribe: function() {
-						variable.unsubscribe(listener)
-					}
-				}
-
 			}	else if (listener.next) {
 				// Assuming ES7 Observable API. It is actually a streaming API, this pretty much violates all principles of reactivity, but we will support it
 				updated = function() {
@@ -281,7 +281,7 @@ define(['./lang', './Context'],
 				throw new Error('Subscribing to an invalid listener, the listener must be a function, or have an update or next method')
 			}
 
-			var handle = this.subscribe({
+			var handle = this.notifies({
 				updated: updated
 			})
 			var initialValue = this.valueOf()
@@ -290,7 +290,7 @@ define(['./lang', './Context'],
 			}
 			return handle
 		},
-		unsubscribe: function(dependent) {
+		stopNotifies: function(dependent) {
 			var dependents = this.dependents
 			if (dependents) {
 				for (var i = 0; i < dependents.length; i++) {
@@ -315,7 +315,7 @@ define(['./lang', './Context'],
 					// if it is set to fixed, we see we can put in the current variable
 					oldValue && oldValue.put && // if we currently have a variable
 					// and it is always fixed, or not a new variable
-					(this.fixed == 'always' || !(value && value.subscribe))) {
+					(this.fixed == 'always' || !(value && value.notifies))) {
 				return oldValue.put(value, context)
 			}
 			this.setValue(value, context)
@@ -327,7 +327,7 @@ define(['./lang', './Context'],
 				return getForClass.call(object, key)
 			}
 			var value = object && object[key]
-			if (value && value.subscribe) {
+			if (value && value.notifies) {
 				// nested variable situation, get underlying value
 				return value.valueOf()
 			}
@@ -503,7 +503,7 @@ define(['./lang', './Context'],
 			var variable = this
 
 			function withComputedValue(computedValue) {
-				if (computedValue && computedValue.subscribe && this.dependents) {
+				if (computedValue && computedValue.notifies && this.dependents) {
 					if (variable.computedVariable && variable.computedVariable !== computedValue) {
 						throw new Error('Can pass in a different variable for a different context as the result of a single variable')
 					}
@@ -565,11 +565,11 @@ define(['./lang', './Context'],
 	{
 		init: function() {
 			Variable.prototype.init.call(this)
-			this.parent.subscribe(this)
+			this.parent.notifies(this)
 		},
 		cleanup: function() {
 			Variable.prototype.cleanup.call(this)
-			this.parent.unsubscribe(this)
+			this.parent.stopNotifies(this)
 		},
 		valueOf: function(context) {
 			if (this.state) {
@@ -655,8 +655,8 @@ define(['./lang', './Context'],
 			var args = this.args
 			for (var i = 0, l = args.length; i < l; i++) {
 				var arg = args[i]
-				if (arg && arg.subscribe) {
-					arg.subscribe(this)
+				if (arg && arg.notifies) {
+					arg.notifies(this)
 				}
 			}
 		},
@@ -702,8 +702,8 @@ define(['./lang', './Context'],
 			var args = this.args
 			for (var i = 0, l = args.length; i < l; i++) {
 				var arg = args[i]
-				if (arg && arg.subscribe) {
-					arg.unsubscribe(this)
+				if (arg && arg.notifies) {
+					arg.stopNotifies(this)
 				}
 			}
 		},
@@ -728,12 +728,12 @@ define(['./lang', './Context'],
 	}, {
 		init: function() {
 			// depend on the function itself
-			this.functionVariable.subscribe(this)
+			this.functionVariable.notifies(this)
 			// depend on the args
 			Composite.prototype.init.call(this)
 		},
 		cleanup: function() {
-			this.functionVariable.unsubscribe(this)
+			this.functionVariable.stopNotifies(this)
 			Composite.prototype.cleanup.call(this)
 		},
 
@@ -845,10 +845,10 @@ define(['./lang', './Context'],
 			}
 		},
 		init: function() {
-			this.subscribe(this.constructor)
+			this.notifies(this.constructor)
 		},
 		cleanup: function() {
-			this.unsubscribe(this.constructor)
+			this.stopNotifies(this.constructor)
 		}
 	})
 
@@ -858,11 +858,11 @@ define(['./lang', './Context'],
 	}, {
 		init: function() {
 			Variable.prototype.init.call(this)
-			this.parent.subscribe(this)
+			this.parent.notifies(this)
 		},
 		cleanup: function() {
 			Variable.prototype.cleanup.call(this)
-			this.parent.unsubscribe(this)
+			this.parent.stopNotifies(this)
 		},
 		lastIndex: 0,
 		valueOf: function(context) {
@@ -996,13 +996,13 @@ define(['./lang', './Context'],
 	}, {
 		init: function() {
 			Variable.prototype.init.call(this)
-			this.target.subscribe(this)
-			this.targetSchema.subscribe(this)
+			this.target.notifies(this)
+			this.targetSchema.notifies(this)
 		},
 		cleanup: function() {
 			Caching.prototype.cleanup.call(this)
-			this.target.unsubscribe(this)
-			this.targetSchema.unsubscribe(this);			
+			this.target.stopNotifies(this)
+			this.targetSchema.stopNotifies(this);			
 		},
 		getVersion: function(context) {
 			return Variable.prototype.getVersion.call(this, context) + this.target.getVersion(context) + this.targetSchema.getVersion(context)
@@ -1017,11 +1017,11 @@ define(['./lang', './Context'],
 	}, {
 		init: function() {
 			Variable.prototype.init.call(this)
-			this.target.subscribe(this)
+			this.target.notifies(this)
 		},
 		cleanup: function() {
 			Caching.prototype.cleanup.call(this)
-			this.target.unsubscribe(this)
+			this.target.stopNotifies(this)
 		},
 		getVersion: function(context) {
 			return Variable.prototype.getVersion.call(this, context) + this.target.getVersion(context)

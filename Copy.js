@@ -76,7 +76,7 @@ define(['./Variable', './lang'],
 				this.copiedFrom.put && this.copiedFrom.put(newCopiedFrom)
 			} else {
 				// else we have modified an existing object, but we still need to notify
-				if (this.copiedFrom.subscribe && this.copiedFrom.updated) { // copiedFrom doesn't have to be a variable, it can be a plain object
+				if (this.copiedFrom.notifies && this.copiedFrom.updated) { // copiedFrom doesn't have to be a variable, it can be a plain object
 					this.copiedFrom.updated()
 				}
 			}

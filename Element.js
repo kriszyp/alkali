@@ -124,7 +124,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 					// array of sub-children
 					container = container || parent
 					layoutChildren(childNode.contentNode || childNode, child, container)
-				} else if (child.subscribe) {
+				} else if (child.notifies) {
 					// a variable
 					fragment.appendChild(variableAsText(parent, child))
 				} else if (child.nodeType) {
@@ -161,7 +161,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			var styleDefinition = styleDefinitions[key]
 			if (styleDefinition) {
 				element.style[key] = styleDefinition(value)
-			} else if (value && value.subscribe && key !== 'content') {
+			} else if (value && value.notifies && key !== 'content') {
 				new PropertyUpdater({
 					name: key,
 					variable: value,
@@ -216,7 +216,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 					return element._item
 				})
 			}
-			if (content.subscribe) {
+			if (content.notifies) {
 				new ListUpdater({
 					each: each,
 					variable: content,
@@ -242,7 +242,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			// render as string
 			var textNode = document.createTextNode(content === undefined ? '' : (content.valueOf(this)))
 			this.appendChild(textNode)
-			if (content && content.subscribe) {
+			if (content && content.notifies) {
 				new TextUpdater({
 					variable: content,
 					element: this,
@@ -258,7 +258,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		})
 	}
 	function renderInputContent(content) {
-		if (content && content.subscribe) {
+		if (content && content.notifies) {
 			// a variable, respond to changes
 			new PropertyUpdater({
 				variable: content,
@@ -279,7 +279,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		if (value && typeof value === 'object') {
 			if (value instanceof Array) {
 				Element.childrenToRender = value
-			} else if (value.subscribe) {
+			} else if (value.notifies) {
 				prototype.content = value
 			} else {
 				Object.getOwnPropertyNames(value).forEach(function(key) {
@@ -454,7 +454,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			var argument = arguments[i]
 			if (argument instanceof Array) {
 				childrenToRender = argument
-			} else if (argument.subscribe) {
+			} else if (argument.notifies) {
 				element.content = argument
 			} else if (typeof argument === 'function' && argument.for) {
 				element.content = argument.for(element)
@@ -490,7 +490,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 				// find each class name
 				var className = classes[i]
 				var flag = classes[className]
-				if (flag && flag.subscribe) {
+				if (flag && flag.notifies) {
 					// if it is a variable, we react to it
 					new Updater({
 						element: element,

@@ -32,11 +32,11 @@ define(['./lang', './Variable'], function(lang, Variable) {
 				// execution to see if they are the same
 				if (args[i] !== nextVariable) {
 					if (args[i]) {
-						args[i].unsubscribe(this)
+						args[i].stopNotifies(this)
 					}
 					// subscribe if it is a variable
-					if (nextVariable && nextVariable.subscribe) {
-						nextVariable.subscribe(this)
+					if (nextVariable && nextVariable.notifies) {
+						nextVariable.notifies(this)
 						this.args[i] = nextVariable
 					} else {
 						this.args[i] = null
