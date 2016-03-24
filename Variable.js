@@ -326,7 +326,12 @@ define(['./lang', './Context'],
 			if (typeof key === 'function') {
 				return getForClass.call(object, key)
 			}
-			return object && object[key]
+			var value = object && object[key]
+			if (value && value.subscribe) {
+				// nested variable situation, get underlying value
+				return value.valueOf()
+			}
+			return value
 		},
 		set: function(key, value, context) {
 			// TODO: create an optimized route when the property doesn't exist yet

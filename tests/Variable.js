@@ -473,6 +473,13 @@ define([
 			assert.deepEqual(lastUpdate, {type: 'delete', previousIndex: 0})
 
 
+		},
+
+		nestedVariableProperty: function() {
+			var obj = {a: 2}
+			var v = new Variable(obj)
+			obj.derived = v.property('a').to((v) => v * 2)
+			assert.strictEqual(v.property('derived').valueOf(), v.get('derived'))
 		}
 	})
 })
