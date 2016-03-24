@@ -1,4 +1,4 @@
-The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. The alkali library is a lightweight set of modules for accessing simple native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native DOM elements. Alkali is designed to be for sped and scalability, using a true functional reactive, cache and invalidation-based system that provides optimized rendering performance. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
+The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. The alkali library is a lightweight, dependency-free, set of modules for accessing simple pure native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native DOM elements. Alkali is designed to be for speed and scalability, using a true functional reactive, cache and invalidation-based system that provides optimized rendering performance. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
 
 There are several key paradigms in alkali:
 
@@ -330,11 +330,11 @@ new MyComponent({
 Often you may want to create a set of child elements, based on an array or list of values or objects. You can provide an array, or a variable with an array, as the `content` of an element, and then define a child element structure to be generated for item in the array with an `each` property. The child element structure can then access the current item in the array loop through the `Item` variable class. For example, we could create a `ul` element with `li` children by doing:
 
 ```
-import {UL, Li, Item} from 'alkali/Element';
+import {UL, LI, Item} from 'alkali/Element';
 
 new UL({
 	content: ['One', 'Two'],
-	each: Li(Item)
+	each: LI(Item)
 })
 ```
 Like any other variable class, we can access properties from the `Item` class as well, and create more sophisticated child structures. Here is how to create a select dropdown:
@@ -473,6 +473,8 @@ There are several ways to listen for variable updates with Alkali, and which are
 * `to`, (and `map` and `filter`) - These are passive listeners or transforms, that are only called lazily when needed. These are used to transform the value or values of one variable into an other variable. When a variable changes, these transform functions are only called when a downstream subscriber actually needs the value to be computed. As a passive, or lazy callback function, the function will not be executed by merely calling `to(callback)`, but as needed. Ideally with Alkali, an application should consist of variables, which then are transformed to other downstream variables, which are eventually used directly by elements without any other imperative listeners (the elements handle listening themselves). This is the preferred mechanism for defining functions that response to variables, but, of course there are always other needs, so we have other mechanisms.
 * `Updater` - The Updaters are designed as a reactive listening endpoint to a variable, and is optimized for rendering variable changes into DOM elements. An Updater will respond to changes in variables, but will debounce updates, waiting for the next rendering frame, to ensure that unnecessary variable access (through the lazy transform functions) is avoided. Updaters will also avoid accessing variables to update elements, when an element is detached from the DOM.
 * `subscribe(callback)` - This is an active listener to updates from variables. This will be called for each update made to a variable (or any upstream variable). This is not lazy, and does not need to wait for a downstream listener to request a value, it will be called immediately after any update. However, while the callback function will be called immediately, this does not necessarily immediately trigger upstream transform functions, until you call `event.value()`. Once you call `event.value()`, you will trigger the upstream transform functions. If you call this to retrieve the value, for every update event, without any debouncing, you can potentially incur a lot of thrashing if you have multiple updates taking place in immediate sequence. However, if you have a function that you really want to be directly notified of variable changes, this is the most direct and reliable way to be notified.
+
+One other difference is that if a variable is given a value that is a promise, both `to` and `Updater` will resolve any promise first, and then call the callback functions with the resolved value. `subscribe`, on the otherhand, calls the listener immediately in response to update events, so the value returned from `event.value()` may be a yet-to-be-resolved promise.
 
 # Design Philosophy
 
