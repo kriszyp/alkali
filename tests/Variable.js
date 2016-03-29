@@ -478,8 +478,19 @@ define([
 		nestedVariableProperty: function() {
 			var obj = {a: 2}
 			var v = new Variable(obj)
-			obj.derived = v.property('a').to((v) => v * 2)
+			obj.derived = v.property('a').to(function(v) {
+				return v * 2
+			})
 			assert.strictEqual(v.property('derived').valueOf(), v.get('derived'))
+		},
+
+		filterArray: function() {
+			var arrayVariable = new Variable([3, 5, 7])
+			var greaterThanFour = arrayVariable.filter(function(item) {
+				return item > 4
+			})
+			assert.strictEqual(greaterThanFour.valueOf().length, 1)
+			
 		}
 	})
 })

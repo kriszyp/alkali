@@ -1,4 +1,4 @@
-define(['./lang', './Context'],
+define(['./util/lang', './Context'],
 		function(lang, Context) {
 	var deny = {}
 	var noChange = {}
@@ -64,13 +64,16 @@ define(['./lang', './Context'],
 	}
 	PropertyChange.prototype.type = 'update'
 	function Variable(value) {
-		this.value = value
+		this.value = typeof value === 'undefined' ? this.default : value
 	}
 	Variable.prototype = {
 		constructor: Variable,
 		valueOf: function(context) {
 			if (this.state) {
 				this.state = null
+			}
+			if (this.context) {
+				return this.constructor.valueOf(this.context)
 			}
 			return this.gotValue(this.getValue(context), context)
 		},
@@ -124,6 +127,22 @@ define(['./lang', './Context'],
 			}
 			return propertyVariable
 		},
+		for: function(context) {
+			if (context && context.target && !context.get) {
+				// makes HTML events work
+				context = context.target
+			}
+			if (typeof this === 'function') {
+				if (context) {
+					var instance = new this()
+					instance.context = context
+					return instance
+				} else {
+					return this.defaultInstance
+				}
+			}
+			return context ? new ContextualizedVariable(this, context) : this
+		},
 		_propertyChange: function(propertyName, context, type) {
 			if (this.onPropertyChange) {
 				this.onPropertyChange(propertyName, context)
@@ -146,6 +165,9 @@ define(['./lang', './Context'],
 			return this.apply(instance, Array.prototype.slice.call(arguments, 1))
 		},
 		init: function() {
+			if (this.context) {
+				this.constructor.notifies(this)
+			}
 			if (this.notifyingValue) {
 				this.notifyingValue.notifies(this)
 			}
@@ -167,6 +189,9 @@ define(['./lang', './Context'],
 				this.notifyingValue.stopNotifies(this)
 				// TODO: move this into the caching class
 				this.computedVariable = null
+			}
+			if (this.context) {
+				this.constructor.stopNotifies(this)
 			}
 		},
 
@@ -194,6 +219,17 @@ define(['./lang', './Context'],
 		},
 
 		updated: function(updateEvent, by, context) {
+			if (this.context) {
+				if (by === this.constructor) {
+					// if we receive an update from the constructor, filter it
+					if (context === this.context || context && context.contains && context.contains(this.context)) {
+						Variable.prototype.updated.apply(this, arguments)
+					}
+				} else {
+					// if we receive an outside update, send it to the constructor
+					this.constructor.updated(updateEvent, by, this.context)
+				}
+			}
 			if (this.state === 'invalidated') {
 				return
 			}
@@ -307,6 +343,9 @@ define(['./lang', './Context'],
 			}
 		},
 		put: function(value, context) {
+			if (this.context) {
+				return this.constructor.put(value, this.context)
+			}
 			var oldValue = this.getValue(context)
 			if (oldValue === value) {
 				return noChange
@@ -322,10 +361,10 @@ define(['./lang', './Context'],
 			this.updated(Refresh, this, context)
 		},
 		get: function(key, context) {
-			var object = this.valueOf(context)
 			if (typeof key === 'function') {
-				return getForClass.call(object, key)
+				return getForClass.call(this, key)
 			}
+			var object = this.valueOf(context)
 			var value = object && object[key]
 			if (value && value.notifies) {
 				// nested variable situation, get underlying value
@@ -424,9 +463,7 @@ define(['./lang', './Context'],
 		getId: function() {
 			return this.id || (this.id = nextId++)
 		}
-
 	}
-
 	// a variable inheritance change goes through its own prototype, so classes/constructor
 	// can be used as variables as well
 	setPrototypeOf(Variable, Variable.prototype)
@@ -738,10 +775,14 @@ define(['./lang', './Context'],
 		},
 
 		getValue: function(context) {
-			var call = this
-			return lang.when(this.functionVariable.valueOf(context), function(functionValue) {
-				return call.invoke(functionValue, call.args, context)
-			})
+			var functionValue = this.functionVariable.valueOf(context)
+			if (functionValue.then) {
+				var call = this
+				return functionValue.then(function(functionValue) {
+					return call.invoke(functionValue, call.args, context)
+				})
+			}
+			return this.invoke(functionValue, this.args, context)
 		},
 
 		getVersion: function(context) {
@@ -823,16 +864,11 @@ define(['./lang', './Context'],
 
 	// TODO: at some point, we want to dymanically extend from extend Variable classes, so for() returned instances
 	// are instances of this extension of the Variable
-	var ContextualizedVariable = lang.compose(Variable, function(Class, context) {
-		this.constructor = Class
+	var ContextualizedVariable = lang.compose(Variable, function(Source, context) {
+		this.constructor = Source
 		this.context = context
 	}, {
-		valueOf: function() {
-			return this.constructor.valueOf(this.context)
-		},
-		put: function(value) {
-			return this.constructor.put(value, this.context)
-		},
+
 		updated: function(event, by, context) {
 			if (by === this.constructor) {
 				// if we receive an update from the constructor, filter it
@@ -843,98 +879,19 @@ define(['./lang', './Context'],
 				// if we receive an outside update, send it to the constructor
 				this.constructor.updated(event, by, this.context)
 			}
-		},
-		init: function() {
-			this.notifies(this.constructor)
-		},
-		cleanup: function() {
-			this.stopNotifies(this.constructor)
 		}
 	})
 
-	// TODO: I think this can go away
-	var Items = lang.compose(Variable, function(parent) {
-		this.parent = parent
-	}, {
-		init: function() {
-			Variable.prototype.init.call(this)
-			this.parent.notifies(this)
-		},
-		cleanup: function() {
-			Variable.prototype.cleanup.call(this)
-			this.parent.stopNotifies(this)
-		},
-		lastIndex: 0,
-		valueOf: function(context) {
-			if (this.state) {
-				this.state = null
-			}
-
-			var parent = this.parent
-			var variable = this
-			return lang.when(parent.valueOf(context), function(array) {
-
-				if (!context || !array) {
-					return array
-				}
-				var previous = context.get('after')
-				if (!previous) {
-					return array[0]
-				}else{
-					// performance shortcut
-					if (array[variable.lastIndex++] === previous) {
-						return array[variable.lastIndex]
-					}
-					for (var i = 0, l = array.length; i < l;) {
-						if (array[i++] === previous) {
-							variable.lastIndex = i
-							return array[i]
-						}
-					}
-				}
-				if (variable.dependents) {
-					lang.observeArray(array, function(events) {
-						event.name
-						variable.updated(new ArrayContext(changedItem))
-					})
-				}
-			})
-		},
-		forEach: function(callback, context) {
-			var iteratorContext = lang.mixin({}, context)
-			var variable = this
-			return lang.when(this.valueOf(iteratorContext), function(item) {
-				while(item) {
-					callback(item)
-					iteratorContext.after = item
-					item = variable.valueOf(iteratorContext)
-				}
-			})
-		},
-		push: function(value) {
-			args = arguments
-			return lang.when(this.valueOf(), function(array) {
-				array.push.apply(array, args)
-
-			})
-		},
-		arrayContext: function(context) {
-			return new ContextualArray(context, this)
-		}
-	})
-	function ContextualArray(context, parent) {
-		this.context = context
-		this.parent = parent
-	}
-	ContextualArray.prototype.valueOf = function() {
-		return this.parent.valueOf(this.context)
-	}
 	function arrayMethod(name, sendUpdates) {
-		Variable.prototype[name] = ContextualArray.prototype[name] = function() {
+		Variable.prototype[name] = function() {
 			var args = arguments
 			var variable = this
 			return lang.when(this.valueOf(), function(array) {
-				var result = array[name].apply(array, args)
+				if (!array) {
+					variable.put(array = [])
+				}
+				// try to use own method, but if not available, use Array's methods
+				var result = array[name] ? array[name].apply(array, args) : Array.prototype[name].apply(array, args)
 				if (sendUpdates) {
 					sendUpdates.call(variable, args, result, array)
 				}
@@ -946,7 +903,8 @@ define(['./lang', './Context'],
 		for (var i = 0; i < args[1]; i++) {
 			this.updated({
 				type: 'delete',
-				previousIndex: args[0]
+				previousIndex: args[0],
+				oldValue: result[i]
 			})
 		}
 		for (i = 2, l = args.length; i < l; i++) {
@@ -990,12 +948,73 @@ define(['./lang', './Context'],
 		})
 	})
 
+	function iterateMethod(method) {
+		Variable.prototype[method] = function() {
+			return new IterativeMethod(this, method, arguments)
+		}
+	}
+
+	iterateMethod('filter')
+	//iterateMethod('map')
+
+	var IterativeMethod = lang.compose(Composite, function(source, method, args) {
+		this.source = source
+		this.method = method
+		this.args = args
+	}, {
+		getValue: function(context) {
+			var method = this.method
+			var args = this.args
+			return lang.when(this.source.valueOf(context), function(array) {
+				return array && array[method] && array[method].apply(array, args)
+			})
+		},
+		updated: function(event, by, context) {
+			var propagatedEvent = event.type === 'refresh' ? event : // always propagate refreshes
+				this[this.method + 'Updated'](event)
+			if (propagatedEvent) {
+				Composite.prototype.updated.call(this, propagatedEvent, by, context)
+			}
+		},
+		filterUpdated: function(event) {
+			if (event.type === 'delete') {
+				if ([event.oldValue].filter(this.args[0]).length > 0) {
+					return event
+				}
+			} else if (event.type === 'add') {
+				if ([event.value].filter(this.args[0]).length > 0) {
+					return event
+				}
+			} // else update
+			else {
+				return event
+			}
+		},
+		mapUpdated: function(event) {
+			return {
+				type: event.type,
+				value: [event.value].map(this.args[0])
+			}
+		},
+		init: function() {
+			Composite.prototype.init.call(this)
+			this.source.notifies(this)
+		},
+		cleanup: function() {
+			Composite.prototype.cleanup.call(this)
+			this.source.stopNotifies(this)
+		},
+		getVersion: function(context) {
+			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getVersion(context))
+		}		
+	})
+
 	var Validating = lang.compose(Caching, function(target, schema) {
 		this.target = target
 		this.targetSchema = schema
 	}, {
 		init: function() {
-			Variable.prototype.init.call(this)
+			Caching.prototype.init.call(this)
 			this.target.notifies(this)
 			this.targetSchema.notifies(this)
 		},
@@ -1005,7 +1024,7 @@ define(['./lang', './Context'],
 			this.targetSchema.stopNotifies(this);			
 		},
 		getVersion: function(context) {
-			return Variable.prototype.getVersion.call(this, context) + this.target.getVersion(context) + this.targetSchema.getVersion(context)
+			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getVersion(context), this.targetSchema.getVersion(context))
 		},
 		getValue: function(context) {
 			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context))
@@ -1024,7 +1043,7 @@ define(['./lang', './Context'],
 			this.target.stopNotifies(this)
 		},
 		getVersion: function(context) {
-			return Variable.prototype.getVersion.call(this, context) + this.target.getVersion(context)
+			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getVersion(context))
 		},
 		getValue: function(context) {
 			if (this.value) { // if it has an explicit schema, we can use that.
@@ -1107,9 +1126,6 @@ define(['./lang', './Context'],
 		throw new TypeError('Variable.all requires an array')
 	}
 
-	function forContext(context) {
-		return context ? new ContextualizedVariable(this, context) : this
-	}
 	function hasOwn(Target, createForInstance) {
 		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
 		// TODO: assign to super classes
@@ -1118,7 +1134,7 @@ define(['./lang', './Context'],
 		return this
 	}
 	function getForClass(Target) {
-		var createForInstance = this.constructor.ownedClasses.get(Target)
+		var createForInstance = this.constructor.ownedClasses && this.constructor.ownedClasses.get(Target)
 		if (createForInstance) {
 			var ownedInstances = this.ownedInstances || (this.ownedInstances = new WeakMap())
 			var instance = ownedInstances.get(Target)
@@ -1127,6 +1143,38 @@ define(['./lang', './Context'],
 			}
 			return instance
 		}
+		return Target.valueOf()
+	}
+	function generalizeClass() {
+		var prototype = this.prototype
+		var prototypeNames = Object.getOwnPropertyNames(prototype)
+		for(var i = 0, l = prototypeNames.length; i < l; i++) {
+			var name = prototypeNames[i]
+			Object.defineProperty(this, name, getGeneralizedDescriptor(Object.getOwnPropertyDescriptor(prototype, name), name, this))
+		}
+	}
+	function getGeneralizedDescriptor(descriptor, name, Class) {
+		if (typeof descriptor.value === 'function') {
+			return {
+				value: generalizeMethod(Class, name)
+			}
+		} else {
+			return descriptor
+		}
+	}
+	function generalizeMethod(Class, name) {
+		var method = Class[name] = function(possibleEvent) {
+			var target = possibleEvent && possibleEvent.target
+			var instance = Class.for(target)
+			instance[name].apply(instance, arguments)
+		}
+		method.for = function(context) {
+			var instance = Class.for(context)
+			return function() {
+				return instance[name].apply(instance, arguments)
+			}
+		}
+		return method
 	}
 
 	Variable.getValue = function(context) {
@@ -1143,26 +1191,36 @@ define(['./lang', './Context'],
 		}
 		Variable.prototype.setValue.call(this, value)
 	}
-	Variable.for = forContext
+	Variable.generalize = generalizeClass
 	Variable.hasOwn = hasOwn
 	Variable.all = all
 	Variable.observe = observe
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply
-	Variable.extend = function () {
+	Variable.extend = function(properties) {
 		// TODO: handle arguments
 		var Base = this
 		function ExtendedVariable() {
 			return Base.apply(this, arguments)
 		}
-		ExtendedVariable.prototype = Object.create(this.prototype)
+		var prototype = ExtendedVariable.prototype = Object.create(this.prototype)
 		ExtendedVariable.prototype.constructor = ExtendedVariable
 		setPrototypeOf(ExtendedVariable, this)
+		for (var key in properties) {
+			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
+			Object.defineProperty(prototype, key, descriptor)
+			Object.defineProperty(ExtendedVariable, key, getGeneralizedDescriptor(descriptor, key, ExtendedVariable))
+		}
 		return ExtendedVariable
+	}
+	var identityContext = {
+		get: function(Class) {
+			return Class
+		}
 	}
 	Object.defineProperty(Variable, 'defaultInstance', {
 		get: function() {
-			return this._defaultInstance || (this._defaultInstance = new this())
+			return this._defaultInstance || (this._defaultInstance = this.for(identityContext))
 		}
 	})
 
