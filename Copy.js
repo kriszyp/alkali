@@ -1,4 +1,4 @@
-define(['./Variable', './lang'],
+define(['./Variable', './util/lang'],
 		function(Variable, lang){
 
 	function deepCopy(source, target, derivativeMap) {

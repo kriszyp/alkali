@@ -1,5 +1,6 @@
 define([], function(){
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
+	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
 	var hasFeatures = {
 		requestAnimationFrame: typeof requestAnimationFrame != 'undefined',
 		defineProperty: Object.defineProperty && (function(){
@@ -347,6 +348,7 @@ define([], function(){
 		},
 		compose: function(Base, constructor, properties){
 			var prototype = constructor.prototype = new Base()
+			setPrototypeOf(constructor, Base)
 			for(var i in properties){
 				prototype[i] = properties[i]
 			}

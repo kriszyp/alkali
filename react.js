@@ -1,4 +1,4 @@
-define(['./lang', './Variable'], function(lang, Variable) {
+define(['./util/lang', './Variable'], function(lang, Variable) {
 	var getValue
 	var GeneratorVariable = lang.compose(Variable.Composite, function Call(generator){
 		this.generator = generator
