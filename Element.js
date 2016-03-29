@@ -1,4 +1,4 @@
-define(['./Variable', './Updater', './lang', './Context'], function (Variable, Updater, lang, Context) {
+define(['./Variable', './Updater', './util/lang', './Context'], function (Variable, Updater, lang, Context) {
 	var knownElementProperties = {
 	}
 	PropertyUpdater = Updater.PropertyUpdater
@@ -38,35 +38,34 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			return value
 		}
 	}
-	function hasUnit(unit) {
+
+	function defaultStyle(value) {
 		return function(value) {
 			if (typeof value === 'number') {
-				return value + unit
+				return value + 'px'
 			}
 			return value
 		}
 	}
-	var px = hasUnit('px')
 	function identity(value) {
 		return value
 	}
+
 	var styleDefinitions = {
 		display: booleanStyle(['', 'none']),
 		visibility: booleanStyle(['visible', 'hidden']),
-		float: identity,
-		width: px,
-		height: px,
-		left: px,
-		right: px,
-		top: px,
-		bottom: px,
 		color: identity,
 		opacity: identity,
-		position: booleanStyle(['absolute', ''])
+		zoom: identity,
+		minZoom: identity,
+		maxZoom: identity,
+		position: booleanStyle(['absolute', '']),
+		textDecoration: booleanStyle(['underline', '']),
+		fontWeight: booleanStyle(['bold', 'normal'])
 	}
-	var propertyHandlers = {
-
-	}
+	;["alignContent","alignItems","alignSelf","animation","animationDelay","animationDirection","animationDuration","animationFillMode","animationIterationCount","animationName","animationPlayState","animationTimingFunction","backfaceVisibility","background","backgroundAttachment","backgroundBlendMode","backgroundClip","backgroundColor","backgroundImage","backgroundOrigin","backgroundPosition","backgroundPositionX","backgroundPositionY","backgroundRepeat","backgroundRepeatX","backgroundRepeatY","backgroundSize","baselineShift","border","borderBottom","borderBottomColor","borderBottomLeftRadius","borderBottomRightRadius","borderBottomStyle","borderBottomWidth","borderCollapse","borderColor","borderImage","borderImageOutset","borderImageRepeat","borderImageSlice","borderImageSource","borderImageWidth","borderLeft","borderLeftColor","borderLeftStyle","borderLeftWidth","borderRadius","borderRight","borderRightColor","borderRightStyle","borderRightWidth","borderSpacing","borderStyle","borderTop","borderTopColor","borderTopLeftRadius","borderTopRightRadius","borderTopStyle","borderTopWidth","borderWidth","bottom","boxShadow","boxSizing","bufferedRendering","captionSide","clear","clip","clipPath","clipRule","color","colorInterpolation","colorInterpolationFilters","colorRendering","counterIncrement","counterReset","cursor","direction","display","emptyCells","fill","fillOpacity","fillRule","filter","flex","flexBasis","flexDirection","flexFlow","flexGrow","flexShrink","flexWrap","float","floodColor","floodOpacity","font","fontFamily","fontFeatureSettings","fontKerning","fontSize","fontStretch","fontStyle","fontVariant","fontVariantLigatures","fontWeight","height","imageRendering","isolation","justifyContent","left","letterSpacing","lightingColor","lineHeight","listStyle","listStyleImage","listStylePosition","listStyleType","margin","marginBottom","marginLeft","marginRight","marginTop","marker","markerEnd","markerMid","markerStart","mask","maskType","maxHeight","maxWidth","maxZoom","minHeight","minWidth","minZoom","mixBlendMode","motion","motionOffset","motionPath","motionRotation","objectFit","objectPosition","opacity","order","orientation","orphans","outline","outlineColor","outlineOffset","outlineStyle","outlineWidth","overflow","overflowWrap","overflowX","overflowY","padding","paddingBottom","paddingLeft","paddingRight","paddingTop","page","pageBreakAfter","pageBreakBefore","pageBreakInside","paintOrder","perspective","perspectiveOrigin","pointerEvents","position","quotes","resize","right","shapeImageThreshold","shapeMargin","shapeOutside","shapeRendering","size","speak","src","stopColor","stopOpacity","stroke","strokeDasharray","strokeDashoffset","strokeLinecap","strokeLinejoin","strokeMiterlimit","strokeOpacity","strokeWidth","tabSize","tableLayout","textAlign","textAlignLast","textAnchor","textCombineUpright","textDecoration","textIndent","textOrientation","textOverflow","textRendering","textShadow","textTransform","top","touchAction","transform","transformOrigin","transformStyle","transition","transitionDelay","transitionDuration","transitionProperty","transitionTimingFunction","unicodeBidi","unicodeRange","userZoom","vectorEffect","verticalAlign","visibility","whiteSpace","widows","width","willChange","wordBreak","wordSpacing","wordWrap","writingMode","zIndex","zoom"].forEach(function(property) {
+		styleDefinitions[property] = styleDefinitions[property] || defaultStyle
+	})
 	var doc = document
 	var styleSheet
 	var presumptiveParentMap = new WeakMap()
@@ -240,7 +239,11 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 			this.renderInputContent(content)
 		} else {
 			// render as string
-			var textNode = document.createTextNode(content === undefined ? '' : (content.valueOf(this)))
+			try {
+				var textNode = document.createTextNode(content === undefined ? '' : (content.valueOf(this)))
+			} catch (error) {
+				var textNode = document.createTextNode(error)
+			}
 			this.appendChild(textNode)
 			if (content && content.notifies) {
 				new TextUpdater({
@@ -254,7 +257,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 
 	function bindChanges(element, variable) {
 		element.addEventListener('change', function (event) {
-			variable.put(element['typedValue' in element ? 'typedValue' : 'value'])
+			variable.put(element['typedValue' in element ? 'typedValue' : 'value'], element)
 		})
 	}
 	function renderInputContent(content) {
@@ -596,6 +599,7 @@ define(['./Variable', './Updater', './lang', './Context'], function (Variable, U
 		'Embed',
 		'Article',
 		'Aside',
+		'Footer',
 		'Figure',
 		'FigCaption',
 		'Header',
