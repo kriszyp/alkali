@@ -1,5 +1,4 @@
-define(function (require, exports, module) {
-	var lang = require('./lang')
+define(['./util/lang'], function (lang) {
 	var doc = document
 	var invalidatedElements
 	var queued
@@ -141,7 +140,11 @@ define(function (require, exports, module) {
 	}
 	ElementUpdater.prototype.updateElement = function(element) {
 		this.invalidated = false
-		var value = !this.omitValueOf && this.variable.valueOf(element)
+		try {
+			var value = !this.omitValueOf && this.variable.valueOf(element)
+		} catch (error) {
+			element.appendChild(document.createTextNode(error))
+		}
 		if(value !== undefined || this.started){
 			this.started = true
 			if(value && value.then){
@@ -228,7 +231,7 @@ define(function (require, exports, module) {
 	ListUpdater.prototype = Object.create(ElementUpdater.prototype)
 	ListUpdater.prototype.updated = function (updateEvent, context) {
 		(this.updates || (this.updates = [])).push(updateEvent)
-	ElementUpdater.prototype.updated.call(this, updateEvent, context)
+		ElementUpdater.prototype.updated.call(this, updateEvent, context)
 	}
 	ListUpdater.prototype.type = 'ListUpdater'
 	ListUpdater.prototype.omitValueOf = true
@@ -241,7 +244,7 @@ define(function (require, exports, module) {
 			this.builtList = true
 			container = document.createDocumentFragment()
 			var childElements = this.childElements = []
-			this.variable.forEach(function(item) {
+			this.variable.for(thisElement).forEach(function(item) {
 				eachItem(item)
 			})
 			this.element.appendChild(container)
@@ -251,11 +254,11 @@ define(function (require, exports, module) {
 			container = this.element
 			updates.forEach(function(update) {
 				if (update.type === 'refresh') {
-					this.builtList = false
+					updater.builtList = false
 					for (var i = 0, l = childElements.length; i < l; i++) {
 						thisElement.removeChild(childElements[i])
 					}
-					this.renderUpdate()
+					updater.renderUpdate()
 				} else {
 					if (update.previousIndex > -1) {
 						thisElement.removeChild(childElements[update.previousIndex])
@@ -334,5 +337,5 @@ define(function (require, exports, module) {
 			}
 		}
 	}
-	module.exports = Updater
+	return Updater
 });
