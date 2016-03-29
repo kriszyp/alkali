@@ -24,7 +24,14 @@ This is the constructor for a variable. You may create a variable with an initia
 
 ### valueOf(context?)
 
-This returns the current value of the variable.
+This returns the current value of the variable. This method also allows variables to be used directly in expressions in place of primitive values, where JavaScript coercion will automatically convert a value. For example a variable with the number 4 can be used:
+```
+let four = new Variable(4)
+four * four -> 16
+'#' + four -> '#4'
+four < 5 -> true
+four == 4 -> true
+```
 
 ### put(value, context?)
 
