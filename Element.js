@@ -4,7 +4,6 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 	PropertyUpdater = Updater.PropertyUpdater
 	TextUpdater = Updater.TextUpdater
 	ListUpdater = Updater.ListUpdater
-	Item = Variable.Item
 	;['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
 		knownElementProperties[name] = true
 	})
@@ -775,7 +774,10 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		return ThisElementVariable.property(key)
 	}
 
-	Element.Item = Item
+	var Item = Element.Item = lang.compose(Variable, function(value, parent) {
+		this.value = value
+		this.parentList = parent
+	}, {})
 	// setup the mutation observer so we can be notified of attachments and removals
 	/*var observer = new MutationObserver(function(mutations) {
 		mutations.forEach(function(mutation) {

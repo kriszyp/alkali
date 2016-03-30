@@ -689,7 +689,7 @@ define(['./util/lang', './Context'],
 			this.parent.updated({
 				type: 'update',
 				key: this.index
-			}, this, context)
+			}, this, this.context)
 			Variable.prototype.updated.apply(this, arguments)
 		}
 	})
@@ -980,13 +980,29 @@ define(['./util/lang', './Context'],
 		getValue: function(context) {
 			var method = this.method
 			var args = this.args
+			var variable = this
 			return lang.when(this.source.valueOf(context), function(array) {
+				// TODO: we need to cache the array, and register listeners on the array once it is init-ed
+				if (variable.dependents) {
+					array.forEach(function(item) {
+						if (item && typeof item === 'object') {
+							registerListener(item, variable)
+						}
+					})
+				}
 				return array && array[method] && array[method].apply(array, args)
 			})
 		},
 		updated: function(event, by, context) {
 			var propagatedEvent = event.type === 'refresh' ? event : // always propagate refreshes
 				this[this.method + 'Updated'](event)
+			// TODO: make sure we normalize the event structure
+			if (event.oldValue && typeof event.value === 'object') {
+				deregisterListener(event.value, this)
+			}
+			if (event.value && typeof event.value === 'object') {
+				registerListener(event.value, this)
+			}
 			if (propagatedEvent) {
 				Composite.prototype.updated.call(this, propagatedEvent, by, context)
 			}
@@ -1016,6 +1032,7 @@ define(['./util/lang', './Context'],
 			this.source.notifies(this)
 		},
 		cleanup: function() {
+			// TODO: deregister array item objects
 			Composite.prototype.cleanup.call(this)
 			this.source.stopNotifies(this)
 		},
@@ -1177,9 +1194,10 @@ define(['./util/lang', './Context'],
 		}
 	}
 	function generalizeMethod(Class, name) {
-		var method = Class[name] = function(possibleEvent) {
-			// I think we can just rely on `this`, but we could use the argument:
-			// var target = possibleEvent && possibleEvent.target
+		// I think we can just rely on `this`, but we could use the argument:
+		// function(possibleEvent) {
+		// 	var target = possibleEvent && possibleEvent.target
+		var method = Class[name] = function() {
 			var instance = Class.for(this)
 			return instance[name].apply(instance, arguments)
 		}
@@ -1208,7 +1226,7 @@ define(['./util/lang', './Context'],
 		return (context && context.get && context.get(this) || this.defaultInstance).put(value)
 	}
 	Variable.updated = function(updateEvent, by, context) {
-		Variable.for(context).updated(updateEvent, this)
+		this.for(context).updated(updateEvent, this)
 		Variable.prototype.updated.apply(this, arguments)
 	}
 	Variable.generalize = generalizeClass
