@@ -85,7 +85,7 @@ define(['./Variable', './util/lang'],
 		},
 		revert: function(){
 			var original = this.copiedFrom.valueOf()
-			deepCopy(original, this.derivativeMap.get(value), this.derivativeMap)
+			this.put(deepCopy(original, this.derivativeMap.get(original), this.derivativeMap))
 			this.isDirty.put(false)
 		},
 		updated: function(){
