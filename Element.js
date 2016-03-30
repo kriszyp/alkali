@@ -4,6 +4,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 	PropertyUpdater = Updater.PropertyUpdater
 	TextUpdater = Updater.TextUpdater
 	ListUpdater = Updater.ListUpdater
+	Item = Variable.Item
 	;['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
 		knownElementProperties[name] = true
 	})
@@ -210,9 +211,10 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		var each = this.each
 		if (each && content) {
 			// render as list
-			if (each.hasOwn) {
-				each.hasOwn(this.itemAs || Item, function (element) {
-					return element._item
+			if (each.create) {
+				var ItemClass = this.itemAs || Item
+				hasOwn(each, ItemClass, function (element) {
+					return new ItemClass(element._item, content)
 				})
 			}
 			if (content.notifies) {
@@ -275,6 +277,11 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			this['typedValue' in this ? 'typedValue' : 'value'] = content
 		}
 	}
+	var classHandlers = {
+		hasOwn: function(Element, descriptor) {
+			hasOwn(Element, descriptor.value)
+		}
+	}
 
 	function applyToClass(value, Element) {
 		var applyOnCreate = Element._applyOnCreate
@@ -287,25 +294,29 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			} else {
 				Object.getOwnPropertyNames(value).forEach(function(key) {
 					var descriptor = Object.getOwnPropertyDescriptor(value, key)
-					var onClassPrototype = typeof descriptor.value === 'function' || descriptor.get || descriptor.set
-					if (onClassPrototype) {
-						Object.defineProperty(prototype, key, descriptor)
-					}
-					if (!onClassPrototype || key.slice(0, 2) == 'on') {
-						// TODO: eventually we want to be able to set these as rules statically per element
-						/*if (styleDefinitions[key]) {
-							var styles = Element.styles || (Element.styles = [])
-							styles.push(key)
-							styles[key] = descriptor.value
-						} else {*/
-							if (!(key in applyOnCreate)) {
-								var lastLength = applyOnCreate.length || 0
-								applyOnCreate[lastLength] = key
-								applyOnCreate.length = lastLength + 1
-							}
-							// TODO: do deep merging of styles and classes, but not variables
-							applyOnCreate[key] = descriptor.value
-						//}
+					if (classHandlers[key]) {
+						classHandlers[key](Element, descriptor)
+					} else {
+						var onClassPrototype = typeof descriptor.value === 'function' || descriptor.get || descriptor.set
+						if (onClassPrototype) {
+							Object.defineProperty(prototype, key, descriptor)
+						}
+						if (!onClassPrototype || key.slice(0, 2) == 'on') {
+							// TODO: eventually we want to be able to set these as rules statically per element
+							/*if (styleDefinitions[key]) {
+								var styles = Element.styles || (Element.styles = [])
+								styles.push(key)
+								styles[key] = descriptor.value
+							} else {*/
+								if (!(key in applyOnCreate)) {
+									var lastLength = applyOnCreate.length || 0
+									applyOnCreate[lastLength] = key
+									applyOnCreate.length = lastLength + 1
+								}
+								// TODO: do deep merging of styles and classes, but not variables
+								applyOnCreate[key] = descriptor.value
+							//}
+						}
 					}
 				})
 			}
@@ -342,14 +353,12 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			Element.create = create
 			Element.extend = extend
 			Element.for = forTarget
-			Element.hasOwn = hasOwn
 			Element.property = propertyForElement
 		}
 		if (!prototype.renderContent) {
 			prototype.renderContent = renderContent
 			prototype.renderInputContent = renderInputContent
 			prototype.get = getForClass
-			prototype.set = setForClass
 		}
 
 		var i = 0 // for arguments
@@ -709,45 +718,39 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 	function forTarget(target) {
 		return target.get(this)
 	}
-	function nothing(value) {
-	}
 
-	function hasOwn(Target, handleValue) {
-		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
+	function hasOwn(From, Target, createInstance) {
+		if (typeof Target === 'object' && Target.Class) {
+			return hasOwn(From, Target.Class, Target.createInstance)
+		}
+		if (Target instanceof Array) {
+			return Target.forEach(function(Target) {
+				hasOwn(From, Target)
+			})
+		}
+		var ownedClasses = From.ownedClasses || (From.ownedClasses = new WeakMap())
 		// TODO: assign to super classes
-		var Class = this
-		ownedClasses.set(Target, handleValue || nothing)
-		return this
+		ownedClasses.set(Target, createInstance || function() {
+			return new Target()
+		})
+		return From
 	}
 
 	var globalInstances = {}
 	function getForClass(Target) {
 		var element = this
-		var handleValue
-		while (element && !(handleValue = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
+		var createInstance
+		while (element && !(createInstance = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
-		if (!handleValue) {
-			return Target.valueOf()
+		if (createInstance) {
+			var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
+			var instance = ownedInstances.get(Target)
+			if (instance === undefined) {
+				ownedInstances.set(Target, instance = createInstance(element))
+			}
+			return instance
 		}
-		var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
-		var instance = ownedInstances.get(Target)
-		if (!instance) {
-			ownedInstances.set(Target, instance = handleValue(element))
-		}
-		return instance
-	}
-	function setForClass(Target, value) {
-		var element = this
-		var handleValue
-		while (element && !(handleValue = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
-			element = element.parentNode || presumptiveParentMap.get(element)
-		}
-		if (!handleValue) {
-			return Target.put(value)
-		}
-		var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
-		ownedInstances.set(Target, value)
 	}
 
 	function propertyForElement(key) {
@@ -755,22 +758,24 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		ThisElementVariable = this._Variable
 		if (!ThisElementVariable) {
 			// need our own branded variable class for this element class
-			ThisElementVariable = this._Variable = Variable.extend()
-			// define a relationship
-			this.hasOwn(ThisElementVariable, function(element) {
-				// when we create the instance, immediately observe it
-				// TODO: we might want to do this in init instead
-				Variable.observe(element)
-				return element
+			ThisElementVariable = this._Variable = Variable.extend({
+				hasOwn: {
+					Class: ThisElementVariable,
+					createInstance: function(element) {
+						// when we create the instance, immediately observe it
+						// TODO: we might want to do this in init instead
+						var instance = new ThisElementVariable(element)
+						Variable.observe(element)
+						return instance
+					}
+				}
 			})
 		}
 		// now actually get the property class
 		return ThisElementVariable.property(key)
 	}
 
-	// variable class for each item in array
-	var Item = Element.Item = Variable.extend()
-
+	Element.Item = Item
 	// setup the mutation observer so we can be notified of attachments and removals
 	/*var observer = new MutationObserver(function(mutations) {
 		mutations.forEach(function(mutation) {

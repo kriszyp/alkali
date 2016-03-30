@@ -72,9 +72,6 @@ define(['./util/lang', './Context'],
 			if (this.state) {
 				this.state = null
 			}
-			if (this.context) {
-				return this.constructor.valueOf(this.context)
-			}
 			return this.gotValue(this.getValue(context), context)
 		},
 		getValue: function() {
@@ -133,10 +130,14 @@ define(['./util/lang', './Context'],
 				context = context.target
 			}
 			if (typeof this === 'function') {
+				// this is a class, the context should hopefully have an entry
 				if (context) {
-					var instance = new this()
-					instance.context = context
-					return instance
+					var instance = context.get(this)
+					if (instance && !instance.context) {
+						instance.context = context
+					}
+					// TODO: Do we have a global context that we set on defaultInstance?
+					return instance || this.defaultInstance
 				} else {
 					return this.defaultInstance
 				}
@@ -343,9 +344,6 @@ define(['./util/lang', './Context'],
 			}
 		},
 		put: function(value, context) {
-			if (this.context) {
-				return this.constructor.put(value, this.context)
-			}
 			var oldValue = this.getValue(context)
 			if (oldValue === value) {
 				return noChange
@@ -683,6 +681,19 @@ define(['./util/lang', './Context'],
 	})
 	Variable.Property = Property
 
+	var Item = Variable.Item = lang.compose(Variable, function Item(value, parent) {
+		this.value = value
+		this.parent = parent
+	}, {
+		updated: function(updateEvent, by, context) {
+			this.parent.updated({
+				type: 'update',
+				key: this.index
+			}, this, context)
+			Variable.prototype.updated.apply(this, arguments)
+		}
+	})
+
 	var Composite = Variable.Composite = lang.compose(Caching, function Composite(args) {
 		this.args = args
 	}, {
@@ -862,13 +873,17 @@ define(['./util/lang', './Context'],
 	})
 	Variable.Call = Call
 
-	// TODO: at some point, we want to dymanically extend from extend Variable classes, so for() returned instances
-	// are instances of this extension of the Variable
 	var ContextualizedVariable = lang.compose(Variable, function(Source, context) {
 		this.constructor = Source
 		this.context = context
 	}, {
 
+		valueOf: function() {
+			return this.constructor.valueOf(this.context)
+		},
+		put: function(value) {
+			return this.constructor.put(value, this.context)
+		},
 		updated: function(event, by, context) {
 			if (by === this.constructor) {
 				// if we receive an update from the constructor, filter it
@@ -1134,16 +1149,15 @@ define(['./util/lang', './Context'],
 		return this
 	}
 	function getForClass(Target) {
-		var createForInstance = this.constructor.ownedClasses && this.constructor.ownedClasses.get(Target)
-		if (createForInstance) {
+		var createInstance = this.constructor.ownedClasses && this.constructor.ownedClasses.get(Target)
+		if (createInstance) {
 			var ownedInstances = this.ownedInstances || (this.ownedInstances = new WeakMap())
 			var instance = ownedInstances.get(Target)
 			if (!instance) {
-				ownedInstances.set(Target, instance = createForInstance(this))
+				ownedInstances.set(Target, instance = createInstance(this))
 			}
 			return instance
 		}
-		return Target.valueOf()
 	}
 	function generalizeClass() {
 		var prototype = this.prototype
@@ -1164,9 +1178,10 @@ define(['./util/lang', './Context'],
 	}
 	function generalizeMethod(Class, name) {
 		var method = Class[name] = function(possibleEvent) {
-			var target = possibleEvent && possibleEvent.target
-			var instance = Class.for(target)
-			instance[name].apply(instance, arguments)
+			// I think we can just rely on `this`, but we could use the argument:
+			// var target = possibleEvent && possibleEvent.target
+			var instance = Class.for(this)
+			return instance[name].apply(instance, arguments)
 		}
 		method.for = function(context) {
 			var instance = Class.for(context)
@@ -1177,19 +1192,24 @@ define(['./util/lang', './Context'],
 		return method
 	}
 
+	var defaultContext = {
+		name: 'Default context',
+		description: 'This object is the default context for classes, corresponding to a singleton instance of that class',
+		get: function(Class) {
+			return Class.defaultInstance
+		}
+	}
 	Variable.getValue = function(context) {
 		// contextualized getValue
-		if (context && context.get) {
-			return context.get(this)
-		}
-		return Variable.prototype.getValue.call(this, context)
+		return (context && context.get && context.get(this) || this.defaultInstance).valueOf()
 	}
 	Variable.setValue = function(value, context) {
-		// contextualized getValue
-		if (context && context.set) {
-			return context.set(this, value)
-		}
-		Variable.prototype.setValue.call(this, value)
+		// contextualized setValue
+		return (context && context.get && context.get(this) || this.defaultInstance).put(value)
+	}
+	Variable.updated = function(updateEvent, by, context) {
+		Variable.for(context).updated(updateEvent, this)
+		Variable.prototype.updated.apply(this, arguments)
 	}
 	Variable.generalize = generalizeClass
 	Variable.hasOwn = hasOwn
@@ -1213,14 +1233,13 @@ define(['./util/lang', './Context'],
 		}
 		return ExtendedVariable
 	}
-	var identityContext = {
-		get: function(Class) {
-			return Class
-		}
-	}
 	Object.defineProperty(Variable, 'defaultInstance', {
 		get: function() {
-			return this._defaultInstance || (this._defaultInstance = this.for(identityContext))
+			return this.hasOwnProperty('_defaultInstance') ?
+				this._defaultInstance : (
+					this._defaultInstance = new this(),
+					this._defaultInstance.context = defaultContext,
+					this._defaultInstance)
 		}
 	})
 
