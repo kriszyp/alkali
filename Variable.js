@@ -58,8 +58,9 @@ define(['./util/lang', './Context'],
 		return context
 	}
 
-	function PropertyChange(key) {
+	function PropertyChange(key, object) {
 		this.key = key
+		this.object = object
 		this.version = nextId++
 	}
 	PropertyChange.prototype.type = 'update'
@@ -109,6 +110,13 @@ define(['./util/lang', './Context'],
 			if (typeof value === 'object' && value && variable.dependents) {
 				// set up the listeners tracking
 				registerListener(value, variable)
+				if (value.forEach) {
+					value.forEach(function(item) {
+						if (typeof value === 'object' && value) {
+							registerListener(value, variable)
+						}
+					})
+				}
 			}
 			if (value === undefined) {
 				value = variable.default
@@ -144,15 +152,15 @@ define(['./util/lang', './Context'],
 			}
 			return context ? new ContextualizedVariable(this, context) : this
 		},
-		_propertyChange: function(propertyName, context, type) {
+		_propertyChange: function(propertyName, object, context, type) {
 			if (this.onPropertyChange) {
-				this.onPropertyChange(propertyName, context)
+				this.onPropertyChange(propertyName, object, context)
 			}
 			var property = propertyName && this._properties && this._properties[propertyName]
-			if (property && !(type instanceof PropertyChange)) {
+			if (property && !(type instanceof PropertyChange) && object === this.valueOf()) {
 				property.parentUpdated(ToChild, context)
 			}
-			this.updated(new PropertyChange(propertyName), this, context)
+			this.updated(new PropertyChange(propertyName, object), null, context)
 		},
 		eachKey: function(callback) {
 			for (var i in this._properties) {
@@ -165,13 +173,19 @@ define(['./util/lang', './Context'],
 		call: function(instance) {
 			return this.apply(instance, Array.prototype.slice.call(arguments, 1))
 		},
+		forDependencies: function(callback) {
+			if (this.notifyingValue) {
+				callback(this.notifyingValue)
+			}
+		},
 		init: function() {
 			if (this.context) {
 				this.constructor.notifies(this)
 			}
-			if (this.notifyingValue) {
-				this.notifyingValue.notifies(this)
-			}
+			var variable = this
+			this.forDependencies(function(dependency) {
+				dependency.notifies(variable)
+			})
 		},
 		cleanup: function() {
 			var handles = this.handles
@@ -187,10 +201,13 @@ define(['./util/lang', './Context'],
 			}
 			var notifyingValue = this.notifyingValue
 			if (notifyingValue) {
-				this.notifyingValue.stopNotifies(this)
 				// TODO: move this into the caching class
 				this.computedVariable = null
 			}
+			var variable = this
+			this.forDependencies(function(dependency) {
+				dependency.stopNotifies(variable)
+			})
 			if (this.context) {
 				this.constructor.stopNotifies(this)
 			}
@@ -598,13 +615,9 @@ define(['./util/lang', './Context'],
 		this.key = key
 	},
 	{
-		init: function() {
-			Variable.prototype.init.call(this)
-			this.parent.notifies(this)
-		},
-		cleanup: function() {
-			Variable.prototype.cleanup.call(this)
-			this.parent.stopNotifies(this)
+		forDependencies: function(callback) {
+			Variable.prototype.forDependencies.call(this, callback)
+			callback(this.parent)
 		},
 		valueOf: function(context) {
 			if (this.state) {
@@ -666,13 +679,13 @@ define(['./util/lang', './Context'],
 				// at least make sure we notify the parent
 				// we need to do it before the other listeners, so we can update it before
 				// we trigger a full clobbering of the object
-				parent._propertyChange(key, context, type)
+				parent._propertyChange(key, object, context, type)
 				if (listeners) {
 					for (var i = 0, l = listeners.length; i < l; i++) {
 						var listener = listeners[i]
 						if (listener !== parent) {
 							// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
-							listener._propertyChange(key, context, type)
+							listener._propertyChange(key, object, context, type)
 						}
 					}
 				}
@@ -697,14 +710,14 @@ define(['./util/lang', './Context'],
 	var Composite = Variable.Composite = lang.compose(Caching, function Composite(args) {
 		this.args = args
 	}, {
-		init: function() {
+		forDependencies: function(callback) {
 			// depend on the args
-			Caching.prototype.init.call(this)
+			Caching.prototype.forDependencies.call(this, callback)
 			var args = this.args
 			for (var i = 0, l = args.length; i < l; i++) {
 				var arg = args[i]
 				if (arg && arg.notifies) {
-					arg.notifies(this)
+					callback(arg)
 				}
 			}
 		},
@@ -744,18 +757,6 @@ define(['./util/lang', './Context'],
 			return version
 		},
 
-		cleanup: function() {
-			Caching.prototype.cleanup.call(this)
-			// depend on the args
-			var args = this.args
-			for (var i = 0, l = args.length; i < l; i++) {
-				var arg = args[i]
-				if (arg && arg.notifies) {
-					arg.stopNotifies(this)
-				}
-			}
-		},
-
 		getValue: function(context) {
 			var results = []
 			var args = this.args
@@ -774,15 +775,10 @@ define(['./util/lang', './Context'],
 		this.functionVariable = functionVariable
 		this.args = args
 	}, {
-		init: function() {
-			// depend on the function itself
-			this.functionVariable.notifies(this)
+		forDependencies: function(callback) {
 			// depend on the args
-			Composite.prototype.init.call(this)
-		},
-		cleanup: function() {
-			this.functionVariable.stopNotifies(this)
-			Composite.prototype.cleanup.call(this)
+			Composite.prototype.forDependencies.call(this, callback)
+			callback(this.functionVariable)
 		},
 
 		getValue: function(context) {
@@ -920,14 +916,14 @@ define(['./util/lang', './Context'],
 				type: 'delete',
 				previousIndex: args[0],
 				oldValue: result[i]
-			})
+			}, this)
 		}
 		for (i = 2, l = args.length; i < l; i++) {
 			this.updated({
 				type: 'add',
 				value: args[i],
 				index: args[0] + i - 2
-			})
+			}, this)
 		}
 	})
 	arrayMethod('push', function(args, result) {
@@ -937,7 +933,7 @@ define(['./util/lang', './Context'],
 				type: 'add',
 				index: result - i - 1,
 				value: arg
-			})
+			}, this)
 		}
 	})
 	arrayMethod('unshift', function(args, result) {
@@ -947,20 +943,20 @@ define(['./util/lang', './Context'],
 				type: 'add',
 				index: i,
 				value: arg
-			})
+			}, this)
 		}
 	})
 	arrayMethod('shift', function(args, results) {
 		this.updated({
 			type: 'delete',
 			previousIndex: 0
-		})
+		}, this)
 	})
 	arrayMethod('pop', function(args, results, array) {
 		this.updated({
 			type: 'delete',
 			previousIndex: array.length
-		})
+		}, this)
 	})
 
 	function iterateMethod(method) {
@@ -990,10 +986,13 @@ define(['./util/lang', './Context'],
 						}
 					})
 				}
-				return array && array[method] && array[method].apply(array, args)
+				return variable.value = array && array[method] && array[method].apply(array, args)
 			})
 		},
 		updated: function(event, by, context) {
+			if (by === this) {
+				return Composite.prototype.updated.call(this, event, by, context)
+			}
 			var propagatedEvent = event.type === 'refresh' ? event : // always propagate refreshes
 				this[this.method + 'Updated'](event)
 			// TODO: make sure we normalize the event structure
@@ -1009,15 +1008,35 @@ define(['./util/lang', './Context'],
 		},
 		filterUpdated: function(event) {
 			if (event.type === 'delete') {
-				if ([event.oldValue].filter(this.args[0]).length > 0) {
-					return event
+				var index = this.value.indexOf(event.oldValue)
+				if (index > -1) {
+					this.splice(index, 1)
 				}
 			} else if (event.type === 'add') {
 				if ([event.value].filter(this.args[0]).length > 0) {
-					return event
+					this.push(event.value)
 				}
-			} // else update
-			else {
+			} else if (event.type === 'update') {
+				var index = this.value.indexOf(event.object)
+				var matches = [event.object].filter(this.args[0]).length > 0
+				if (index > -1) {
+					if (matches) {
+						return {
+							type: 'updated',
+							object: event.object,
+							index: index
+						}
+					} else {
+						this.splice(index, 1)
+					}
+				}	else {
+					if (matches) {
+						this.push(event.object)
+					}
+					// else nothing mactches
+				}
+				return
+			} else {
 				return event
 			}
 		},
@@ -1027,14 +1046,10 @@ define(['./util/lang', './Context'],
 				value: [event.value].map(this.args[0])
 			}
 		},
-		init: function() {
-			Composite.prototype.init.call(this)
-			this.source.notifies(this)
-		},
-		cleanup: function() {
-			// TODO: deregister array item objects
-			Composite.prototype.cleanup.call(this)
-			this.source.stopNotifies(this)
+		forDependencies: function(callback) {
+			// depend on the args
+			Composite.prototype.forDependencies.call(this, callback)
+			callback(this.source)
 		},
 		getVersion: function(context) {
 			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getVersion(context))
@@ -1045,15 +1060,10 @@ define(['./util/lang', './Context'],
 		this.target = target
 		this.targetSchema = schema
 	}, {
-		init: function() {
-			Caching.prototype.init.call(this)
-			this.target.notifies(this)
-			this.targetSchema.notifies(this)
-		},
-		cleanup: function() {
-			Caching.prototype.cleanup.call(this)
-			this.target.stopNotifies(this)
-			this.targetSchema.stopNotifies(this);			
+		forDependencies: function(callback) {
+			Caching.prototype.forDependencies.call(this, callback)
+			callback(this.target)
+			callback(this.targetSchema)
 		},
 		getVersion: function(context) {
 			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getVersion(context), this.targetSchema.getVersion(context))
@@ -1066,13 +1076,9 @@ define(['./util/lang', './Context'],
 	var Schema = lang.compose(Caching, function(target) {
 		this.target = target
 	}, {
-		init: function() {
-			Variable.prototype.init.call(this)
-			this.target.notifies(this)
-		},
-		cleanup: function() {
-			Caching.prototype.cleanup.call(this)
-			this.target.stopNotifies(this)
+		forDependencies: function(callback) {
+			Caching.prototype.forDependencies.call(this, callback)
+			callback(this.target)
 		},
 		getVersion: function(context) {
 			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getVersion(context))
@@ -1120,7 +1126,7 @@ define(['./util/lang', './Context'],
 					var listener = listeners[i]
 					for (var j = 0, el = events.length; j < el; j++) {
 						var event = events[j]
-						listener._propertyChange(event.name)
+						listener._propertyChange(event.name, object)
 					}
 				}
 			})
