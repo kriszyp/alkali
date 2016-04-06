@@ -247,8 +247,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 				var element = this
 				content.forEach(function(item) {
 					if (each.create) {
-						currentParent = element
-						childElement = each.create({_item: item}) // TODO: make a faster object here potentially
+						childElement = each.create({parent: element, _item: item}) // TODO: make a faster object here potentially
 					} else {
 						childElement = each(item, element)
 					}
@@ -264,6 +263,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			try {
 				var textNode = document.createTextNode(content === undefined ? '' : (content.valueOf(this)))
 			} catch (error) {
+				console.error(error.stack)
 				var textNode = document.createTextNode(error)
 			}
 			this.appendChild(textNode)
@@ -409,7 +409,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		// TODO: make this a symbol
 		var applyOnCreate = this._applyOnCreate
 		if (currentParent) {
-			presumptiveParentMap.set(element, currentParent)
+			var parent = currentParent
 			currentParent = null
 		}
 		var tagName = this._tag
@@ -454,6 +454,12 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			}
 		}
 		var element = document.createElement(tagName)
+		if (selector && selector.parent) {
+			parent = selector.parent
+		}
+		if (parent) {
+			presumptiveParentMap.set(element, parent)
+		}
 		setPrototypeOf(element, this.prototype)
 		if (this._id) {
 			element.id = this._id
@@ -474,10 +480,10 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 				}
 			})
 		}
-		if (properties && properties._item) {
+		if (selector && selector._item) {
 			// this is kind of hack, to get the Item available before the properties, eventually we may want to
 			// order static properties before variable binding applications, but for now.
-			element._item = properties._item
+			element._item = selector._item
 		}
 		if (applyOnCreate) {
 			applyProperties(element, applyOnCreate, applyOnCreate)

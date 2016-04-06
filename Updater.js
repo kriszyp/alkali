@@ -287,7 +287,7 @@ define(['./util/lang'], function (lang) {
 		function eachItem(item, index, nextChild) {
 			var childElement
 			if (each.create) {
-				childElement = each.create(thisElement, {_item: item}) // TODO: make a faster object here potentially
+				childElement = each.create({parent: thisElement, _item: item}) // TODO: make a faster object here potentially
 			} else {
 				childElement = each(item, thisElement)
 			}
