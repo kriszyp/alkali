@@ -314,7 +314,6 @@ define([
 			})
 		},
 		lookupForSingleInstanceVariable: function() {
-			debugger
 			var MyVariable = Variable.extend()
 			var MyDiv = Div(MyVariable)
 			var div1 = new MyDiv()
@@ -329,7 +328,9 @@ define([
 		},
 		lookupForMultipleInstanceVariable: function() {
 			var MyVariable = Variable.extend()
-			var MyDiv = Div(MyVariable).hasOwn(MyVariable)
+			var MyDiv = Div(MyVariable, {
+				hasOwn: MyVariable
+			})
 			var div1 = new MyDiv()
 			document.body.appendChild(div1)
 			var div2 = new MyDiv()
