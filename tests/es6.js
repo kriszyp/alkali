@@ -91,6 +91,19 @@ define([
 			}
 			let v = new Variable(obj)
 			assert.strictEqual(v.property(mySymbol).valueOf(), 'test')
+		},
+		Map: function() {
+			let map = new Map()
+			map.set('a', 2)
+			var v = new Variable(map)
+			assert.strictEqual(v.get('a'), 2)
+			v.set('a', 3)
+			assert.strictEqual(v.get('a'), 3)
+			assert.strictEqual(map.get('a'), 3)
+			v.set(2, 2)
+			v.set('2', 'two')
+			assert.strictEqual(map.get(2), 2)
+			assert.strictEqual(map.get('2'), 'two')
 		}
 	})
 })

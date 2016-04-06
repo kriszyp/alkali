@@ -119,12 +119,21 @@ define(['./util/lang', './Context'],
 			}
 			return value
 		},
+		isMap: function(){
+			return this.value instanceof Map
+		},
 		property: function(key) {
-			var properties = this._properties || (this._properties = {})
-			var propertyVariable = properties[key]
+			var isMap = this.isMap()
+			var properties = this._properties || (this._properties = isMap ? new Map() : {})
+			var propertyVariable = isMap ? properties.get(key) : properties[key]
 			if (!propertyVariable) {
 				// create the property variable
-				propertyVariable = properties[key] = new Property(this, key)
+				propertyVariable = new Property(this, key)
+				if (isMap) {
+					properties.set(key, propertyVariable)
+				} else {
+					properties[key] = propertyVariable
+				}
 			}
 			return propertyVariable
 		},
@@ -377,7 +386,7 @@ define(['./util/lang', './Context'],
 				return getForClass.call(this, key)
 			}
 			var object = this.valueOf(context)
-			var value = object && object[key]
+			var value = object && (typeof object.get === 'function' ? object.get(key) : object[key])
 			if (value && value.notifies) {
 				// nested variable situation, get underlying value
 				return value.valueOf()
@@ -640,11 +649,11 @@ define(['./util/lang', './Context'],
 			if (object && object.then) {
 				return object.then(function(object) {
 					setupListener(object)
-					return property.gotValue(object == null ? undefined : object[key], context)
+					return property.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key], context)
 				})
 			}
 			setupListener(object)
-			return this.gotValue(object == null ? undefined : object[key], context)
+			return this.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key], context)
 		},
 		put: function(value, context) {
 			return this._changeValue(context, RequestChange, value)
@@ -670,11 +679,16 @@ define(['./util/lang', './Context'],
 					return deny
 				}
 				if (type == RequestChange) {
-					if (object[key] === newValue) {
+					var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
+					if (oldValue === newValue) {
 						// no actual change to make
 						return noChange
 					}
-					object[key] = newValue
+					if (typeof object.set === 'function') {
+						object.set(key, newValue)
+					} else {
+						object[key] = newValue
+					}
 				}
 				var listeners = propertyListenersMap.get(object)
 				// at least make sure we notify the parent
