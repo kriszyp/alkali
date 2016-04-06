@@ -161,7 +161,7 @@ define(['./util/lang', './Context'],
 			if (this.onPropertyChange) {
 				this.onPropertyChange(propertyName, object, context)
 			}
-			var property = propertyName && this._properties && this._properties[propertyName]
+			var property = this._properties && this._properties[propertyName]
 			if (property && !(type instanceof PropertyChange) && object === this.valueOf(context)) {
 				property.parentUpdated(ToChild, context)
 			}

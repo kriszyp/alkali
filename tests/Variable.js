@@ -506,6 +506,17 @@ define([
 			assert.strictEqual(TestVariable.property('a').for().valueOf(), 0)
 			assert.strictEqual(TestVariable.property('a').for(subject1).valueOf(), 1)
 			assert.strictEqual(TestVariable.property('a').for(subject2).valueOf(), 2)
+		},
+		emptyKey: function() {
+			var v = new Variable({})
+			var updated
+			v.property('').notifies({
+				updated: function(updateEvent) {
+					updated = true
+				}
+			})
+			v.set('', 'test')
+			assert.strictEqual(updated, true)
 		}
 	})
 })
