@@ -314,6 +314,7 @@ define([
 			})
 		},
 		lookupForSingleInstanceVariable: function() {
+			debugger
 			var MyVariable = Variable.extend()
 			var MyDiv = Div(MyVariable)
 			var div1 = new MyDiv()

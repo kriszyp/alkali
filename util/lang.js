@@ -347,11 +347,12 @@ define([], function(){
 
 		},
 		compose: function(Base, constructor, properties){
-			var prototype = constructor.prototype = new Base()
+			var prototype = constructor.prototype = Object.create(Base.prototype)
 			setPrototypeOf(constructor, Base)
 			for(var i in properties){
 				prototype[i] = properties[i]
 			}
+			prototype.constructor = constructor
 			return constructor
 		},
 		nextTurn: has('promise') ? 

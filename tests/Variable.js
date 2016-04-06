@@ -209,9 +209,9 @@ define([
 			var mult = sum.to(function(s) { return [s.valueOf()[0] * 2]; })
 			assert.deepEqual(mult.valueOf(), [10])
 			b.put([4])
-                        assert.deepEqual(mult.valueOf(), [12])
+												assert.deepEqual(mult.valueOf(), [12])
 		},
-    derivedComposedInvalidations: function() {
+		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)
 			var signal = new Variable()
 			var arr = [1,2,3]
@@ -379,31 +379,31 @@ define([
 			var inner = new Variable('a')
 			var resolvePromise
 			var promise = new Promise(function(resolve) {
-			    resolvePromise = resolve
+					resolvePromise = resolve
 			})
-                        var promiseVar = new Variable(promise)
+			var promiseVar = new Variable(promise)
 			outerCallbackInvoked = 0
 			innerCallbackInvoked = 0
 			var composed = promiseVar.to(function(promiseValue) {
-			    outerCallbackInvoked++
-                            console.log('outer invoked')
-			    return inner.to(function(innerValue) {
+					outerCallbackInvoked++
+														console.log('outer invoked')
+					return inner.to(function(innerValue) {
 				innerCallbackInvoked++
-                                console.log('inner invoked')
+																console.log('inner invoked')
 				return [promiseValue, innerValue]
-			    })
+					})
 			})
 			var result
 			var finished = composed.valueOf().then(function(composedValue) {
-                            console.log('composedValue', composedValue)
-			    result = composedValue
+														console.log('composedValue', composedValue)
+					result = composedValue
 			})
 			assert.isUndefined(result)
-                        resolvePromise('promise')
+												resolvePromise('promise')
 			return finished.then(function() {
-			    assert.equal(outerCallbackInvoked, 1, 'outer map not invoked exactly once: ' + outerCallbackInvoked)
-			    assert.equal(innerCallbackInvoked, 1, 'inner map not invoked exactly once: ' + innerCallbackInvoked)
-                            assert.deepEqual(result, ['promise','a'])
+					assert.equal(outerCallbackInvoked, 1, 'outer map not invoked exactly once: ' + outerCallbackInvoked)
+					assert.equal(innerCallbackInvoked, 1, 'inner map not invoked exactly once: ' + innerCallbackInvoked)
+														assert.deepEqual(result, ['promise','a'])
 			})
 		},
 
@@ -491,6 +491,21 @@ define([
 			})
 			assert.strictEqual(greaterThanFour.valueOf().length, 1)
 			
+		},
+		contextualClassProperty: function() {
+			var TestVariable = Variable()
+			var TestSubject = Variable()
+			TestSubject.hasOwn(TestVariable)
+			var subject1 = new TestSubject()
+			var subject2 = new TestSubject()
+			var variable1 = TestVariable.for(subject1)
+			var variable2 = TestVariable.for(subject2)
+			TestVariable.defaultInstance.put({a: 0})
+			variable1.put({a: 1})
+			variable2.put({a: 2})
+			assert.strictEqual(TestVariable.property('a').for().valueOf(), 0)
+			assert.strictEqual(TestVariable.property('a').for(subject1).valueOf(), 1)
+			assert.strictEqual(TestVariable.property('a').for(subject2).valueOf(), 2)
 		}
 	})
 })

@@ -58,21 +58,24 @@ define(['./util/lang', './Context'],
 		return context
 	}
 
-	function PropertyChange(key, object) {
+	function PropertyChange(key, object, childEvent) {
 		this.key = key
 		this.object = object
+		this.childEvent = childEvent
 		this.version = nextId++
 	}
 	PropertyChange.prototype.type = 'update'
 	function Variable(value) {
-		this.value = typeof value === 'undefined' ? this.default : value
+		if (this instanceof Variable) {
+			// new call, may eventually use new.target
+			this.value = typeof value === 'undefined' ? this.default : value
+		} else {
+			return Variable.extend(value)
+		}
 	}
 	Variable.prototype = {
 		constructor: Variable,
 		valueOf: function(context) {
-			if (this.state) {
-				this.state = null
-			}
 			return this.gotValue(this.getValue(context), context)
 		},
 		getValue: function() {
@@ -110,13 +113,6 @@ define(['./util/lang', './Context'],
 			if (typeof value === 'object' && value && variable.dependents) {
 				// set up the listeners tracking
 				registerListener(value, variable)
-				if (value.forEach) {
-					value.forEach(function(item) {
-						if (typeof value === 'object' && value) {
-							registerListener(value, variable)
-						}
-					})
-				}
 			}
 			if (value === undefined) {
 				value = variable.default
@@ -157,10 +153,10 @@ define(['./util/lang', './Context'],
 				this.onPropertyChange(propertyName, object, context)
 			}
 			var property = propertyName && this._properties && this._properties[propertyName]
-			if (property && !(type instanceof PropertyChange) && object === this.valueOf()) {
+			if (property && !(type instanceof PropertyChange) && object === this.valueOf(context)) {
 				property.parentUpdated(ToChild, context)
 			}
-			this.updated(new PropertyChange(propertyName, object), null, context)
+			this.updated(new PropertyChange(propertyName, object, type), null, context)
 		},
 		eachKey: function(callback) {
 			for (var i in this._properties) {
@@ -240,19 +236,13 @@ define(['./util/lang', './Context'],
 			if (this.context) {
 				if (by === this.constructor) {
 					// if we receive an update from the constructor, filter it
-					if (context === this.context || context && context.contains && context.contains(this.context)) {
-						Variable.prototype.updated.apply(this, arguments)
+					if (!(!context || context === this.context || (context.contains && context.contains(this.context)))) {
+						return
 					}
 				} else {
 					// if we receive an outside update, send it to the constructor
-					this.constructor.updated(updateEvent, by, this.context)
+					return this.constructor.updated(updateEvent, by, this.context)
 				}
-			}
-			if (this.state === 'invalidated') {
-				return
-			}
-			if (!updateEvent || updateEvent.type === 'refresh') {
-				this.state = 'invalidated'
 			}
 			if (this.lastUpdate) {
 				var nextUpdateMap = this.nextUpdateMap
@@ -285,10 +275,17 @@ define(['./util/lang', './Context'],
 							}
 						}
 					}catch(e) {
-						console.error(e, 'updating a variable')
+						console.error(e, e.stack, 'updating a variable')
 					}
 				}
 			}
+			if (this.notifyingValue) {
+				//this.notifyingValue.updatedWithin(updateEvent)
+			}
+		},
+
+		updatedWithin: function() {
+
 		},
 
 		invalidate: function() {
@@ -298,7 +295,7 @@ define(['./util/lang', './Context'],
 
 		notifies: function(target) {
 			var dependents = this.dependents
-			if (!dependents) {
+			if (!dependents || !this.hasOwnProperty('dependents')) {
 				this.init()
 				this.dependents = dependents = []
 			}
@@ -497,6 +494,11 @@ define(['./util/lang', './Context'],
 		}
 	}, {
 		getCache: function(context) {
+			if (this.contextMap && context) {
+				return this.contextMap.get(context)
+			}
+			return this.cache || (this.cache = {})
+
 			var cache = this.cache || (this.cache = new CacheEntry())
 			while(cache.getNextKey) {
 				var propertyName = cache.propertyName
@@ -515,11 +517,8 @@ define(['./util/lang', './Context'],
 
 		valueOf: function(context, cacheHolder) {
 			// first check to see if we have the variable already computed
-			if (this.state) {
-				this.state = null
-			}
 			var cache = this.getCache(context)
-			if ('value' in cache) {
+			if (cache && 'value' in cache) {
 				if (cacheHolder && cacheHolder instanceof GetCache) {
 					cacheHolder.cache = cache
 				}
@@ -527,15 +526,18 @@ define(['./util/lang', './Context'],
 					return cache.value
 				}
 			}
-			var cache = this.cache
 			
 			var watchedContext = context && {
 				get: function(propertyName, select) {
 					var keyValue = context.get(propertyName, select)
-					return keyValue// TODO: fix this
+					var contextMap = variable.contextMap || (variable.contextMap = new WeakMap())
+					contextMap.set(context, cache = {})
+					return keyValue
+
+					// TODO: fix this
 					// determine if we have already keyed of this value
 					if (cache.propertyName !== propertyName) {
-						// TODO: check it against all previous property names						
+						// TODO: check it against all previous property names
 						if (!cache.propertyName) {
 							cache.propertyName = propertyName
 						}
@@ -594,9 +596,11 @@ define(['./util/lang', './Context'],
 				// just based on the context
 				var cache = this.getCache(context)
 				// deregisterListener(cache.value, cache)
-				delete cache.value
+				if (cache) {
+					delete cache.value
+				}
 			}else{
-				// delete our whole cache if it is an unconstrained invalidation
+				// delete our local cache if it is an unconstrained invalidation
 				// deregisterListener(this.cache.value, this.cache)
 				this.cache = {}
 			}
@@ -620,9 +624,6 @@ define(['./util/lang', './Context'],
 			callback(this.parent)
 		},
 		valueOf: function(context) {
-			if (this.state) {
-				this.state = null
-			}
 			var key = this.key
 			var property = this
 			var cacheHolder = new GetCache()
@@ -694,15 +695,12 @@ define(['./util/lang', './Context'],
 	})
 	Variable.Property = Property
 
-	var Item = Variable.Item = lang.compose(Variable, function Item(value, parent) {
+	var Item = Variable.Item = lang.compose(Variable, function Item(value, source) {
 		this.value = value
-		this.parent = parent
+		this.source = source
 	}, {
 		updated: function(updateEvent, by, context) {
-			this.parent.updated({
-				type: 'update',
-				key: this.index
-			}, this, this.context)
+			this.source.updatedWithin(updateEvent, this, context)
 			Variable.prototype.updated.apply(this, arguments)
 		}
 	})
@@ -723,8 +721,8 @@ define(['./util/lang', './Context'],
 		},
 
 		updated: function(updateEvent, by, context) {
+			var args = this.args
 			if (by !== this.notifyingValue && updateEvent !== Refresh) {
-				var args = this.args
 				// using a painful search instead of indexOf, because args may be an arguments object
 				for (var i = 0, l = args.length; i < l; i++) {
 					var arg = args[i]
@@ -733,6 +731,12 @@ define(['./util/lang', './Context'],
 						updateEvent = Refresh
 						continue
 					}
+				}
+			}
+			if (updateEvent instanceof PropertyChange) {
+				for (var i = 0, l = args.length; i < l; i++) {
+					var arg = args[i]
+					arg.updatedWithin(updateEvent)
 				}
 			}
 			Caching.prototype.updated.call(this, updateEvent, by, context)
@@ -869,7 +873,7 @@ define(['./util/lang', './Context'],
 	})
 	Variable.Call = Call
 
-	var ContextualizedVariable = lang.compose(Variable, function(Source, context) {
+	var ContextualizedVariable = lang.compose(Variable, function ContextualizedVariable(Source, context) {
 		this.constructor = Source
 		this.context = context
 	}, {
@@ -880,17 +884,11 @@ define(['./util/lang', './Context'],
 		put: function(value) {
 			return this.constructor.put(value, this.context)
 		},
-		updated: function(event, by, context) {
-			if (by === this.constructor) {
-				// if we receive an update from the constructor, filter it
-				if (context === this.context || context && context.contains && context.contains(this.context)) {
-					Variable.prototype.updated.apply(this, arguments)
-				}
-			} else {
-				// if we receive an outside update, send it to the constructor
-				this.constructor.updated(event, by, this.context)
-			}
+		parentUpdated: function(event, context) {
+			// if we receive an outside update, send it to the constructor
+			this.constructor.updated(event, this.parent, this.context)
 		}
+
 	})
 
 	function arrayMethod(name, sendUpdates) {
@@ -978,14 +976,6 @@ define(['./util/lang', './Context'],
 			var args = this.args
 			var variable = this
 			return lang.when(this.source.valueOf(context), function(array) {
-				// TODO: we need to cache the array, and register listeners on the array once it is init-ed
-				if (variable.dependents) {
-					array.forEach(function(item) {
-						if (item && typeof item === 'object') {
-							registerListener(item, variable)
-						}
-					})
-				}
 				return variable.value = array && array[method] && array[method].apply(array, args)
 			})
 		},
@@ -1002,6 +992,8 @@ define(['./util/lang', './Context'],
 			if (event.value && typeof event.value === 'object') {
 				registerListener(event.value, this)
 			}
+			this.source.updatedWithin(event, this, context)
+
 			if (propagatedEvent) {
 				Composite.prototype.updated.call(this, propagatedEvent, by, context)
 			}
@@ -1231,10 +1223,6 @@ define(['./util/lang', './Context'],
 		// contextualized setValue
 		return (context && context.get && context.get(this) || this.defaultInstance).put(value)
 	}
-	Variable.updated = function(updateEvent, by, context) {
-		this.for(context).updated(updateEvent, this)
-		Variable.prototype.updated.apply(this, arguments)
-	}
 	Variable.generalize = generalizeClass
 	Variable.hasOwn = hasOwn
 	Variable.all = all
@@ -1245,7 +1233,11 @@ define(['./util/lang', './Context'],
 		// TODO: handle arguments
 		var Base = this
 		function ExtendedVariable() {
-			return Base.apply(this, arguments)
+			if (this instanceof ExtendedVariable) {
+				return Base.apply(this, arguments)
+			} else {
+				return ExtendedVariable.extend(properties)
+			}
 		}
 		var prototype = ExtendedVariable.prototype = Object.create(this.prototype)
 		ExtendedVariable.prototype.constructor = ExtendedVariable
