@@ -192,6 +192,18 @@ define(['./util/lang'], function (lang) {
 	}
 	Updater.PropertyUpdater = PropertyUpdater
 
+	function StyleUpdater(options) {
+		if(options.name){
+			this.name = options.name
+		}
+		ElementUpdater.apply(this, arguments)
+	}
+	StyleUpdater.prototype = Object.create(ElementUpdater.prototype)
+	StyleUpdater.prototype.type = 'StyleUpdater'
+	StyleUpdater.prototype.renderUpdate = function (newValue, element) {
+		element.style[this.name] = newValue
+	}
+	Updater.StyleUpdater = StyleUpdater
 
 	function ContentUpdater(options) {
 		ElementUpdater.apply(this, arguments)

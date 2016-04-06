@@ -1,9 +1,17 @@
 define(['./Variable', './Updater', './util/lang', './Context'], function (Variable, Updater, lang, Context) {
 	var knownElementProperties = {
 	}
-	PropertyUpdater = Updater.PropertyUpdater
-	TextUpdater = Updater.TextUpdater
-	ListUpdater = Updater.ListUpdater
+	var PropertyUpdater = Updater.PropertyUpdater
+	var StyleUpdater = lang.compose(Updater.StyleUpdater, function StyleUpdater() {
+		Updater.StyleUpdater.apply(this, arguments)
+	}, {
+		renderUpdate: function(newValue, element) {
+			var definition = styleDefinitions[this.name]
+			element.style[this.name] = definition ? definition(newValue) : newValue
+		}
+	})
+	var TextUpdater = Updater.TextUpdater
+	var ListUpdater = Updater.ListUpdater
 	;['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
 		knownElementProperties[name] = true
 	})
@@ -52,7 +60,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 	}
 
 	var styleDefinitions = {
-		display: booleanStyle(['', 'none']),
+		display: booleanStyle(['initial', 'none']),
 		visibility: booleanStyle(['visible', 'hidden']),
 		color: identity,
 		opacity: identity,
@@ -104,12 +112,14 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			var childNode
 			if (child && child.create) {
 				// an element constructor
-				childNode = child.create(parent)
+				currentParent = parent
+				childNode = child.create()
 				fragment.appendChild(childNode)
 				if (child.isContentNode) {
 					container.contentNode = childNode
 				}
 			} else if (typeof child == 'function') {
+				// TODO: reenable this
 //				if (child.for) {
 					// a variable constructor that can be contextualized
 	//				fragment.appendChild(variableAsText(parent, child.for(parent)))
@@ -142,13 +152,14 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		if (fragment != parent) {
 			parent.appendChild(fragment)
 		}
+		return childNode
 	}
 	function variableAsText(parent, variable) {
 		var childNode = document.createTextNode(variable.valueOf(parent))
 		new TextUpdater({
 			element: parent,
 			textNode: childNode,
-			variable: variable
+			variable: variable.for(parent)
 		})
 		return childNode
 	}
@@ -159,11 +170,20 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			var value = properties[key]
 			var styleDefinition = styleDefinitions[key]
 			if (styleDefinition) {
-				element.style[key] = styleDefinition(value)
+				if (value && value.notifies) {
+					new StyleUpdater({
+						name: key,
+						variable: value.for(element),
+						element: element
+					})
+
+				} else {
+					element.style[key] = styleDefinition(value)
+				}
 			} else if (value && value.notifies && key !== 'content') {
 				new PropertyUpdater({
 					name: key,
-					variable: value,
+					variable: value.for(element),
 					element: element
 				})
 				if (bidirectionalProperties[key]) {
@@ -219,7 +239,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			if (content.notifies) {
 				new ListUpdater({
 					each: each,
-					variable: content,
+					variable: content.for(element),
 					element: this
 				})
 			} else {
@@ -227,7 +247,8 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 				var element = this
 				content.forEach(function(item) {
 					if (each.create) {
-						childElement = each.create(element, {_item: item}) // TODO: make a faster object here potentially
+						currentParent = element
+						childElement = each.create({_item: item}) // TODO: make a faster object here potentially
 					} else {
 						childElement = each(item, element)
 					}
@@ -248,7 +269,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			this.appendChild(textNode)
 			if (content && content.notifies) {
 				new TextUpdater({
-					variable: content,
+					variable: content.for(this),
 					element: this,
 					textNode: textNode
 				})
@@ -265,7 +286,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		if (content && content.notifies) {
 			// a variable, respond to changes
 			new PropertyUpdater({
-				variable: content,
+				variable: content.for(this),
 				name: 'typedValue' in this ? 'typedValue' : 'value',
 				element: this
 			})
@@ -296,7 +317,8 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 					if (classHandlers[key]) {
 						classHandlers[key](Element, descriptor)
 					} else {
-						var onClassPrototype = typeof descriptor.value === 'function' || descriptor.get || descriptor.set
+						var onClassPrototype = (typeof descriptor.value === 'function' && !descriptor.value.notifies) // a plain function/method and not a variable constructor
+							|| descriptor.get || descriptor.set // or a getter/setter
 						if (onClassPrototype) {
 							Object.defineProperty(prototype, key, descriptor)
 						}
@@ -353,6 +375,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			Element.extend = extend
 			Element.for = forTarget
 			Element.property = propertyForElement
+			Element.append = append
 		}
 		if (!prototype.renderContent) {
 			prototype.renderContent = renderContent
@@ -381,10 +404,14 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		}
 		return Element
 	}
-
-	function create(parentOrSelector, properties) {
+	var currentParent
+	function create(selector, properties) {
 		// TODO: make this a symbol
 		var applyOnCreate = this._applyOnCreate
+		if (currentParent) {
+			presumptiveParentMap.set(element, currentParent)
+			currentParent = null
+		}
 		var tagName = this._tag
 		if (this._initialized != this) {
 			this._initialized = this
@@ -435,10 +462,9 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			element.className = this._class
 		}
 		var i = 0
-		var parent
-		if (typeof parentOrSelector == 'string') {
+		if (typeof selector == 'string') {
 			i++
-			parentOrSelector.replace(/(\.|#)?([-\w]+)/g, function(t, operator, name) {
+			selector.replace(/(\.|#)?([-\w]+)/g, function(t, operator, name) {
 				if (operator == '.') {
 					element.className = (element.className ? this.className + ' ' : '') + name
 				} else if (operator == '#') {
@@ -447,10 +473,6 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 					throw new Error('Can not assign tag name when directly create an element')
 				}
 			})
-		} else if (parentOrSelector && parentOrSelector.appendChild) {
-			parent = parentOrSelector
-			presumptiveParentMap.set(element, parent)
-			i++
 		}
 		if (properties && properties._item) {
 			// this is kind of hack, to get the Item available before the properties, eventually we may want to
@@ -506,7 +528,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 					new Updater({
 						element: element,
 						className: className,
-						variable: flag
+						variable: flag.for(element)
 					})
 				} else if (flag || flag === undefined) {
 					element.className += ' ' + className
@@ -516,6 +538,10 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		element.createdCallback && element.createdCallback()
 		element.created && element.created()
 		return element
+	}
+
+	function append(){
+		return layoutChildren(this, arguments, this)
 	}
 
 	var Element = extend.call(HTMLElement)
@@ -774,32 +800,33 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		return ThisElementVariable.property(key)
 	}
 
-	var Item = Element.Item = lang.compose(Variable, function(value, parent) {
-		this.value = value
-		this.parentList = parent
-	}, {})
+	var Item = Element.Item = Variable.Item
 	// setup the mutation observer so we can be notified of attachments and removals
-	/*var observer = new MutationObserver(function(mutations) {
-		mutations.forEach(function(mutation) {
-			var addedNodes = mutation.addedNodes
-			for (var i = 0, l = addedNodes.length; i < l; i++) {
-				var node = addedNodes[i]
-				if (node.attached) {
-					node.attached()
+	if (typeof MutationObserver === 'function') {
+		var observer = new MutationObserver(function(mutations) {
+			mutations.forEach(function(mutation) {
+				var addedNodes = mutation.addedNodes
+				for (var i = 0, l = addedNodes.length; i < l; i++) {
+					var node = addedNodes[i]
+					if (node.attached) {
+						node.attached()
+					}
 				}
-			}
-			var removedNodes = mutation.removedNodes
-			for (var i = 0, l = removedNodes.length; i < l; i++) {
-				var node = removedNodes[i]
-				if (node.detached) {
-					node.detached()
+				var removedNodes = mutation.removedNodes
+				for (var i = 0, l = removedNodes.length; i < l; i++) {
+					var node = removedNodes[i]
+					if (node.detached) {
+						node.detached()
+					}
 				}
-			}
+			})
 		})
-	})
-	observer.observe(document.body, {
-		childList: true
-	})*/
+		observer.observe(document.body, {
+			childList: true
+		})
+	} else {
+		console.error('Alkali requires MutationObserver API')
+	}
 
 	function augmentBaseElement(Element) {
 		var prototype = Element.prototype
