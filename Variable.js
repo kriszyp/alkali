@@ -158,6 +158,7 @@ define(['./util/lang', './Context'],
 			return context ? new ContextualizedVariable(this, context) : this
 		},
 		_propertyChange: function(propertyName, object, context, type) {
+			context = context && this.getKeyContext(context)
 			if (this.onPropertyChange) {
 				this.onPropertyChange(propertyName, object, context)
 			}
@@ -245,7 +246,7 @@ define(['./util/lang', './Context'],
 			if (this.context) {
 				if (by === this.constructor) {
 					// if we receive an update from the constructor, filter it
-					if (!(!context || context === this.context || (context.contains && context.contains(this.context)))) {
+					if (!(!context || context === this.context || (context.contains && this.context.nodeType && context.contains(this.context)))) {
 						return
 					}
 				} else {
@@ -291,6 +292,10 @@ define(['./util/lang', './Context'],
 			if (this.notifyingValue) {
 				//this.notifyingValue.updatedWithin(updateEvent)
 			}
+		},
+
+		getKeyContext: function(context) {
+			return context
 		},
 
 		updatedWithin: function() {
@@ -661,6 +666,9 @@ define(['./util/lang', './Context'],
 		parentUpdated: function(updateEvent, context) {
 			return Variable.prototype.updated.call(this, updateEvent, this.parent, context)
 		},
+		getKeyContext: function(context) {
+			return this.parent.getKeyContext(context)
+		},
 		updated: function(updateEvent, by, context) {
 			//if (updateEvent !== ToChild) {
 				this._changeValue(context, updateEvent)
@@ -673,7 +681,7 @@ define(['./util/lang', './Context'],
 			return lang.when(parent.valueOf(context), function(object) {
 				if (object == null) {
 					// nothing there yet, create an object to hold the new property
-					parent.put(object = typeof key == 'number' ? [] : {})
+					parent.put(object = typeof key == 'number' ? [] : {}, context)
 				}else if (typeof object != 'object') {
 					// if the parent is not an object, we can't set anything (that will be retained)
 					return deny
@@ -1225,8 +1233,14 @@ define(['./util/lang', './Context'],
 	var defaultContext = {
 		name: 'Default context',
 		description: 'This object is the default context for classes, corresponding to a singleton instance of that class',
-		get: function(Class) {
+		get: function(Class, type) {
+			if (type === 'key') {
+				return this
+			}
 			return Class.defaultInstance
+		},
+		contains: function() {
+			return false // coes not contain or contained by anything else
 		}
 	}
 	Variable.getValue = function(context) {
@@ -1262,6 +1276,13 @@ define(['./util/lang', './Context'],
 			Object.defineProperty(ExtendedVariable, key, getGeneralizedDescriptor(descriptor, key, ExtendedVariable))
 		}
 		return ExtendedVariable
+	}
+	Variable.updated = function(updateEvent, by, context) {
+		context = context && this.getKeyContext(context)
+		return Variable.prototype.updated.call(this, updateEvent, by, context)
+	}
+	Variable.getKeyContext = function(context) {
+		return context.get(this, 'key') || context
 	}
 	Object.defineProperty(Variable, 'defaultInstance', {
 		get: function() {

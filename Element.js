@@ -768,13 +768,17 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 	}
 
 	var globalInstances = {}
-	function getForClass(Target) {
+	function getForClass(Target, type) {
 		var element = this
 		var createInstance
 		while (element && !(createInstance = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
 		if (createInstance) {
+			if (type === 'key') {
+				// just need to return the key element
+				return element
+			}
 			var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
 			var instance = ownedInstances.get(Target)
 			if (instance === undefined) {
