@@ -489,8 +489,13 @@ define([
 			var greaterThanFour = arrayVariable.filter(function(item) {
 				return item > 4
 			})
-			assert.strictEqual(greaterThanFour.valueOf().length, 1)
-			
+			assert.strictEqual(greaterThanFour.valueOf().length, 2)
+			arrayVariable.push(9)
+			assert.strictEqual(greaterThanFour.valueOf().length, 3)
+			arrayVariable.splice(1, 1)
+			assert.strictEqual(greaterThanFour.valueOf().length, 2)
+			arrayVariable.push(1)
+			assert.strictEqual(greaterThanFour.valueOf().length, 2)
 		},
 		contextualClassProperty: function() {
 			var TestVariable = Variable()
