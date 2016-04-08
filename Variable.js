@@ -289,17 +289,10 @@ define(['./util/lang', './Context'],
 					}
 				}
 			}
-			if (this.notifyingValue) {
-				//this.notifyingValue.updatedWithin(updateEvent)
-			}
 		},
 
 		getKeyContext: function(context) {
 			return context
-		},
-
-		updatedWithin: function() {
-
 		},
 
 		invalidate: function() {
@@ -717,15 +710,9 @@ define(['./util/lang', './Context'],
 	})
 	Variable.Property = Property
 
-	var Item = Variable.Item = lang.compose(Variable, function Item(value, source) {
+	var Item = Variable.Item = lang.compose(Variable, function Item(value) {
 		this.value = value
-		this.source = source
-	}, {
-		updated: function(updateEvent, by, context) {
-			this.source.updatedWithin(updateEvent, this, context)
-			Variable.prototype.updated.apply(this, arguments)
-		}
-	})
+	}, {})
 
 	var Composite = Variable.Composite = lang.compose(Caching, function Composite(args) {
 		this.args = args
@@ -753,12 +740,6 @@ define(['./util/lang', './Context'],
 						updateEvent = Refresh
 						continue
 					}
-				}
-			}
-			if (updateEvent instanceof PropertyChange) {
-				for (var i = 0, l = args.length; i < l; i++) {
-					var arg = args[i]
-					arg.updatedWithin(updateEvent)
 				}
 			}
 			Caching.prototype.updated.call(this, updateEvent, by, context)
@@ -990,6 +971,7 @@ define(['./util/lang', './Context'],
 
 	var IterativeMethod = lang.compose(Composite, function(source, method, args) {
 		this.source = source
+		source.interestWithin = true
 		this.method = method
 		this.args = args
 	}, {
@@ -998,6 +980,11 @@ define(['./util/lang', './Context'],
 			var args = this.args
 			var variable = this
 			return lang.when(this.source.valueOf(context), function(array) {
+				if (variable.dependents) {
+					array.forEach(function(object) {
+						registerListener(object, variable)
+					})
+				}
 				return variable.value = array && array[method] && array[method].apply(array, args)
 			})
 		},
@@ -1008,14 +995,12 @@ define(['./util/lang', './Context'],
 			var propagatedEvent = event.type === 'refresh' ? event : // always propagate refreshes
 				this[this.method + 'Updated'](event)
 			// TODO: make sure we normalize the event structure
-			if (event.oldValue && typeof event.value === 'object') {
+			if (this.dependents && event.oldValue && typeof event.value === 'object') {
 				deregisterListener(event.value, this)
 			}
-			if (event.value && typeof event.value === 'object') {
+			if (this.dependents && event.value && typeof event.value === 'object') {
 				registerListener(event.value, this)
 			}
-			this.source.updatedWithin(event, this, context)
-
 			if (propagatedEvent) {
 				Composite.prototype.updated.call(this, propagatedEvent, by, context)
 			}
@@ -1240,7 +1225,7 @@ define(['./util/lang', './Context'],
 			return Class.defaultInstance
 		},
 		contains: function() {
-			return false // coes not contain or contained by anything else
+			return true // contains everything
 		}
 	}
 	Variable.getValue = function(context) {
