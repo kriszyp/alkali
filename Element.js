@@ -122,7 +122,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 				// TODO: reenable this
 //				if (child.for) {
 					// a variable constructor that can be contextualized
-	//				fragment.appendChild(variableAsText(parent, child.for(parent)))
+	//				fragment.appendChild(variableAsText(parent, child))
 		//		} else {
 					// an element constructor
 					childNode = new child()
@@ -156,10 +156,10 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 	}
 	function variableAsText(parent, variable) {
 		var childNode = document.createTextNode(variable.valueOf(parent))
-		new TextUpdater({
+		enterUpdater(TextUpdater, {
 			element: parent,
 			textNode: childNode,
-			variable: variable.for(parent)
+			variable: variable
 		})
 		return childNode
 	}
@@ -171,9 +171,9 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			var styleDefinition = styleDefinitions[key]
 			if (styleDefinition) {
 				if (value && value.notifies) {
-					new StyleUpdater({
+					enterUpdater(StyleUpdater, {
 						name: key,
-						variable: value.for(element),
+						variable: value,
 						element: element
 					})
 
@@ -181,9 +181,9 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 					element.style[key] = styleDefinition(value)
 				}
 			} else if (value && value.notifies && key !== 'content') {
-				new PropertyUpdater({
+				enterUpdater(PropertyUpdater, {
 					name: key,
-					variable: value.for(element),
+					variable: value,
 					element: element
 				})
 				if (bidirectionalProperties[key]) {
@@ -237,9 +237,9 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 				})
 			}
 			if (content.notifies) {
-				new ListUpdater({
+				enterUpdater(ListUpdater, {
 					each: each,
-					variable: content.for(element),
+					variable: content,
 					element: this
 				})
 			} else {
@@ -268,8 +268,8 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			}
 			this.appendChild(textNode)
 			if (content && content.notifies) {
-				new TextUpdater({
-					variable: content.for(this),
+				enterUpdater(TextUpdater, {
+					variable: content,
 					element: this,
 					textNode: textNode
 				})
@@ -285,8 +285,8 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 	function renderInputContent(content) {
 		if (content && content.notifies) {
 			// a variable, respond to changes
-			new PropertyUpdater({
-				variable: content.for(this),
+			enterUpdater(PropertyUpdater, {
+				variable: content,
 				name: 'typedValue' in this ? 'typedValue' : 'value',
 				element: this
 			})
@@ -531,10 +531,10 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 				var flag = classes[className]
 				if (flag && flag.notifies) {
 					// if it is a variable, we react to it
-					new Updater({
+					enterUpdater(Updater, {
 						element: element,
 						className: className,
-						variable: flag.for(element)
+						variable: flag
 					})
 				} else if (flag || flag === undefined) {
 					element.className += ' ' + className
@@ -811,28 +811,91 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 	}
 
 	var Item = Element.Item = Variable.Item
+
+	function enterUpdater(Updater, options/*, target*/) {
+		// this will be used for optimized class-level variables
+		/*if (target.started) { // TODO: Might want to pass in started as a parameter
+			// this means that the updater has already been created, so we just need to add this instance
+			Updater.prototype.renderUpdate.call(options, element)
+		} else {*/
+		var target = options.element
+		var updaters = target.updaters || (target.updaters = [])
+		updaters.push(new Updater(options))
+		//}
+	}
+
+	function cleanup(target) {
+		var updaters = target.updaters
+		if (updaters) {
+			for (var i = 0, l = updaters.length; i < l; i++) {
+				updaters[i].stop()
+			}
+		}
+		target.needsRestart = true
+	}
+	function restart(target) {
+		var updaters = target.updaters
+		if (updaters) {
+			for (var i = 0, l = updaters.length; i < l; i++) {
+//				updaters[i].start()
+			}
+		}
+	}
 	// setup the mutation observer so we can be notified of attachments and removals
+	function traverse(nodes, action) {
+		for (var i = 0, l = nodes.length; i < l; i++) {
+			var node = nodes[i]
+			if (node.nodeType === 1) {
+				action(node)
+				traverse(node.childNodes, action)
+			}
+		}
+	}
+	function elementAttached(element) {
+		var Class = element.constructor
+		if (Class.create) {
+/*			if (Class.attachedInstances) {
+				Class.attachedInstances.push(element)
+				if (Class.attachedInstances.length === 1 && Class.needsRestart) {
+					restart(Class)
+				}
+			} else {
+				Class.attachedInstances = [element]
+			}*/
+			if (element.attached) {
+				element.attached()
+			}
+			if (element.needsRestart) {
+				restart(element)
+			}
+		}
+	}
+	function elementDetached(element) {
+		/*var attachedInstances = element.constructor.attachedInstances
+		if (attachedInstances) {
+			var index = attachedInstances.indexOf(element)
+			if (index > -1) {
+				attachedInstances.splice(index, 1)
+				if (attachedInstances.length === 0) {
+					cleanup(Class)
+				}
+			}*/
+			if (element.detached) {
+				element.detached()
+			}
+			cleanup(element)
+		//}
+	}
 	if (typeof MutationObserver === 'function') {
 		var observer = new MutationObserver(function(mutations) {
 			mutations.forEach(function(mutation) {
-				var addedNodes = mutation.addedNodes
-				for (var i = 0, l = addedNodes.length; i < l; i++) {
-					var node = addedNodes[i]
-					if (node.attached) {
-						node.attached()
-					}
-				}
-				var removedNodes = mutation.removedNodes
-				for (var i = 0, l = removedNodes.length; i < l; i++) {
-					var node = removedNodes[i]
-					if (node.detached) {
-						node.detached()
-					}
-				}
+				traverse(mutation.addedNodes, elementAttached)
+				traverse(mutation.removedNodes, elementDetached)
 			})
 		})
 		observer.observe(document.body, {
-			childList: true
+			childList: true,
+			subtree: true
 		})
 	} else {
 		console.error('Alkali requires MutationObserver API')

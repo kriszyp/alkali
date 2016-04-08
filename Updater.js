@@ -56,15 +56,17 @@ define(['./util/lang'], function (lang) {
 		updateRendering: function () {
 			throw new Error ('updateRendering must be implemented by sub class of Updater')
 		},
-		updated: function (updateEvent, context) {
+		updated: function (updateEvent, by, context) {
 			if (!this.invalidated) {
-				// do this only once, until we render again
-				this.invalidated = true
-				var updater = this
-				requestAnimationFrame(function(){
-					invalidatedElements = null
-					updater.updateRendering(updater.alwaysUpdate)
-				})
+				if (!context || context == this.element || context.contains(this.element)) {
+					// do this only once, until we render again
+					this.invalidated = true
+					var updater = this
+					requestAnimationFrame(function(){
+						invalidatedElements = null
+						updater.updateRendering(updater.alwaysUpdate)
+					})
+				}
 			}
 		},
 		invalidateElement: function(element) {
@@ -89,6 +91,9 @@ define(['./util/lang'], function (lang) {
 		},
 		getId: function(){
 			return this.id || (this.id = nextId++)
+		},
+		stop: function() {
+			this.variable.stopNotifies(this)
 		}
 
 	}
