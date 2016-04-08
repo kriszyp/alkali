@@ -872,6 +872,10 @@ define(['./util/lang', './Context'],
 					})
 				}
 			}
+		},
+		setReverse: function(reverse) {
+			this.functionVariable.valueOf().reverse = reverse
+			return this
 		}
 	})
 	Variable.Call = Call
