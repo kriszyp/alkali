@@ -35,7 +35,8 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		value: 1,
 		typedValue: 1,
 		valueAsNumber: 1,
-		valueAsDate: 1
+		valueAsDate: 1,
+		checked: 1
 	}
 	function booleanStyle(options) {
 		return function(value) {
