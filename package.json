@@ -17,7 +17,7 @@
     "type": "git",
     "url": "http://github.com/kriszyp/alkali"
   },
-  "main": "./main",
+  "main": "./index.js",
   "dependencies": {
   },
   "dojoBuild": "package.js",
