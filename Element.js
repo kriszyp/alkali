@@ -1,7 +1,21 @@
-define(['./Variable', './Updater', './util/lang', './Context'], function (Variable, Updater, lang, Context) {
+define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, lang) {
 	var knownElementProperties = {
 	}
-	var PropertyUpdater = Updater.PropertyUpdater
+	var NeedsContext = Variable.NeedsContext
+	var PropertyUpdater = lang.compose(Updater.PropertyUpdater, function PropertyUpdater() {
+		Updater.PropertyUpdater.apply(this, arguments)
+	}, {
+		renderUpdate: function(newValue, element) {
+			// TODO: cache or otherwise optimize this
+			var rendererName = 'render' + this.name[0].toUpperCase() + this.name.slice(1)
+			if (element[rendererName]) {
+				// custom renderer
+				element[rendererName](newValue)
+			} else {
+				element[this.name] = newValue
+			}
+		}
+	})
 	var StyleUpdater = lang.compose(Updater.StyleUpdater, function StyleUpdater() {
 		Updater.StyleUpdater.apply(this, arguments)
 	}, {
@@ -10,6 +24,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 			element.style[this.name] = definition ? definition(newValue) : newValue
 		}
 	})
+	// TODO: check for renderContent with text updater
 	var TextUpdater = Updater.TextUpdater
 	var ListUpdater = Updater.ListUpdater
 	;['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
@@ -156,7 +171,11 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		return childNode
 	}
 	function variableAsText(parent, variable) {
-		var childNode = document.createTextNode(variable.valueOf(parent))
+		var text = variable.valueOf()
+		if (text instanceof NeedsContext) {
+			text = text.for(parent)
+		}
+		var childNode = document.createTextNode(text)
 		enterUpdater(TextUpdater, {
 			element: parent,
 			textNode: childNode,
@@ -262,7 +281,11 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		} else {
 			// render as string
 			try {
-				var textNode = document.createTextNode(content === undefined ? '' : (content.valueOf(this)))
+				var text = content === undefined ? '' : content.valueOf()
+				if (text instanceof NeedsContext) {
+					text = text.for(this)
+				}
+				var textNode = document.createTextNode(text)
 			} catch (error) {
 				console.error(error.stack)
 				var textNode = document.createTextNode(error)
@@ -280,7 +303,10 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 
 	function bindChanges(element, variable) {
 		element.addEventListener('change', function (event) {
-			variable.put(element['typedValue' in element ? 'typedValue' : 'value'], element)
+			var result = variable.put(element['typedValue' in element ? 'typedValue' : 'value'])
+			if (result instanceof NeedsContext) {
+				result = result.for(element)
+			}
 		})
 	}
 	function renderInputContent(content) {
@@ -381,7 +407,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		if (!prototype.renderContent) {
 			prototype.renderContent = renderContent
 			prototype.renderInputContent = renderInputContent
-			prototype.get = getForClass
+			prototype.getForClass = getForClass
 		}
 
 		var i = 0 // for arguments
@@ -748,7 +774,7 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		}
 	}
 	function forTarget(target) {
-		return target.get(this)
+		return target.getForClass(this)
 	}
 
 	function hasOwn(From, Target, createInstance) {
@@ -794,17 +820,14 @@ define(['./Variable', './Updater', './util/lang', './Context'], function (Variab
 		ThisElementVariable = this._Variable
 		if (!ThisElementVariable) {
 			// need our own branded variable class for this element class
-			ThisElementVariable = this._Variable = Variable.extend({
-				hasOwn: {
-					Class: ThisElementVariable,
-					createInstance: function(element) {
-						// when we create the instance, immediately observe it
-						// TODO: we might want to do this in init instead
-						var instance = new ThisElementVariable(element)
-						Variable.observe(element)
-						return instance
-					}
-				}
+			ThisElementVariable = this._Variable = Variable()
+
+			hasOwn(this, ThisElementVariable, function(element) {
+				// when we create the instance, immediately observe it
+				// TODO: we might want to do this in init instead
+				var instance = new ThisElementVariable(element)
+				Variable.observe(element)
+				return instance
 			})
 		}
 		// now actually get the property class

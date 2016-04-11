@@ -1,9 +1,10 @@
-define(['./util/lang'], function (lang) {
+define(['./util/lang', './Variable'], function (lang, Variable) {
 	var doc = document
 	var invalidatedElements
 	var queued
 	var toRender = []
 	var nextId = 1
+	var NeedsContext = Variable.NeedsContext
 	var requestAnimationFrame = lang.requestAnimationFrame
 	function Updater(options) {
 		var variable = options.variable
@@ -146,7 +147,10 @@ define(['./util/lang'], function (lang) {
 	ElementUpdater.prototype.updateElement = function(element) {
 		this.invalidated = false
 		try {
-			var value = !this.omitValueOf && this.variable.valueOf(element)
+			var value = !this.omitValueOf && this.variable.valueOf()
+			if (value instanceof NeedsContext) {
+				value = value.for(element)
+			}
 		} catch (error) {
 			element.appendChild(document.createTextNode(error))
 		}
