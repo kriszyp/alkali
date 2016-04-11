@@ -22,7 +22,7 @@ The Variable constructor is returned from the `alkali/Variable` module.
 
 This is the constructor for a variable. You may create a variable with an initial value, provided as the argument.
 
-### valueOf(context?)
+### valueOf()
 
 This returns the current value of the variable. This method also allows variables to be used directly in expressions in place of primitive values, where JavaScript coercion will automatically convert a value. For example a variable with the number 4 can be used:
 ```
@@ -33,7 +33,7 @@ four < 5 -> true
 four == 4 -> true
 ```
 
-### put(value, context?)
+### put(value)
 
 This allows us to update the value of a variable with a new value. This can be given a standard value, or you can pass in another variable, in which case this variable will be "linked" to the other, receiving all values and updates from the provided variable.
 
@@ -270,9 +270,29 @@ class MyDiv extends Div({title: 'default title'}) {
 }
 ```
 
+### Render Methods
+
+Alkali encourages declarative definitions of elements/components, however, it is common to need programmatic rendering. The easiest way to do this is with `render` methods, which respond to property values and changes. To define a `render` method, simply define a method that begins with `render` suffixed with the property name capitalized. For example, we could define a `renderTitle` method, and any time we set the `title` property or provide a variable as the `title` and it is updated, the `renderTitle` method will be called.
+
+The `render` methods are called with the new value as the first argument (and a boolean indicating if this update, as opposed to the first rendering) For example:
+
+```
+class MyDiv extends Div {
+	renderName(name) {
+		this.textContent = 'Name: ' + name
+	}
+}
+let myDiv = new MyDiv({name: 'Mine'}) // renderName will be called with 'Mine'
+
+let nameVariable = new Variable('Starting name')
+let myDiv = new MyDiv({name: nameVariable}) // renderName called with original value
+nameVariable.put('New name') // will trigger another renderName call
+```
+
+
 ### Construction Lifecycle Methods
 
-There are several methods that are called as part of the construction of an element that can be used to define behavior of an element. These include:
+There are several methods that are called as part of the construction of an element that can be used to define additional behavior of an element. These include:
 * `created` (and `createdCallback`) - This is called for each new element instance. It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
 * `attached` - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
 * `detached` - This is called when an element is detached from the document tree. This can be a useful place to perform cleanup operations. However, elements may be reattached as well (and `attached` would be called again).
