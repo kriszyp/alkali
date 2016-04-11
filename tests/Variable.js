@@ -512,6 +512,33 @@ define([
 			assert.strictEqual(TestVariable.property('a').for(subject1).valueOf(), 1)
 			assert.strictEqual(TestVariable.property('a').for(subject2).valueOf(), 2)
 		},
+		contextualizedFilter: function() {
+			var TestVariable = Variable()
+			var TestSubject = Variable()
+			TestSubject.hasOwn(TestVariable)
+			var subject1 = new TestSubject()
+			var subject2 = new TestSubject()
+			var variable1 = TestVariable.for(subject1)
+			var variable2 = TestVariable.for(subject2)
+			variable1.put([3, 5, 7])
+			variable2.put([1, 2, 3])
+			var greaterThanFour = TestVariable.filter(function(item) {
+				return item > 4
+			})
+			assert.strictEqual(greaterThanFour.valueOf().for(subject1).length, 2)
+			assert.strictEqual(greaterThanFour.valueOf().for(subject2).length, 0)
+			TestVariable.for(subject1).push(9)
+			assert.strictEqual(greaterThanFour.valueOf().for(subject1).length, 3)
+			assert.strictEqual(greaterThanFour.valueOf().for(subject2).length, 0)
+			TestVariable.for(subject2).push(9)
+			assert.strictEqual(greaterThanFour.valueOf().for(subject1).length, 3)
+			assert.strictEqual(greaterThanFour.valueOf().for(subject2).length, 1)
+			TestVariable.for(subject1).splice(1, 1)
+			assert.strictEqual(greaterThanFour.valueOf().for(subject1).length, 2)
+			assert.strictEqual(greaterThanFour.valueOf().for(subject2).length, 1)
+			TestVariable.for(subject1).push(1)
+			assert.strictEqual(greaterThanFour.valueOf().for(subject1).length, 2)
+		},
 		emptyKey: function() {
 			var v = new Variable({})
 			var updated
