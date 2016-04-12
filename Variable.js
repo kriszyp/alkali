@@ -31,14 +31,6 @@
 	})
 	var listenerId = 1
 
-	function NeedsContext(retrieve) {
-		// constructor that signals a computation needs a context to continue
-		this.for = retrieve
-	}
-	NeedsContext.prototype.toString = function() {
-		return 'This variable needs to be resolved with a context, call this object with .for(context) to resolve the value'
-	}
-
 	function mergeContext(context) {
 		for (var i = 1, l = arguments.length; i < l; i++) {
 			var nextContext = arguments[i]
@@ -49,46 +41,68 @@
 		return context
 	}
 
-	function inContext(value, context) {
-		if (value instanceof NeedsContext) {
-			return value.for(context)
+	getDistinctContextualized(variable) {
+		var contextMap = variable.contextMap
+		var context = currentContext
+		if (context && contextMap) {
+			while(context && !contextMap.has(context)) {
+				context = context.parentNode
+			}
+			return contextMap.get(context)
 		}
-		return value
+	}
+	var currentContext, distinctContext, contextStack
+	function enterWatchedContext() {
+		contextStack.push(distinctContext)
+		distinctContext = undefined		
+	}
+	function exitWatchedContext() {
+		var scopedDistinctContext = distinctContext
+		distinctContext = mergeContext(contextStack.pop())
+		return scopedDistinctContext
 	}
 	function when(value, callback) {
-		if (value instanceof NeedsContext) {
-			var retrieveContext = new NeedsContext(function(context) {
-				var newValue = value.for(context)
-				if (newValue && newValue.then) {
-					return newValue.then(function(resolvedValue) {
-						var result = callback(resolvedValue, context)
-						if (result instanceof NeedsContext) {
-							result.for(context)
-							retrieveContext.context = mergeContext(value.context, result.context)
-						} else {
-							retrieveContext.context = value.context
-
-						}
-					})
-				}
-				var result = callback(newValue, context)
-				if (result instanceof NeedsContext) {
-					var resolvedResult = result.for(context)
-					retrieveContext.context = mergeContext(value.context, result.context)
-					return resolvedResult
-				} else {
-					retrieveContext.context = value.context
-				}
-				return result
-			})
-			return retrieveContext
-		}
 		if (value && value.then) {
-			return value.then(callback)
+			if (currentContext) {
+				// save the context
+				contextStack.currentContext = currentContext
+				contextStack.distinctContext = distinctContext
+				return value.then(function(resolvedValue) {
+					// restore the context
+					contextStack = contextStack
+					currentContext = contextStack.currentContext
+					distinctContext = contextStack.distinctContext
+					var result = callback(resolvedValue)
+					// save the context again
+					contextStack.currentContext = currentContext
+					contextStack.distinctContext = distinctContext
+					// clear the context
+					contextStack = undefined
+					distinctContext = undefined
+					currentContext = undefined
+				})
+			} else {
+				return value.then(callback)
+			}
 		}
 		return callback(value)
 	}
 
+	function doInContext(context, action) {
+		if (contextStack) {
+			var lastState = contextStack
+			lastState.distinctContext = distinctContext
+			lastState.currentContext = currentContext
+		}
+		contextStack = []
+		try {
+			return action()
+		} finally {
+			contextStack = lastState
+			distinctContext = lastState.distinctContext
+			currentContext = lastState.currentContext
+		}
+	}
 	function whenAll(inputs, callback){
 		var promiseInvolved
 		var needsContext
@@ -96,26 +110,6 @@
 			if (inputs[i] && inputs[i].then) {
 				promiseInvolved = true
 			}
-			if (inputs[i] instanceof NeedsContext) {
-				needsContext = true
-			}
-		}
-		if (needsContext) {
-			var retrieveContext = new NeedsContext(function(context) {
-				var newValues = []
-				for (var i = 0, l = inputs.length; i < l; i++) {
-					var input = inputs[i]
-					if (input instanceof NeedsContext) {
-						newValues[i] = input.for(context)
-						// TODO: figure out the most specific context
-						retrieveContext.context = mergeContext(retrieveContext.context, input.context)
-					} else {
-						newValues[i] = inputs[i]
-					}
-				}
-				return lang.whenAll(newValues, callback)
-			})
-			return retrieveContext
 		}
 		if (promiseInvolved) {
 			return lang.whenAll(inputs, callback)
@@ -148,14 +142,6 @@
 			}
 		}
 	}
-	function contextFromCache(cache) {
-		var context = new Context()
-		do{
-			context[cache.propertyName] = cache.key
-			cache = cache.parent
-		}while(cache)
-		return context
-	}
 
 	function PropertyChange(key, object, childEvent) {
 		this.key = key
@@ -175,22 +161,23 @@
 	Variable.prototype = {
 		constructor: Variable,
 		valueOf: function() {
+			if (this.context) {
+				var variable = this
+				return doInContext(this.context, function() {
+					return this.gotValue(this.getValue())
+				})
+			}
 			return this.gotValue(this.getValue())
 		},
 		getValue: function() {
 			return this.value
 		},
-		gotValue: function(value, context) {
+		gotValue: function(value) {
 			var previousNotifyingValue = this.notifyingValue
 			var variable = this
 			if (value && value.then) {
-				return value.then(function(value) {
+				return when(function(value) {
 					return Variable.prototype.gotValue.call(variable, value)
-				})
-			}
-			if (value instanceof NeedsContext) {
-				return new NeedsContext(function(context) {
-					return Variable.prototype.gotValue.call(variable, value.for(context), context)
 				})
 			}
 			if (previousNotifyingValue) {
@@ -212,20 +199,8 @@
 				}
 				variable.notifyingValue = value
 				value = value.valueOf()
-				if (value instanceof NeedsContext) {
-					if (context) {
-						var contextualValue = value
-						value = value.for(context)
-					} else {
-						return new NeedsContext(function(context) {
-							value = value.for(context)
-							if (typeof value === 'object' && value && variable.dependents) {
-								// TODO: merge contexts
-								registerListener(value, variable.for(context))
-							}
-							return value
-						})
-					}
+				if (typeof value === 'object' && value && variable.dependents) {
+					registerListener(value, distinctContext ? variable.for(distinctContext) : variable)
 				}
 			}
 			if (typeof value === 'object' && value && variable.dependents) {
@@ -487,6 +462,7 @@
 		},
 		put: function(value) {
 			var variable = this
+			
 			return when(this.getValue(), function(oldValue, context) {
 				if (oldValue === value) {
 					return noChange
@@ -616,6 +592,7 @@
 			return this.valueOf()[Symbol.iterator]()
 		}
 	}
+	var cacheNotFound = {}
 	var Caching = Variable.Caching = lang.compose(Variable, function(getValue, setValue) {
 		if (getValue) {
 			this.getValue = getValue
@@ -625,9 +602,14 @@
 		}
 	}, {
 		valueOf: function() {
-
 			// first check to see if we have the variable already computed
 			if (this.cachedVersion === this.getVersion()) {
+				if (this.contextMap) {
+					var contextualizedVariable = getDistinctContextualized(this.contextMap, currentContext)
+					if (contextualizedVariable) {
+						return contextualizedVariable.cachedValue
+					}
+				}
 				return this.cachedValue
 			}
 			
@@ -639,30 +621,15 @@
 				}
 				computedValue = variable.gotValue(computedValue)
 				variable.cachedVersion = variable.getVersion()
-				if (computedValue instanceof NeedsContext) {
-					var contextualizedValue = new NeedsContext(function(context) {
-						var cacheMap = variable.cacheMap = new WeakMap()
-						var resolvedValue = computedValue.for(context)
-						cacheMap.set(context, resolvedValue)
-						return resolvedValue
-					})
-					variable.cachedValue = new NeedsContext(function(context) {
-						var cacheMap = variable.cacheMap
-						var resolvedValue
-						if (cacheMap.has(context)) {
-							resolvedValue = variable.cacheMap.get(context)
-						} else {
-							var resolvedValue = variable.gotValue(variable.getValue()).for(context)
-							cacheMap.set(context, resolvedValue)
-						}
-						return resolvedValue
-					})
-					return contextualizedValue
+				var distinctContext = exitWatchedContext()
+				if (distinctContext) {
+					var contextMap = variable.contextMap || (variable.contextMap = new WeakMap())
+					contextMap.set(distinctContext, computedValue)
 				}
-				variable.cachedValue = computedValue
 				return computedValue
 			}
 
+			enterWatchedContext()
 			var computedValue = this.getValue()
 			if (computedValue && computedValue.then) {
 				return computedValue.then(withComputedValue)
@@ -688,20 +655,17 @@
 			var key = this.key
 			var property = this
 			var object = this.parent.valueOf()
-			function gotValueAndListen(object, context) {
+			function gotValueAndListen(object) {
 				if (property.dependents) {
 					var listeners = propertyListenersMap.get(object)
 					if (listeners && listeners.observer && listeners.observer.addKey) {
 						listeners.observer.addKey(key)
 					}
 				}
-				return property.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key], context)
-			}
-			if (object instanceof NeedsContext) {
-				return when(object, gotValueAndListen)
+				return property.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key])
 			}
 			if (object && object.then) {
-				return object.then(gotValueAndListen)
+				return when(object, gotValueAndListen)
 			}
 			return gotValueAndListen(object)
 		},
@@ -1039,13 +1003,13 @@
 			return when(this.source.valueOf(), function(array, context) {
 				if (variable.dependents) {
 					array.forEach(function(object) {
-						registerListener(object, context ? variable.for(context) : variable)
+						registerListener(object, getDistinctContextualized(variable))
 					})
 				}
 				if (context) {
 					variable = variable.for(context)
 				}
-				return variable.value = array && array[method] && array[method].apply(array, args)
+				return array && array[method] && array[method].apply(array, args)
 			})
 		},
 		updated: function(event, by, context) {
@@ -1066,8 +1030,9 @@
 			}
 		},
 		filterUpdated: function(event, context) {
+			var contextualizedVariable = getDistinctContextualized(this)
 			if (event.type === 'delete') {
-				var index = inContext(this.cachedValue || this.valueOf(), context).indexOf(event.oldValue)
+				var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
 				if (index > -1) {
 					this.splice(index, 1)
 				}
@@ -1076,7 +1041,7 @@
 					inContext(this.push(event.value), context)
 				}
 			} else if (event.type === 'update') {
-				var index = inContext(this.cachedValue || this.valueOf(), context).indexOf(event.object)
+				var index = contextualizedVariable.cachedValue.indexOf(event.object)
 				var matches = [event.object].filter(this.args[0]).length > 0
 				if (index > -1) {
 					if (matches) {
@@ -1299,19 +1264,19 @@
 			return true // contains everything
 		}
 	}
+	function instanceForContext(Class) {
+		if (!currentContext) {
+			throw new TypeError('Accessing a generalized class without context to resolve to an instance, call for(context) (where context is an element or related variable instance) on your variable first')
+		}
+		return currentContext.getForClass && currentContext.getForClass(this) || this.defaultInstance
+	}
 	Variable.getValue = function() {
 		// contextualized getValue
-		var Class = this
-		return new NeedsContext(function(context) {
-			return (context && context.getForClass && context.getForClass(Class) || Class.defaultInstance).valueOf()	
-		})
+		return instanceForContext(this).valueOf()
 	}
 	Variable.setValue = function(value, context) {
 		// contextualized setValue
-		var Class = this
-		return new NeedsContext(function(context) {
-			return (context && context.getForClass && context.getForClass(Class) || Class.defaultInstance).put(value)
-		})
+		return instanceForContext(this).put(value)
 	}
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
@@ -1359,7 +1324,6 @@
 	Variable.all = all
 	Variable.objectUpdated = objectUpdated
 	Variable.observe = observe
-	Variable.NeedsContext = NeedsContext
 
 	return Variable
 }));
