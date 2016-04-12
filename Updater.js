@@ -27,13 +27,21 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		}
 
 		this.variable = variable
+		this.elements = []
 		if (options) {
 			if (options.selector) {
 				this.selector = options.selector
 			}
+			if (options.elements) {
+				this.elements = options.elements
+				this.element = this.elements[0]
+			}
 			if (options.element) {
-				var element = this.element = options.element;
-				(element.alkaliRenderers || (element.alkaliRenderers = [])).push(this)
+				this.element = options.element
+				this.elements.push(options.element)
+			}
+			for(var i = 0, l = this.elements.length; i < l; i++) {
+				(this.elements[i].alkaliRenderers || (this.elements[i].alkaliRenderers = [])).push(this)
 			}
 			if (options.update) {
 				this.updateRendering = options.update
@@ -59,7 +67,7 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		},
 		updated: function (updateEvent, by, context) {
 			if (!this.invalidated) {
-				if (!context || context == this.element || context.contains(this.element)) {
+				if (!context || this.contextMatches(context)) {
 					// do this only once, until we render again
 					this.invalidated = true
 					var updater = this
@@ -69,6 +77,19 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 					})
 				}
 			}
+		},
+		contextMatches: function(context) {
+			return context == this.elements ||
+				// if context is any element in this.elements - perhaps return only the specific matching elements?
+				(this.elements.indexOf(context) != -1) ||
+			  // (context is an array and any/all elements are contained in this.elements) ||
+				// context contains() any of this.elements
+				(function(elements) {
+					for(var i = 0, l = elements.length; i < l; i++) {
+						if (context.contains(elements[i])) return true
+					}
+					return false
+				})(this.elements)
 		},
 		invalidateElement: function(element) {
 			if(!invalidatedElements){
@@ -107,30 +128,29 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		return document.body.contains(element)
 	}
 	ElementUpdater.prototype.updateRendering = function (always, element) {
-		element = this.element || element
-		if(!element){
+		var elements = this.elements || (element && [element]) || []
+		if(!elements.length){
 			if(this.selector){
-				var elements = document.querySelectorAll(this.selector)
-				for(var i = 0, l = elements.length; i < l; i++){
-					this.updateRendering(always, elements[i])
-				}
+				elements = document.querySelectorAll(this.selector)
 			}else{
 				throw new Error('No element or selector was provided to the Updater')
 			}
 			return
 		}
-		if(always || this.shouldRender(element)){
-			// it is connected
-			this.updateElement(element)
-		}else{
-			var id = this.getId()
-			var updaters = element.updaters
-			if(!updaters){
-				updaters = element.updaters = []
-				element.className += ' needs-rerendering'
-			}
-			if (!updaters[id]) {
-				updaters[id] = this
+		for(var i = 0, l = elements.length; i < l; i++){
+			if(always || this.shouldRender(elements[i])){
+				// it is connected
+				this.updateElement(elements[i])
+			}else{
+				var id = this.getId()
+				var updaters = elements[i].updaters
+				if(!updaters){
+					updaters = elements[i].updaters = []
+					elements[i].className += ' needs-rerendering'
+				}
+				if (!updaters[id]) {
+					updaters[id] = this
+				}
 			}
 		}
 	}
@@ -138,8 +158,7 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		if (this.selector) {
 			element.updaters = [this]
 		} else {
-			// no way of tracking so, we have to keep an array
-			(this.elements = (this.elements || [])).push(element)
+			this.elements.push(element)
 		}
 		// and immediately do an update
 		this.updateElement(element)
@@ -259,7 +278,7 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 	ListUpdater.prototype.renderUpdate = function (newValue, element) {
 		var container
 		var each = this.each
-		var thisElement = this.element
+		var thisElement = this.elements[0]
 		var updater = this
 		if (!this.builtList) {
 			this.builtList = true
