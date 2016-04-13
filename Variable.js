@@ -274,7 +274,8 @@ define(['./util/lang'],
 			if (this.onPropertyChange) {
 				this.onPropertyChange(propertyName, object, context)
 			}
-			var property = this._properties && this._properties[propertyName]
+			var properties = this._properties
+			var property = properties && (properties instanceof Map ? properties.get(propertyName) : properties[propertyName])
 			if (property && !(type instanceof PropertyChange) && object === this.valueOf(context)) {
 				property.parentUpdated(ToChild, context)
 			}

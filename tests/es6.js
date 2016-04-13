@@ -96,8 +96,14 @@ define([
 			let map = new Map()
 			map.set('a', 2)
 			var v = new Variable(map)
+			var updated
+			v.property('a').subscribe(function(){
+				updated = true
+			})
 			assert.strictEqual(v.get('a'), 2)
+			updated = false
 			v.set('a', 3)
+			assert.strictEqual(updated, true)
 			assert.strictEqual(v.get('a'), 3)
 			assert.strictEqual(map.get('a'), 3)
 			v.set(2, 2)
