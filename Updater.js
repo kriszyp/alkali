@@ -1,4 +1,11 @@
-define(['./util/lang', './Variable'], function (lang, Variable) {
+(function (root, factory) { if (typeof define === 'function' && define.amd) {
+        define(['./util/lang', './Variable'], factory)
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory(require('./util/lang'), require('./Variable'))
+    } else {
+        root.alkali.Updater = factory(root.alkali.lang, root.alkali.Variable)
+    }
+}(this, function (lang, Variable) {
 	var doc = document
 	var invalidatedElements
 	var queued
@@ -378,4 +385,4 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		}
 	}
 	return Updater
-});
+}));

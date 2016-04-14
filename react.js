@@ -1,4 +1,11 @@
-define(['./util/lang', './Variable'], function(lang, Variable) {
+(function (root, factory) { if (typeof define === 'function' && define.amd) {
+        define(['./util/lang', './Variable'], factory)
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory(require('./util/lang'), require('./Variable'))
+    } else {
+        root.alkali.react = factory(root.alkali.lang, root.alkali.Variable)
+    }
+}(this, function (lang, Variable) {
 	var getValue
 	var GeneratorVariable = lang.compose(Variable.Composite, function Call(generator){
 		this.generator = generator
@@ -67,4 +74,4 @@ define(['./util/lang', './Variable'], function(lang, Variable) {
 		return new GeneratorVariable(generator)
 	}
 	return react
-})
+}))
