@@ -150,9 +150,9 @@
 				this.updateElement(elements[i])
 			}else{
 				var id = this.getId()
-				var updaters = elements[i].updaters
+				var updaters = elements[i].updatersOnShow
 				if(!updaters){
-					updaters = elements[i].updaters = []
+					updaters = elements[i].updatersOnShow = []
 					elements[i].className += ' needs-rerendering'
 				}
 				if (!updaters[id]) {
@@ -163,7 +163,7 @@
 	}
 	ElementUpdater.prototype.addElement = function (element) {
 		if (this.selector) {
-			element.updaters = [this]
+			element.updatersOnShow = [this]
 		} else {
 			this.elements.push(element)
 		}
@@ -348,9 +348,9 @@
 			}
 			for (var i = 0, l = elements.length; i < l; i++){
 				var element = elements[i]
-				var updaters = element.updaters
+				var updaters = element.updatersOnShow
 				if(updaters){
-					element.updaters = null
+					element.updatersOnShow = null
 					// remove needs-rerendering class
 					element.className = element.className.replace(/\s?needs\-rerendering\s?/g, '')
 					for (var id in updaters) {
