@@ -1,7 +1,6 @@
 define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, lang) {
 	var knownElementProperties = {
 	}
-	var NeedsContext = Variable.NeedsContext
 	var PropertyUpdater = lang.compose(Updater.PropertyUpdater, function PropertyUpdater() {
 		Updater.PropertyUpdater.apply(this, arguments)
 	}, {
@@ -171,10 +170,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 		return childNode
 	}
 	function variableAsText(parent, variable) {
-		var text = variable.valueOf()
-		if (text instanceof NeedsContext) {
-			text = text.for(parent)
-		}
+		var text = variable.for(parent).valueOf()
 		var childNode = document.createTextNode(text)
 		enterUpdater(TextUpdater, {
 			element: parent,
@@ -281,10 +277,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 		} else {
 			// render as string
 			try {
-				var text = content === undefined ? '' : content.valueOf()
-				if (text instanceof NeedsContext) {
-					text = text.for(this)
-				}
+				var text = content === undefined ? '' : content.for(this).valueOf()
 				var textNode = document.createTextNode(text)
 			} catch (error) {
 				console.error(error.stack)
@@ -303,10 +296,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 
 	function bindChanges(element, variable) {
 		element.addEventListener('change', function (event) {
-			var result = variable.put(element['typedValue' in element ? 'typedValue' : 'value'])
-			if (result instanceof NeedsContext) {
-				result = result.for(element)
-			}
+			var result = variable.for(element).put(element['typedValue' in element ? 'typedValue' : 'value'])
 		})
 	}
 	function renderInputContent(content) {
@@ -795,21 +785,18 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 	}
 
 	var globalInstances = {}
-	function getForClass(Target, type) {
+	function getForClass(Target) {
 		var element = this
 		var createInstance
 		while (element && !(createInstance = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
 		if (createInstance) {
-			if (type === 'key') {
-				// just need to return the key element
-				return element
-			}
 			var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
 			var instance = ownedInstances.get(Target)
 			if (instance === undefined) {
 				ownedInstances.set(Target, instance = createInstance(element))
+				instance.context = element
 			}
 			return instance
 		}

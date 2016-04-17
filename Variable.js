@@ -34,14 +34,14 @@
 	function mergeContext(context) {
 		for (var i = 1, l = arguments.length; i < l; i++) {
 			var nextContext = arguments[i]
-			if (!context || nextContext && context.contains(nextContext)) {
+			if (nextContext !== context && (!context || nextContext && context.contains && context.contains(nextContext))) {
 				context = nextContext
 			}
 		}
 		return context
 	}
 
-	getDistinctContextualized(variable) {
+	function getDistinctContextualized(variable) {
 		var contextMap = variable.contextMap
 		var context = currentContext
 		if (context && contextMap) {
@@ -53,33 +53,36 @@
 	}
 	var currentContext, distinctContext, contextStack
 	function enterWatchedContext() {
-		contextStack.push(distinctContext)
-		distinctContext = undefined		
+		if (contextStack) {
+			contextStack.push(distinctContext)
+			distinctContext = undefined
+		}
 	}
 	function exitWatchedContext() {
-		var scopedDistinctContext = distinctContext
-		distinctContext = mergeContext(contextStack.pop())
-		return scopedDistinctContext
+		if (contextStack) {
+			var scopedDistinctContext = distinctContext
+			distinctContext = mergeContext(distinctContext, contextStack.pop())
+			return scopedDistinctContext
+		}
 	}
 	function when(value, callback) {
 		if (value && value.then) {
-			if (currentContext) {
+			if (contextStack) {
 				// save the context
 				contextStack.currentContext = currentContext
 				contextStack.distinctContext = distinctContext
+				var savedContextStack = contextStack
 				return value.then(function(resolvedValue) {
 					// restore the context
-					contextStack = contextStack
-					currentContext = contextStack.currentContext
-					distinctContext = contextStack.distinctContext
+					contextStack = savedContextStack
+					currentContext = savedContextStack.currentContext
+					distinctContext = savedContextStack.distinctContext
 					var result = callback(resolvedValue)
 					// save the context again
-					contextStack.currentContext = currentContext
-					contextStack.distinctContext = distinctContext
+					savedContextStack.currentContext = currentContext
+					savedContextStack.distinctContext = distinctContext
 					// clear the context
-					contextStack = undefined
-					distinctContext = undefined
-					currentContext = undefined
+					contextStack = currentContext = distinctContext = undefined
 				})
 			} else {
 				return value.then(callback)
@@ -95,12 +98,18 @@
 			lastState.currentContext = currentContext
 		}
 		contextStack = []
+		currentContext = context
+		distinctContext = undefined
 		try {
 			return action()
 		} finally {
-			contextStack = lastState
-			distinctContext = lastState.distinctContext
-			currentContext = lastState.currentContext
+			if (lastState) {
+				contextStack = lastState
+				distinctContext = lastState.distinctContext
+				currentContext = lastState.currentContext
+			} else {
+				contextStack = currentContext = distinctContext = undefined
+			}
 		}
 	}
 	function whenAll(inputs, callback){
@@ -164,9 +173,10 @@
 			if (this.context) {
 				var variable = this
 				return doInContext(this.context, function() {
-					return this.gotValue(this.getValue())
+					return variable.gotValue(variable.getValue())
 				})
 			}
+			enterWatchedContext()
 			return this.gotValue(this.getValue())
 		},
 		getValue: function() {
@@ -176,7 +186,7 @@
 			var previousNotifyingValue = this.notifyingValue
 			var variable = this
 			if (value && value.then) {
-				return when(function(value) {
+				return when(value, function(value) {
 					return Variable.prototype.gotValue.call(variable, value)
 				})
 			}
@@ -199,20 +209,41 @@
 				}
 				variable.notifyingValue = value
 				value = value.valueOf()
-				if (typeof value === 'object' && value && variable.dependents) {
-					registerListener(value, distinctContext ? variable.for(distinctContext) : variable)
-				}
 			}
+			var contextualizedVariable = this.context ? this : this._exitWatchWithContextualized()
 			if (typeof value === 'object' && value && variable.dependents) {
 				// set up the listeners tracking
-				registerListener(value, context ? variable.for(context) : variable)
+				registerListener(value, contextualizedVariable)
 			}
 			if (value === undefined) {
 				value = variable.default
 			}
 			return value
 		},
-		isMap: function(){
+		_exitWatchWithContextualized: function() {
+			var distinctContext = exitWatchedContext()
+			if (distinctContext) {
+				var contextualizedVariable
+				if (this.contextMap) {
+					contextualizedVariable = this.contextMap.get(distinctContext)
+				} else {
+					// it wasn't marked as needing context before, need to split up into contextualized variables
+					this.contextMap = new WeakMap()
+					if (this.dependents) {
+						var dependent
+						while(dependent = this.dependents.shift()) {
+							contextualizedVariable.notifies(dependent)
+						}
+					}
+				}
+				if (!contextualizedVariable) {
+					this.contextMap.set(distinctContext, contextualizedVariable = new ContextualizedVariable(this, distinctContext))
+				}
+				return contextualizedVariable
+			}
+			return this
+		},
+		isMap: function() {
 			return this.value instanceof Map
 		},
 		property: function(key) {
@@ -605,12 +636,13 @@
 			// first check to see if we have the variable already computed
 			if (this.cachedVersion === this.getVersion()) {
 				if (this.contextMap) {
-					var contextualizedVariable = getDistinctContextualized(this.contextMap, currentContext)
+					var contextualizedVariable = getDistinctContextualized(this)
 					if (contextualizedVariable) {
 						return contextualizedVariable.cachedValue
 					}
+				} else {
+					return this.cachedValue
 				}
-				return this.cachedValue
 			}
 			
 			var variable = this
@@ -621,11 +653,8 @@
 				}
 				computedValue = variable.gotValue(computedValue)
 				variable.cachedVersion = variable.getVersion()
-				var distinctContext = exitWatchedContext()
-				if (distinctContext) {
-					var contextMap = variable.contextMap || (variable.contextMap = new WeakMap())
-					contextMap.set(distinctContext, computedValue)
-				}
+				var contextualizedVariable = variable._exitWatchWithContextualized()
+				contextualizedVariable.cachedValue = computedValue
 				return computedValue
 			}
 
@@ -654,6 +683,7 @@
 		valueOf: function() {
 			var key = this.key
 			var property = this
+			enterWatchedContext()
 			var object = this.parent.valueOf()
 			function gotValueAndListen(object) {
 				if (property.dependents) {
@@ -662,7 +692,9 @@
 						listeners.observer.addKey(key)
 					}
 				}
-				return property.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key])
+				var value = property.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key])
+				property._exitWatchWithContextualized()
+				return value
 			}
 			if (object && object.then) {
 				return when(object, gotValueAndListen)
@@ -901,19 +933,25 @@
 		this.constructor = Source
 		this.context = context
 	}, {
-
 		valueOf: function() {
-			return inContext(this.constructor.valueOf(), this.context)
+			var Source = this.constructor
+			return doInContext(this.context, function (){
+				return Source.valueOf()
+			})
 		},
+
 		put: function(value) {
-			return inContext(this.constructor.put(value), this.context)
+			var Source = this.constructor
+			return doInContext(this.context, function (){
+				return Source.put(value)
+			})
 		},
 		parentUpdated: function(event, context) {
 			// if we receive an outside update, send it to the constructor
 			this.constructor.updated(event, this.parent, this.context)
 		}
-
 	})
+
 
 	function arrayMethod(name, sendUpdates) {
 		Variable.prototype[name] = function() {
@@ -1213,6 +1251,7 @@
 			var instance = ownedInstances.get(Target)
 			if (!instance) {
 				ownedInstances.set(Target, instance = createInstance(this))
+				instance.context = this
 			}
 			return instance
 		}
@@ -1251,7 +1290,7 @@
 		return method
 	}
 
-	var defaultContext = {
+	var defaultContsext = {
 		name: 'Default context',
 		description: 'This object is the default context for classes, corresponding to a singleton instance of that class',
 		getForClass: function(Class, type) {
@@ -1268,9 +1307,11 @@
 		if (!currentContext) {
 			throw new TypeError('Accessing a generalized class without context to resolve to an instance, call for(context) (where context is an element or related variable instance) on your variable first')
 		}
-		return currentContext.getForClass && currentContext.getForClass(this) || this.defaultInstance
+		var instance = currentContext.getForClass && currentContext.getForClass(Class) || Class.defaultInstance
+		distinctContext = mergeContext(distinctContext, instance.context)
+		return instance
 	}
-	Variable.getValue = function() {
+	Variable.valueOf = function() {
 		// contextualized getValue
 		return instanceForContext(this).valueOf()
 	}

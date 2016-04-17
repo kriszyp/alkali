@@ -1,9 +1,9 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-        define(['./util/lang', './Variable'], factory)
+        define(['./util/lang'], factory)
     } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./util/lang'), require('./Variable'))
+        module.exports = factory(require('./util/lang'))
     } else {
-        root.alkali.Updater = factory(root.alkali.lang, root.alkali.Variable)
+        root.alkali.Updater = factory(root.alkali.lang)
     }
 }(this, function (lang, Variable) {
 	var doc = document
@@ -11,7 +11,6 @@
 	var queued
 	var toRender = []
 	var nextId = 1
-	var NeedsContext = Variable.NeedsContext
 	var requestAnimationFrame = lang.requestAnimationFrame
 	function Updater(options) {
 		var variable = options.variable
@@ -173,10 +172,8 @@
 	ElementUpdater.prototype.updateElement = function(element) {
 		this.invalidated = false
 		try {
-			var value = !this.omitValueOf && this.variable.valueOf()
-			if (value instanceof NeedsContext) {
-				value = value.for(element)
-			}
+			// TODO: might make something cheaper than for(element) for setting context?
+			var value = !this.omitValueOf && this.variable.for(element).valueOf()
 		} catch (error) {
 			element.appendChild(document.createTextNode(error))
 		}
