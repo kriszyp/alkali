@@ -6,31 +6,19 @@
         root.alkali.Updater = factory(root.alkali.lang)
     }
 }(this, function (lang, Variable) {
-	var doc = document
+	var doc = typeof document !== 'undefined' && document
 	var invalidatedElements
 	var queued
 	var toRender = []
 	var nextId = 1
 	var requestAnimationFrame = lang.requestAnimationFrame
+
+	function Context(subject){
+		this.subject = subject
+	}
+
 	function Updater(options) {
 		var variable = options.variable
-		if (variable.updated) {
-			// if it has update, we don't need to instantiate a closure
-			variable.notifies(this)
-		} else {
-			// baconjs-esqe API
-			var updater = this
-			variable.subscribe(function (event) {
-				// replace the variable with an object
-				// that returns the value from the event
-				updater.variable = {
-					valueOf: function () {
-						return event.value()
-					}
-				}
-				updater.updated()
-			})
-		}
 
 		this.variable = variable
 		this.elements = []
@@ -62,6 +50,23 @@
 				this.alwaysUpdate = options.alwaysUpdate
 			}
 		}
+		if (variable.updated) {
+			// if it has update, we don't need to instantiate a closure
+			variable.notifies(this)
+		} else {
+			// baconjs-esqe API
+			var updater = this
+			variable.subscribe(function (event) {
+				// replace the variable with an object
+				// that returns the value from the event
+				updater.variable = {
+					valueOf: function () {
+						return event.value()
+					}
+				}
+				updater.updated()
+			})
+		}
 		if(options && options.updateOnStart !== false){
 			this.updateRendering(true)
 		}
@@ -85,6 +90,7 @@
 			}
 		},
 		contextMatches: function(context) {
+			return true
 			return context == this.elements ||
 				// if context is any element in this.elements - perhaps return only the specific matching elements?
 				(this.elements.indexOf(context) != -1) ||
@@ -133,6 +139,9 @@
 	ElementUpdater.prototype.shouldRender = function (element) {
 		return document.body.contains(element)
 	}
+	ElementUpdater.prototype.getSubject = function () {
+		return this.element || this.elements[0]
+	}
 	ElementUpdater.prototype.updateRendering = function (always, element) {
 		var elements = this.elements || (element && [element]) || []
 		if(!elements.length){
@@ -173,7 +182,7 @@
 		this.invalidated = false
 		try {
 			// TODO: might make something cheaper than for(element) for setting context?
-			var value = !this.omitValueOf && this.variable.for(element).valueOf()
+			var value = !this.omitValueOf && this.variable.valueOf(new Context(element))
 		} catch (error) {
 			element.appendChild(document.createTextNode(error))
 		}

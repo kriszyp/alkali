@@ -1,6 +1,18 @@
-define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, lang) {
+(function (root, factory) { if (typeof define === 'function' && define.amd) {
+        define(['./Variable', './Updater', './util/lang'], factory)
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory(require('./util/lang'), require('./Variable'), require('./Updater'))
+    } else {
+        root.alkali.Variable = factory(root.alkali.lang, root.alkali.Variable, root.alkali.Updater)
+    }
+}(this, function (Variable, Updater, lang) {
 	var knownElementProperties = {
 	}
+
+	function Context(subject){
+		this.subject = subject
+	}
+
 	var PropertyUpdater = lang.compose(Updater.PropertyUpdater, function PropertyUpdater() {
 		Updater.PropertyUpdater.apply(this, arguments)
 	}, {
@@ -170,7 +182,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 		return childNode
 	}
 	function variableAsText(parent, variable) {
-		var text = variable.for(parent).valueOf()
+		var text = variable.valueOf(new Context(parent))
 		var childNode = document.createTextNode(text)
 		enterUpdater(TextUpdater, {
 			element: parent,
@@ -277,7 +289,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 		} else {
 			// render as string
 			try {
-				var text = content === undefined ? '' : content.for(this).valueOf()
+				var text = content === undefined ? '' : content.valueOf(new Context(this))
 				var textNode = document.createTextNode(text)
 			} catch (error) {
 				console.error(error.stack)
@@ -296,7 +308,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 
 	function bindChanges(element, variable) {
 		element.addEventListener('change', function (event) {
-			var result = variable.for(element).put(element['typedValue' in element ? 'typedValue' : 'value'])
+			var result = variable.put(element['typedValue' in element ? 'typedValue' : 'value'], new Context(element))
 		})
 	}
 	function renderInputContent(content) {
@@ -796,7 +808,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 			var instance = ownedInstances.get(Target)
 			if (instance === undefined) {
 				ownedInstances.set(Target, instance = createInstance(element))
-				instance.context = element
+				instance.subject = element
 			}
 			return instance
 		}
@@ -908,8 +920,6 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 			childList: true,
 			subtree: true
 		})
-	} else {
-		console.error('Alkali requires MutationObserver API')
 	}
 
 	function augmentBaseElement(Element) {
@@ -932,4 +942,4 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 		}
 	}
 	return Element
-})
+}))
