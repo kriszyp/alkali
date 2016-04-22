@@ -600,7 +600,7 @@
 				} else {
 					contextualizedVariable = variable
 				}
-				contextualizedVariable.cachedVersion = variable.getVersion()
+				contextualizedVariable.cachedVersion = newVersion
 				contextualizedVariable.cachedValue = computedValue
 				return computedValue
 			}
@@ -609,6 +609,7 @@
 			if (context) {
 				watchedContext = new Context(context.subject)
 			}
+			var newVersion = this.getVersion()
 			var computedValue = this.getValue(watchedContext)
 			if (computedValue && computedValue.then) {
 				return computedValue.then(withComputedValue)

@@ -3,7 +3,7 @@
     } else if (typeof module === 'object' && module.exports) {
         module.exports = factory(require('./util/lang'), require('./Variable'), require('./Updater'))
     } else {
-        root.alkali.Variable = factory(root.alkali.lang, root.alkali.Variable, root.alkali.Updater)
+        root.alkali.Element = factory(root.alkali.lang, root.alkali.Variable, root.alkali.Updater)
     }
 }(this, function (Variable, Updater, lang) {
 	var knownElementProperties = {
@@ -709,6 +709,13 @@
 		'Time',
 		'Url',
 		'Week'])
+
+	var tags = {}
+	function getConstructor(tagName) {
+		return tags[tagName] ||
+			(tags[tagName] =
+				augmentBaseElement(extend.call(document.createElement(tagName.toLowerCase()).constructor, tagName.toLowerCase())))
+	}
 
 	function generate(elements) {
 		elements.forEach(function(elementName) {
