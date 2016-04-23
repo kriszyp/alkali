@@ -350,6 +350,29 @@ define([
 				assert.strictEqual(div1.textContent, '1')
 				assert.strictEqual(div2.textContent, '2')
 			})
+		},
+		inheritance: function() {
+			var a = new Variable('a')
+			var b = new Variable('b')
+
+			var MyDiv = Div({
+				a: a,
+				b: a
+			})
+			var div1 = new MyDiv({b: b})
+			document.body.appendChild(div1)
+			assert.strictEqual(div1.a, 'a')
+			assert.strictEqual(div1.b, 'b')
+			a.put('A')
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(div1.a, 'A')
+				assert.strictEqual(div1.b, 'b')
+				b.put('B')
+				return new Promise(requestAnimationFrame).then(function(){
+					assert.strictEqual(div1.a, 'A')
+					assert.strictEqual(div1.b, 'B')
+				})
+			})
 		}
 	})
 });

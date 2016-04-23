@@ -299,7 +299,7 @@ There are several methods that are called as part of the construction of an elem
 
 For example:
 ```
-MyComponent = Div({
+class MyComponent extends Div {
 	created() {
 		// we can interact with the element instance now
 		this.innerHTML = 'Hello, ';
@@ -309,7 +309,7 @@ MyComponent = Div({
 		// we can measure now
 		let myWidth = this.offsetWidth;
 	}
-});
+}
 ```
 
 ## Variable Classes
@@ -353,7 +353,7 @@ MyComponent.children = [
 new MyComponent({
 	title: 'text for the span',
 	link: 'a link for a[href]'
-})
+});
 ```
 
 ## Element Lists/Loops

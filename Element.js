@@ -192,9 +192,9 @@
 		return childNode
 	}
 
-	function applyProperties(element, properties, keys) {
-		for (var i = 0, l = keys.length; i < l; i++) {
-			var key = keys[i]
+	function applyProperties(element, properties) {
+		for (var i = 0, l = properties.length; i < l; i++) {
+			var key = properties[i]
 			var value = properties[key]
 			var styleDefinition = styleDefinitions[key]
 			if (styleDefinition) {
@@ -519,9 +519,6 @@
 			// order static properties before variable binding applications, but for now.
 			element._item = selector._item
 		}
-		if (applyOnCreate) {
-			applyProperties(element, applyOnCreate, applyOnCreate)
-		}
 		var childrenToRender
 		for (var l = arguments.length; i < l; i++) {
 			var argument = arguments[i]
@@ -532,9 +529,18 @@
 			} else if (typeof argument === 'function' && argument.for) {
 				element.content = argument.for(element)
 			} else {
-				applyProperties(element, argument, Object.keys(argument))
+				for (var key in argument) {
+					if (!(key in applyOnCreate)) {
+						var lastLength = applyOnCreate.length || 0
+						applyOnCreate[lastLength] = key
+						applyOnCreate.length = lastLength + 1
+					}
+					// TODO: do deep merging of styles and classes, but not variables
+					applyOnCreate[key] = argument[key]
+				}
 			}
 		}
+		applyProperties(element, applyOnCreate, applyOnCreate)
 		// TODO: we may want to put these on the instance so it can be overriden
 		if (this.children) {
 			layoutChildren(element, this.children, element)
