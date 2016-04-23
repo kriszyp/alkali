@@ -338,15 +338,17 @@ variableInstance.set('body', 'World')
 
 Element classes themselves also act as variable classes. Element classes include a static `property` method, like variables, which maps to the properties of the elements themselves. This makes it convenient to declaratively use element properties in child elements.
 
-Since a self-reference to element classes may not be immediately accessible, we can define an initialization callback, to create the array of children once the reference is available. In this example, we use the `title` property for the contents of a child, the `link` property for an href:
+Since a self-reference to element classes may not be immediately accessible, we can define the children after declaring a component class. In this example, we use the `title` property for the contents of a child, the `link` property for an href:
 
 ```
-let MyComponent = Div(() => [
+class MyComponent extends Div {
+}
+MyComponent.children = [
 	Span(MyComponent.property('title')),
 	A({
 		href: MyComponent.property('link')
 	})
-]);
+];
 
 new MyComponent({
 	title: 'text for the span',
@@ -379,6 +381,20 @@ new Select({
 
 ```
 Again, we can also use a variable that contains an array as the content to drive the list. When using a variable, the child elements will reactively be added, removed, or updated as the variable is modified in the future.
+
+
+## Alkali Element API
+
+Any element constructor that is derived from Alkali's `Element` module has the following static methods/properties:
+* create(...elementArguments) - Creates a new element instance
+* extend(...elementArguments) - Creates a new element constructor
+* property(name) - Returns a generalized variable for the property of elements of this class
+* for(subject) - Gets an instance of the element for the given subject
+* children - This an array of the children (constructors, variables, or elements) that will be constructed on instantiation
+
+And DOM elements created from Alkali constructors have the following methods/properties on the instances (in addition to the standard DOM API, since these are standard DOM elements):
+* append(...children) - Creates new child elements of this element. This can take standard alkali arguments for children (constructors, variables, elements, etc.)
+* inputEvents - This is an array of events types to listen for when a variable is connected to an input's value. By default this is `['change']`.
 
 
 ## EcmaScript Generator Support

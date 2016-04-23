@@ -236,6 +236,13 @@ define([
 			var middle = result.firstChild
 			assert.strictEqual(middle.className, 'middle-1')
 		},
+
+		append: function() {
+			var top = new Div('.top')
+			top.append(Span, Span('.second'))
+			assert.strictEqual(top.firstChild.tagName, 'SPAN')
+			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
+		},
 		
 		addToPrototype: function() {
 			Element.addToElementPrototypes({
@@ -283,17 +290,17 @@ define([
 			})
 		},
 		applyPropertyToChild: function() {
-			var MyComponent = Div(function() {
-				return [
-					Anchor(MyComponent.property('title'), {
-						href: MyComponent.property('link')
-					}),
-					P(MyComponent.property('title').to(function(title) {
-						return MyComponent.property('body').to(function(body) {
-							return title + ', ' + body
-						})
-					}))
-				]})
+			var MyComponent = Div()
+			MyComponent.children = [
+				Anchor(MyComponent.property('title'), {
+					href: MyComponent.property('link')
+				}),
+				P(MyComponent.property('title').to(function(title) {
+					return MyComponent.property('body').to(function(body) {
+						return title + ', ' + body
+					})
+				}))
+			]
 			var myComponent = new MyComponent({
 				title: 'Hello',
 				link: 'https://github.com/kriszyp/alkali',

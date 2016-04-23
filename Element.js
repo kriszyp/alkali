@@ -254,7 +254,7 @@
 		return selector
 	}
 
-	function renderContent(content) {
+	function buildContent(content) {
 		var each = this.each
 		if (each && content) {
 			// render as list
@@ -285,7 +285,7 @@
 			}
 		} else if (inputs[this.tagName]) {
 			// render into input
-			this.renderInputContent(content)
+			this.buildInputContent(content)
 		} else {
 			// render as string
 			try {
@@ -307,11 +307,16 @@
 	}
 
 	function bindChanges(element, variable) {
-		element.addEventListener('change', function (event) {
-			var result = variable.put(element['typedValue' in element ? 'typedValue' : 'value'], new Context(element))
+		lang.nextTurn(function() { // wait for next turn in case inputChanges isn't set yet
+			var inputEvents = element.inputEvents || ['change']
+			for (var i = 0, l = inputEvents.length; i < l; i++) {
+				element.addEventListener(inputEvents[i], function (event) {
+					var result = variable.put(element['typedValue' in element ? 'typedValue' : 'value'], new Context(element))
+				})
+			}
 		})
 	}
-	function renderInputContent(content) {
+	function buildInputContent(content) {
 		if (content && content.notifies) {
 			// a variable, respond to changes
 			enterUpdater(PropertyUpdater, {
@@ -337,7 +342,7 @@
 		var prototype = Element.prototype
 		if (value && typeof value === 'object') {
 			if (value instanceof Array) {
-				Element.childrenToRender = value
+				Element.children = value
 			} else if (value.notifies) {
 				prototype.content = value
 			} else {
@@ -404,12 +409,12 @@
 			Element.extend = extend
 			Element.for = forTarget
 			Element.property = propertyForElement
-			Element.append = append
 		}
-		if (!prototype.renderContent) {
-			prototype.renderContent = renderContent
-			prototype.renderInputContent = renderInputContent
+		if (!prototype.buildContent) {
+			prototype.buildContent = buildContent
+			prototype.buildInputContent = buildInputContent
 			prototype.getForClass = getForClass
+			prototype.append = append
 		}
 
 		var i = 0 // for arguments
@@ -531,15 +536,15 @@
 			}
 		}
 		// TODO: we may want to put these on the instance so it can be overriden
-		if (this.childrenToRender) {
-			layoutChildren(element, this.childrenToRender, element)
+		if (this.children) {
+			layoutChildren(element, this.children, element)
 		}
 		if (childrenToRender) {
 			var contentNode = element.contentNode || element
 			layoutChildren(contentNode, argument, contentNode)
 		}
 		if (element.content) {
-			element.renderContent(element.content)
+			element.buildContent(element.content)
 		}
 		var classes = this.classes
 		if (classes) {
@@ -938,6 +943,7 @@
 		createdBaseElements.push(Element)
 		return Element
 	}
+	createdBaseElements.push(Element)
 	Element.addToElementPrototypes = function(properties) {
 		var i = 0;
 		for (var key in properties) {
