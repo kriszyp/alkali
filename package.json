@@ -1,8 +1,8 @@
 {
   "name": "alkali",
   "author": "Kris Zyp",
-  "version": "0.2.6",
-  "description": "Interface for reactivity with native JavaScript objects",
+  "version": "0.3.1",
+  "description": "Reactivity with native JavaScript objects and HTML elements",
   "licenses": [
     {
       "type": "AFLv2.1",
