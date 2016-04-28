@@ -9,10 +9,8 @@
 	var getValue
 	var GeneratorVariable = lang.compose(Variable.Composite, function Call(generator){
 		this.generator = generator
+		this.args = []
 	}, {
-		init: function() {
-			this.args = []
-		},
 		getValue: getValue = function(context, resuming) {
 			var lastValue
 			var i
