@@ -251,3 +251,56 @@ body h1.project-name {
 @media screen and (max-width: 42em) {
   .site-footer {
     font-size: 0.9rem; } }
+
+
+.demo {
+	position: relative;
+}
+.demo-contents {
+	overflow: hidden;
+  height: 50px;
+  transition: height 0.5s, margin-bottom 0.5s;
+  margin-bottom: 15px;
+  background-color: #fafafa;
+}
+.demo:hover .demo-contents {
+	height: 65px;
+	margin-bottom: 0px;
+}
+.demo.active .demo-contents {
+	height: 200px;
+	margin-bottom: 5px;
+}
+.output {
+  display: block;
+  float: left;
+  padding: 10px;
+  width: 350px;
+}
+.fade {
+  position: absolute;
+  height: 50px;
+  width: 100%;
+  bottom: -15px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0) 0%,rgb(255,255,255) 65%,rgba(255,255,255,0) 100%);
+  transition: bottom 0.5s;
+}
+.demo:hover .fade {
+	bottom: -25px;
+}
+.demo.active .fade {
+	background: transparent;
+}
+textarea {
+	font-family: monospace;
+	font-size: 12px;
+  height: 200px;
+  width: 350px;
+  float: left;
+  display: block;
+  background-color: #fafafa;
+}
+label {
+	display: block;
+	margin: 5px;
+}

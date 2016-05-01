@@ -2,28 +2,17 @@
 <html lang="en-us">
   <head>
     <meta charset="UTF-8">
-    <title>Alkali by kriszyp</title>
+    <title>Alkali - A reactive native element library</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
-    <script src="http://requirejs.org/docs/release/2.1.22/minified/require.js"></script>
-    <script>
-  require.config({
-    baseUrl: ".",
-    paths: {
-      "alkali": "https://rawgit.com/kriszyp/alkali/master",
-      "alkali-page": "."
-    }
-  });
-  require(["alkali-page/index"])
-  </script>
   </head>
   <body>
     <section class="page-header">
       <h1 class="project-name">Alkali</h1>
-      <h2 class="project-tagline">Lightweight. Pure. And highly reactive.</h2>
+      <h2 class="project-tagline">Lightweight. Pure. Clean. And highly reactive.</h2>
       <a href="https://github.com/kriszyp/alkali" class="btn">View on GitHub</a>
       <a href="https://github.com/kriszyp/alkali/zipball/master" class="btn">Download .zip</a>
       <a href="https://github.com/kriszyp/alkali/tarball/master" class="btn">Download .tar.gz</a>
@@ -33,44 +22,46 @@
       <h3>
 <a id="alkali" class="anchor" href="#alkali" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Alkali</h3>
 
-<p>The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. Likewise, the alkali library provides reactive, conductive data flows, with pure JavaScript objects, native element extensibility, for nimble, fast, responsive applications. Build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.</p>
+<p>The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. Likewise, the alkali library provides reactive, conductive data flows, with pure JavaScript objects, native element extensibility, for nimble, fast, responsive applications. Build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions or overhead.</p>
 
 <ul>
   <li>
     <h4>Consistent, encapsulated bi-direction reactive data flow</h4>
-    <p>Assymetrical bi-directional reactivity provides robust, but simple easy data bindings to inputs and even reversible functions</p>
+    <p>Assymetrical bi-directional reactivity provides robust, yet simple and easy data bindings to elements and inputs, and even data flow through reversible functions</p>
     <pre class='example'>
-let fahrenheit = new Variable(0)
-let celcius = fahrenheit.minus(32).multiplyBy(5).dividedBy(9)
+fahrenheit = new Variable(68)
+celsius = multiply(subtract(fahrenheit,32), 5/9)
 new Form([
   Label([
     'Fahrenheit: ',
-    NumberInput(fahrenheit)])
+    NumberInput(round(fahrenheit, 3))]),
   Label([
-    'Celcius: ',
-    NumberInput(celcius)])
+    'Celsius: ',
+    NumberInput(round(celsius, 3))])
 ])
     </pre>
   </li>
   <li>
     <h4>High-perfomance granular lazy-execution for optimized rendering</h4>
-    <p>End-to-end optimization, using rendering frame-driven lazy execution, cached computations, granular data flows, and incremental updates that make your applications fast by default, without the memory bloat of virtual doms.</p>
+    <p>End-to-end optimization, using rendering frame-driven lazy execution, cached computations, granular data flows, and incremental updates that make your applications fast by default, without the bloat of component abstractions or virtual doms.</p>
     <pre class='example'>
 someNumbers = new Variable([1, 2])
 // define a transform
-sum = someNumbers.reduce((a, b) => a + b)
-// make all the changes you once
+sum = someNumbers.to((array) =>
+	array.reduce((a, b) => a + b))
+// make all the changes you want
 
 // and the renderer will only recompute as needed for the rendering frame
+new Div(sum)
     </pre>
   </li>
   <li>
     <h4>Simple, elegant, declarative syntax for defining visual/UI structure</h4>
     <p>Element constructor based layouts, with reactive variables, produces a declarative syntax fully define components and structures, defining what you want, instead of how you want, making it easier to write and easier to understand.</p>
     <pre class='example'>
-Table([
-  Tr([
-    Td('Hello'), Td('World')
+new Table([
+  TR([
+    TD(['Hello']), TD(['World'])
   ])
 ])
     </pre>
@@ -81,6 +72,16 @@ Table([
   <li>
     <h4>Leverages new EcmaScript generator and class syntax</h4>
     <p>Use generator syntax for reactive functions, and class syntax to extend native elements.</p>
+    <pre class='example'>
+class MyDiv extends Div {
+  *render() {
+    this.textContent = `Fahrenheit is
+    	${yield fahrenheit} and
+    	celsius is ${yield celsius}`
+  }
+}
+new MyDiv()
+    </pre>
   </li>
   <li>
     <h4>Reactive nested objects/properties, collections, and validation</h4>
@@ -102,6 +103,14 @@ Table([
 
     </section>
 
-  
+    <script>
+    // do the eval/with stuff here outside of the strict mode of the module
+    evalWith = function(code, scope, container) {
+    	with(scope) {
+    		return eval(code)
+    	}
+    }
+    </script>
+    <script src="builds/bundle.js"></script> 
   </body>
 </html>
