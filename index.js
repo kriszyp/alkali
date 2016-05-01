@@ -4,6 +4,6 @@ define(['./Element', './Variable', './react', './Updater', './operators'], funct
 	main.all = Variable.all
 	main.react = react
 	main.Updater = Updater
-	main.operators = operators
+	Object.assign(main, operators)
 	return main
 })

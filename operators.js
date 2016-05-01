@@ -73,5 +73,6 @@
 	operator('==', 'equal', 9, 'a===b');
 	operator('&', 'and', 8, 'a&&b');
 	operator('|', 'or', 8, 'a||b');
+	operator('round', 'round', 8, 'Math.round(a*Math.pow(10,b||1))/Math.pow(10,b||1)', 'a', 'a');
 	return operators;
 }));
