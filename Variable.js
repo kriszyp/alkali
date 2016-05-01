@@ -95,14 +95,19 @@
 				observe(value)
 			}
 		}
+		listener.listeningToObject = value
 	}
-	function deregisterListener(value, listener) {
-		var listeners = propertyListenersMap.get(value)
-		if (listeners) {
-			var index = listeners[listener.listenerId]
-			if (index > -1) {
-				listeners.splice(index, 1)
-				delete listeners[listener.listenerId]
+	function deregisterListener(listener) {
+		if (listener.listeningToObject) {
+			var value = listener.listeningToObject
+			listener.listeningToObject = null
+			var listeners = propertyListenersMap.get(value)
+			if (listeners) {
+				var index = listeners[listener.listenerId]
+				if (index > -1) {
+					listeners.splice(index, 1)
+					delete listeners[listener.listenerId]
+				}
 			}
 		}
 	}
@@ -145,7 +150,17 @@
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
 					// nothing changed, immediately return valueOf
-					return value.valueOf()
+					var resolvedValue = value.valueOf()
+					if (resolvedValue !== this.listeningToObject) {
+						if (this.listeningToObject) {
+							deregisterListener(this)
+						}
+						if (typeof resolvedValue === 'object' && resolvedValue && (this.dependents || this.constructor.dependents)) {
+							// set up the listeners tracking
+							registerListener(resolvedValue, this)
+						}
+					}
+					return resolvedValue
 				}
 				// if there was a another value that we were dependent on before, stop listening to it
 				// TODO: we may want to consider doing cleanup after the next rendering turn
@@ -265,10 +280,7 @@
 				}
 			}
 			this.handles = null
-			var value = this.value
-			if (value && typeof value === 'object') {
-				deregisterListener(value, this)
-			}
+			deregisterListener(this)
 			var notifyingValue = this.notifyingValue
 			if (notifyingValue) {
 				// TODO: move this into the caching class
@@ -333,8 +345,8 @@
 			this.lastUpdate = updateEvent
 			this.updateVersion()
 			var value = this.value
-			if (value && typeof value === 'object' && !(updateEvent instanceof PropertyChange)) {
-				deregisterListener(value, this)
+			if (!(updateEvent instanceof PropertyChange)) {
+				deregisterListener(this)
 			}
 
 			var dependents = this.dependents
@@ -1004,7 +1016,7 @@
 				this[this.method + 'Updated'](event, context)
 			// TODO: make sure we normalize the event structure
 			if (this.dependents && event.oldValue && typeof event.value === 'object') {
-				deregisterListener(event.value, this)
+				deregisterListener(this)
 			}
 			if (this.dependents && event.value && typeof event.value === 'object') {
 				registerListener(event.value, getDistinctContextualized(this, context))
@@ -1062,6 +1074,66 @@
 		getVersion: function(context) {
 			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getVersion(context))
 		}		
+	})
+
+
+	var getValue
+	var GeneratorVariable = Variable.GeneratorVariable = lang.compose(Variable.Composite, function ReactiveGenerator(generator){
+		this.generator = generator
+		this.args = []
+	}, {
+		getValue: getValue = function(context, resuming) {
+			var lastValue
+			var i
+			var generatorIterator
+			if (resuming) {
+				// resuming from a promise
+				generatorIterator = resuming.iterator
+				i = resuming.i
+				lastValue = resuming.value
+			} else {
+				// a fresh start
+				i = 0
+				generatorIterator = this.generator()				
+			}
+			
+			var args = this.args
+			do {
+				var stepReturn = generatorIterator.next(lastValue)
+				if (stepReturn.done) {
+					return stepReturn.value
+				}
+				var nextVariable = stepReturn.value
+				// compare with the arguments from the last
+				// execution to see if they are the same
+				if (args[i] !== nextVariable) {
+					if (args[i]) {
+						args[i].stopNotifies(this)
+					}
+					// subscribe if it is a variable
+					if (nextVariable && nextVariable.notifies) {
+						nextVariable.notifies(this)
+						this.args[i] = nextVariable
+					} else {
+						this.args[i] = null
+					}
+				}
+				i++
+				lastValue = nextVariable && nextVariable.valueOf(context)
+				if (lastValue && lastValue.then) {
+					// if it is a promise, we will wait on it
+					var variable = this
+					// and return the promise so that the getValue caller can wait on this
+					return lastValue.then(function(value) {
+						return getValue.call(this, context, {
+							i: i,
+							iterator: generatorIterator,
+							value: value
+						})
+					})
+				}
+			} while(true)
+		}
 	})
 
 	var Validating = lang.compose(Caching, function(target, schema) {
