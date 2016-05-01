@@ -54,7 +54,7 @@
 
 	function makeExample(code) {
 		var content = new _alkali.Variable(code);
-		var Example = (0, _alkali.Div)('.demo', [(0, _alkali.Div)('.demo-contents', [(0, _alkali.Textarea)(content, { spellcheck: false }), (0, _alkali.Div)('.output', {
+		var Example = (0, _alkali.Div)('.demo', [(0, _alkali.Div)('.demo-contents', [(0, _alkali.H3)('.demo-header', ['EXAMPLE']), (0, _alkali.Textarea)(content, { spellcheck: false }), (0, _alkali.Div)('.output', {
 			renderCode: function renderCode(newCode) {
 				var container = this;
 				container.innerHTML = '';

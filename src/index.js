@@ -1,9 +1,10 @@
-import alkali, { Variable, operators, Div, Textarea, Form, Label, NumberInput } from 'alkali'
+import alkali, { Variable, operators, Div, Textarea, H3, Form, Label, NumberInput } from 'alkali'
 
 function makeExample(code) {
 	var content = new Variable(code)
 	var Example = Div('.demo', [
 		Div('.demo-contents', [
+			H3('.demo-header', ['EXAMPLE']),
 			Textarea(content, {spellcheck: false}),
 			Div('.output', {
 				renderCode(newCode) {

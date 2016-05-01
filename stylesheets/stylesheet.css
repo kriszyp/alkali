@@ -291,6 +291,14 @@ body h1.project-name {
 .demo.active .fade {
 	background: transparent;
 }
+h3.demo-header {
+	float: left;
+  transform: rotate(90deg);
+  width: 28px;
+  letter-spacing: 4px;
+  font-size: 8px;
+  padding: 8px;
+}
 textarea {
 	font-family: monospace;
 	font-size: 12px;
