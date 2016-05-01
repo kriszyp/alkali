@@ -6,9 +6,17 @@
         root.alkali.Element = factory(root.alkali.lang, root.alkali.Variable, root.alkali.Updater)
     }
 }(this, function (Variable, Updater, lang) {
-	var knownElementProperties = {
-	}
+	var knownElementProperties = {};
+	['textContent', 'innerHTML', 'title', 'href', 'value', 'typedValue', 'valueAsNumber', 'role', 'render'].forEach(function(property) {
+		knownElementProperties[property] = true
+	})
 
+	function isGenerator(func) {
+		if (typeof func === 'function') {
+			var constructor = func.constructor
+			return (constructor.displayName || constructor.name) === 'GeneratorFunction'
+		}
+	}
 	function Context(subject){
 		this.subject = subject
 	}
@@ -38,9 +46,7 @@
 	// TODO: check for renderContent with text updater
 	var TextUpdater = Updater.TextUpdater
 	var ListUpdater = Updater.ListUpdater
-	;['href', 'title', 'role', 'id', 'className'].forEach(function (name) {
-		knownElementProperties[name] = true
-	})
+	
 	var toAddToElementPrototypes = []
 	var createdBaseElements = []
 	var testStyle = document.createElement('div').style
@@ -217,8 +223,21 @@
 				if (bidirectionalProperties[key]) {
 					bindChanges(element, value)
 				}
-			} else if (key.slice(0, 2) === 'on') {
-				element.addEventListener(key.slice(2), value)
+			} else if (typeof value === 'function') {
+				if (key.slice(0, 2) === 'on') {
+					element.addEventListener(key.slice(2), value)
+				} else if (isGenerator(value)) {
+					// TODO: make the special cases for content and render
+					// and maybe, at some point, find an optimization to eliminate the bind()
+					enterUpdater(PropertyUpdater, {
+						name: key,
+						variable: new Variable.GeneratorVariable(value.bind(element)),
+						element: element
+					})
+				} else {
+					// I don't know why else we could be getting a function, but set it
+					element[key] = value
+				}
 			} else {
 				element[key] = value
 			}
@@ -351,7 +370,8 @@
 					if (classHandlers[key]) {
 						classHandlers[key](Element, descriptor)
 					} else {
-						var onClassPrototype = (typeof descriptor.value === 'function' && !descriptor.value.notifies) // a plain function/method and not a variable constructor
+						var onClassPrototype = (typeof descriptor.value === 'function' && !descriptor.value.notifies &&
+							!(isGenerator(descriptor.value) && key === 'render')) // a plain function/method and not a variable constructor
 							|| descriptor.get || descriptor.set // or a getter/setter
 						if (onClassPrototype) {
 							Object.defineProperty(prototype, key, descriptor)
@@ -473,7 +493,7 @@
 				var keys = Object.getOwnPropertyNames(this.prototype)
 				for (var i = 0, l = keys.length; i < l; i++) {
 					var key = keys[i]
-					if (key.slice(0, 2) == 'on') {
+					if (key.slice(0, 2) == 'on' || (key === 'render' && isGenerator(this.prototype[key]))) {
 						if (!(key in applyOnCreate)) {
 							var lastLength = applyOnCreate.length || 0
 							applyOnCreate[lastLength] = key
@@ -520,6 +540,7 @@
 			element._item = selector._item
 		}
 		var childrenToRender
+		var hasOwnApplyOnCreate
 		for (var l = arguments.length; i < l; i++) {
 			var argument = arguments[i]
 			if (argument instanceof Array) {
@@ -530,6 +551,10 @@
 				element.content = argument.for(element)
 			} else {
 				for (var key in argument) {
+					if (!hasOwnApplyOnCreate) {
+						hasOwnApplyOnCreate = true
+						applyOnCreate = Object.create(applyOnCreate)
+					}
 					if (!(key in applyOnCreate)) {
 						var lastLength = applyOnCreate.length || 0
 						applyOnCreate[lastLength] = key
