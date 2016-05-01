@@ -289,6 +289,18 @@ let myDiv = new MyDiv({name: nameVariable}) // renderName called with original v
 nameVariable.put('New name') // will trigger another renderName call
 ```
 
+### Generator `render` Method
+
+If you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define a `render` method as a generator, making it very simple to construct an element that reacts to known variables. This method can written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The method will be called when the element is first created, and again anytime any of the "yielded" variable changes. For example:
+
+```
+class MyLink extends Anchor {
+	*render() {
+		this.href = baseUrl + yield someVariable;
+		this.textContent = yield someOtherVariable;
+	}
+}
+```
 
 ### Construction Lifecycle Methods
 
