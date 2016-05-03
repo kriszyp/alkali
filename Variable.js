@@ -127,7 +127,7 @@
 			return Variable.extend(value)
 		}
 	}
-	Variable.prototype = {
+	var VariablePrototype = Variable.prototype = {
 		constructor: Variable,
 		valueOf: function(context) {
 			if (this.subject) {
@@ -564,16 +564,14 @@
 		getId: function() {
 			return this.id || (this.id = nextId++)
 		}
-	}
-	// a variable inheritance change goes through its own prototype, so classes/constructor
-	// can be used as variables as well
-	setPrototypeOf(Variable, Variable.prototype)
+	}	
 
 	if (typeof Symbol !== 'undefined') {
 		Variable.prototype[Symbol.iterator] = function() {
 			return this.valueOf()[Symbol.iterator]()
 		}
 	}
+
 	var cacheNotFound = {}
 	var Caching = Variable.Caching = lang.compose(Variable, function(getValue, setValue) {
 		if (getValue) {
@@ -1329,6 +1327,11 @@
 		var instance = context.subject.getForClass && context.subject.getForClass(Class) || Class.defaultInstance
 		context.distinctSubject = mergeSubject(context.distinctSubject, instance.subject)
 		return instance
+	}
+	// a variable inheritance change goes through its own prototype, so classes/constructor
+	// can be used as variables as well
+	for (var key in VariablePrototype) {
+		Object.defineProperty(Variable, key, Object.getOwnPropertyDescriptor(VariablePrototype, key))
 	}
 	Variable.valueOf = function(context) {
 		// contextualized getValue
