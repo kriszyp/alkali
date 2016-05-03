@@ -306,7 +306,7 @@ class MyLink extends Anchor {
 
 There are several methods that are called as part of the construction of an element that can be used to define additional behavior of an element. These include:
 * `created` (and `createdCallback`) - This is called for each new element instance. It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
-* `attached` - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
+* `attached` (and `attachedCallback`) - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
 * `detached` - This is called when an element is detached from the document tree. This can be a useful place to perform cleanup operations. However, elements may be reattached as well (and `attached` would be called again).
 
 For example:
