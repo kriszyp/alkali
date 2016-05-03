@@ -703,6 +703,7 @@
 				// we trigger a full clobbering of the object
 				parent._propertyChange(key, object, context, type)
 				if (listeners) {
+					listeners = listeners.slice(0)
 					for (var i = 0, l = listeners.length; i < l; i++) {
 						var listener = listeners[i]
 						if (listener !== parent) {
