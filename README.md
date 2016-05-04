@@ -6,9 +6,17 @@ There are several key paradigms in alkali:
 
 The central entity in the data model system is a "Variable" (this notion has variously been known by various names such as "reactive", "stream", "signal" and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the value.
 
-Notifications of data changes are delivered by invalidation notifications. When a downstream subscriber is interested in the results of a variable change, it can request the lates value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. Variables support bi-directional flow. They can be updated as well as monitored.
+Notifications of data changes are delivered by invalidation notifications. When a downstream subscriber is interested in the results of a variable change, it can request the latest value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. Variables support bi-directional flow. They can be updated as well as monitored.
 
 Variables also support promises as values, and the variable pipeline will handle waiting for a promises to resolve to do computations.
+
+Alkali uses extendable element constructors and updaters that are designed to consume variables, binding to variables values, and reactively responding to variable changes. They can also bound to inputs that will update variables in respond to user changes.
+
+The main/index module in alkali exports all of functionality in alkali. If you are using ES6 module format, you can import different constructors and utilities like:
+```
+import { Variable, Div } from 'alkali'
+```
+Alkali uses UMD format, so it can be consumed by CommonJS or AMD module systems as well.
 
 ## Debugging/Interaction
 
@@ -16,7 +24,7 @@ Variables also support promises as values, and the variable pipeline will handle
 
 ## Variable API
 
-The Variable constructor is returned from the `alkali/Variable` module.
+The Variable is main API for creating variables and their derivative.
 
 ### Variable(initialValue)
 
@@ -26,6 +34,7 @@ This is the constructor for a variable. You may create a variable with an initia
 
 This returns the current value of the variable. This method also allows variables to be used directly in expressions in place of primitive values, where JavaScript coercion will automatically convert a value. For example a variable with the number 4 can be used:
 ```
+import { Variable } from 'alkali' // assuming ES6 module transpilation
 let four = new Variable(4)
 four * four -> 16
 '#' + four -> '#4'
@@ -37,23 +46,28 @@ four == 4 -> true
 
 This allows us to update the value of a variable with a new value. This can be given a standard value, or you can pass in another variable, in which case this variable will be "linked" to the other, receiving all values and updates from the provided variable.
 
-If the `value` passed in is not different than the current value, no changes will be made and this will return `Variable.noChange`. If the value can be assigned (like a property of a `null` value), it will return `Variable.deny`.
+If the `value` passed in is not different than the current value, no changes will be made and this will return `Variable.noChange`. If the value can not be assigned, it will return `Variable.deny`.
 
 ### property(propertyName)
 
-This returns a variable representing the property of the value of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in property variable will update the corresponding property on the parent object.
-
+This returns a variable representing the value of the property of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in a property variable will update the corresponding property on the parent object. For example:
+```
+let object = {foo: 1};
+let objectVar = new Variable(object);
+let foo = objectVar.property('foo');
+foo.valueOf() -> 1
+foo.put(2);
+object.foo -> 2
+```
 ### to(function)
 
-This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be used by the returned variable.
-
-For example:
+This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be provided to the returned variable. For example:
 ```
-let number = new Variable(3)
+let number = new Variable(3);
 number.valueOf() -> 3
-let doubled = number.to((value) => value * 2)
+let doubled = number.to((value) => value * 2);
 doubled.valueOf() -> 6
-number.put(5)
+number.put(5);
 number.valueOf() -> 5
 doubled.valueOf() -> 10
 ```
@@ -92,7 +106,7 @@ variable.set(name, value)
 
 ### subscribe(listener)
 
-This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
+This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables to Elements and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
 
 ### notifies(target)
 
@@ -104,13 +118,13 @@ The `target` can be another variable, or any object with an `updated(updateEvent
 
 This stops the notifications to the dependent variable, undoing the action of `notifies`.
 
-### updated(updateEvent, context?)
+### updated(updateEvent)
 
-This is the variable's implementation of a subscriber listeners interface for receiving notifications from other variables.
+This is called to indicate that the variable has been updated. This is typically called between dependent variables, but you can also call this to indicate that an object in a variable has been modified.
 
 ### apply(instance, functionVariable)
 
-This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables become invalidated (change), than the returned variable will invalidated. The function can be re-executed with the changed values on the next call to valueOf.
+This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables are updated, than the returned variable will update. The function can be re-executed with the changed values on the next call to valueOf.
 
 ### fixed
 
@@ -126,12 +140,26 @@ let b = Variable(2);
 let sum = Variable.all(a, b).to(([a, b]) => a + b);
 ```
 
+## EcmaScript Generator Support
+
+EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that computes the maximum of two other variables by simply writing:
+```
+import react from 'alkali/react'
+
+let sumOfAAndB = react(function*(){
+	return Math.max(yield a, yield b)
+})
+```
+The resulting variable will reactively update in response to changes in the variable `a` or `b`.
+
+This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
+
 ## Element Construction
 
-Alkali includes functionality for constructing and extending from native DOM elements, and binding these elements to variables for reactive UIs. The `alkali/Element` module exports a large set of native element constructors, as properties, to use for streamlined creation of DOM elements. For example, using EcmaScript's module format to import:
+Alkali includes functionality for constructing and extending from native DOM elements, and binding these elements to variables for reactive UIs. The `alkali` module exports the full set of native element constructors (see the list at the end of the documentation), as properties, to use for streamlined creation of DOM elements. For example, using EcmaScript's module format to import:
 
 ```
-import { Div, Span, Anchor, TextInput } from 'alkali/Element';
+import { Div, Span, Anchor, TextInput } from 'alkali';
 
 let divElement = new Div();
 let spanElement = new Span();
@@ -140,7 +168,7 @@ document.body.appendChild(divElement).appendChild(spanElement);
 
 In addition, an element has a `create` method that may be alternately called to create a new element. `new Element()` and `Element.create()` are equivalent.
 
-This classes create native DOM elements that can be placed directly into the DOM (it is not a wrapper). All the standardized element types should be available from the module (they are all properties of the module, and if you are not using ES6, you can access them like `Element.Div`). These classes can take several arguments for constructing elements. The first argument is an optional string in CSS selector format that can be used to define the class, id, or tag. For example, to create a div with a class of `'my-class'` and id of `'my-id'`:
+These classes create native DOM elements that can be placed directly into the DOM (it is not a wrapper). All the standardized element types should be available from the module (they are all properties of the module, and if you are not using ES6, you can access them like `Element.Div`). These classes can take several arguments for constructing elements. The first argument is an optional string in CSS selector format that can be used to define the class, id, or tag. For example, to create a div with a class of `'my-class'` and id of `'my-id'`:
 
 ```
 let divElement = new Div('.my-class#my-id');
@@ -148,6 +176,7 @@ let divElement = new Div('.my-class#my-id');
 All remaining arguments can be in any order and be any of these types:
 
 #### Properties Argument
+
 An argument can be an object with properties that will be copied to the target element. For example, we could create anchor element with a link:
 ```
 new Anchor({href: 'a url'});
@@ -161,13 +190,14 @@ document.body.appendChild(new Div({title: a}));
 a.put(2); // will update the title of the div
 ```
 
-You can also use a variable for input value properties (`value`, `valueAsNumber`, and `typedValue`), and the variable will be auto-updated with user changes to the input.
+You can also use a variable for input value properties (`value`, `valueAsNumber`, and `typedValue`), and the variable will be auto-updated with user changes to the input (`typedValue` is a special alkali property that maps to the `value`, with conversion to numbers for number inputs, dates for date inputs, etc.).
 
 You can alse use variable classes for property values as well. These are described below.
 
 Alkali uses an optimized strategy for updating elements, by waiting for the next animation frame to update, and only updating elements that are connected to the DOM.
 
 #### Children Array Argument
+
 An argument can be array that defines children nodes. An array should consist of items where each item corresponds to the node that will be created as a child. This array can contain any of the following:
 * Element classes - These will generate new elements
 * Element instances - This is will be directly inserted
@@ -210,10 +240,8 @@ You can also simply provide a string (or any primitive, including numbers or boo
 new Div('.my-class', 'Some text to put in the div');
 ```
 
-Note that a string can't be the first argument, as it would be interpreted as a selector.
+Note that a string intended for text content can't be the first argument, as it would be interpreted as a selector.
 
-#### Function Argument
-You can also provide a function as an argument. The function will be executed at initialization of the first use of the class, and will be called with the class as the argument. The return value of the function will be interpreted as another argument, and can be any of the argument types. This can be helpful for declarative syntax as you will see below.
 
 ### Event Handlers
 The properties argument may also define event handlers. These event handlers are simply functions defined with the same event handler names as used by event attributes (however, these are not implemented using "DOM0" event registration, Alkali uses modern event registration to setup these handlers). For example, we could create a span that listens for clicks:
@@ -227,7 +255,7 @@ new Span({
 
 ## Class Extension (Components)
 
-Element classes are designed to be extended so that you can easily create your own custom classes or components. Extended element classes can define default properties, bindings, and children elements as well. When you call a class with the `new` operator or call the `create` method, you are creating a new element instance. But, if you call a class without the `new` operator or if you use the `extend` method, you will create a new subclass of the called element class. Calling the classes to extend a class works much like create new instances, taking the same types of arguments. An extending class is a true extension of a native element, also return native extended element. For example, we could create a custom div class with a pre-defined HTML class attribute:
+Element classes are designed to be extended so that you can easily create your own custom classes or components. Extended element classes can define default properties, bindings, and children elements as well. When you call a class with the `new` operator or call the `create` method, you are creating a new element instance. But, if you call a class without the `new` operator or if you use the `extend` method, you will create a new subclass of the called element class. Calling the classes to extend a class works much like create new instances, taking the same types of arguments. An extended class is a true extension of a native element, and constructs true extended native DOM element. For example, we could create a custom div class with a pre-defined HTML class attribute:
 ```
 let MyDiv = Div('.my-class')
 // and we can create new elements from this, just like with standard element classes
@@ -252,6 +280,14 @@ let AnotherComponent = Div([
 	})
 ]);
 ```
+And we can create element instances by using a new operator with nested constructors for a clean hierarchical syntax:
+```
+	new UList([
+		LI([Span('.a-class', 'first')]),
+		LI([Span('.a-class', 'second')]),
+	]);
+```
+
 Element classes can also be extended using the native class extension mechanism. For example, we could write:
 ```
 class MyDiv extends Div {
@@ -263,12 +299,23 @@ class MyDiv extends Div {
 	}
 }
 ```
-One of the advantages with using classes is that it allows you to use the `super` operator to call super class methods, permitting more sophisticated element class composition. Note that there are some limitations to using native class syntax. EcmaScript does not currently support properties, nor does it support direct constructor calls, so classes created this way must be extended through the `extend` method (instances can still be created with the `new` operator). Assigning default properties or children can be done by using the call existing mechanism before or after extending:
+One of the advantages of using classes is that it allows you to use the `super` operator to call super class methods, permitting more sophisticated element class composition. Note that there are some limitations to using native class syntax. EcmaScript does not currently support properties, nor does it support direct constructor calls, so classes created this way must be extended through the `extend` method (instances can still be created with the `new` operator). Assigning default properties or children can be done by using extending with a call before or after class extending:
 ```
 class MyDiv extends Div({title: 'default title'}) {
 	// class methods
 }
 ```
+You can also define children by setting the static children property of a class:
+```
+MyDiv.children = [Div, Span];
+```
+or
+```
+class MyDiv extends Div {
+	static get children() {
+		return [Div, Span];
+	}
+}
 
 ### Render Methods
 
@@ -291,7 +338,7 @@ nameVariable.put('New name') // will trigger another renderName call
 
 ### Generator `render` Method
 
-If you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define a `render` method as a generator, making it very simple to construct an element that reacts to known variables. This method can written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The method will be called when the element is first created, and again anytime any of the "yielded" variable changes. For example:
+If you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define a `render` method as a generator, making it very simple to construct an element that reacts to known variables. This method can written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The method will be called when the element is first created, and again anytime any of the "yielded" variables changes. For example:
 
 ```
 class MyLink extends Anchor {
@@ -361,7 +408,9 @@ MyComponent.children = [
 		href: MyComponent.property('link')
 	})
 ];
-
+```
+And now we can create an instance with our new parameterized properties, and the constructor will map input properties to the corresponding child element values:
+```
 new MyComponent({
 	title: 'text for the span',
 	link: 'a link for a[href]'
@@ -378,7 +427,7 @@ import {UL, LI, Item} from 'alkali/Element';
 new UL({
 	content: ['One', 'Two'],
 	each: LI(Item)
-})
+});
 ```
 Like any other variable class, we can access properties from the `Item` class as well, and create more sophisticated child structures. Here is how to create a select dropdown:
 ```
@@ -389,7 +438,7 @@ new Select({
 		value: Item.property('id'),
 		content: Item.property('name')
 	})
-})
+});
 
 ```
 Again, we can also use a variable that contains an array as the content to drive the list. When using a variable, the child elements will reactively be added, removed, or updated as the variable is modified in the future.
@@ -407,21 +456,6 @@ Any element constructor that is derived from Alkali's `Element` module has the f
 And DOM elements created from Alkali constructors have the following methods/properties on the instances (in addition to the standard DOM API, since these are standard DOM elements):
 * append(...children) - Creates new child elements of this element. This can take standard alkali arguments for children (constructors, variables, elements, etc.)
 * inputEvents - This is an array of events types to listen for when a variable is connected to an input's value. By default this is `['change']`.
-
-
-## EcmaScript Generator Support
-
-EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that computes the maximum of two other variables by simply writing:
-```
-import react from 'alkali/react'
-
-let sumOfAAndB = react(function*(){
-	return Math.max(yield a, yield b)
-})
-```
-The resulting variable will reactively update in response to changes in the variable `a` or `b`.
-
-This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
 
 ## Updaters
 
@@ -550,7 +584,7 @@ http://kriszyp.name/2015/11/25/rendering-efficiently-with-two-phase-ui-updates/
 
 # Element Constructors
 
-`alkali/Element` exports the following element constructors:
+The `alkali` module exports the following element constructors:
 
 ## Standard Elements
 
@@ -641,9 +675,9 @@ A
 Anchor (same as A)
 Paragraph (same as P)
 Textarea (same as TextArea)
-DList (same as Dl)
-UList (same as Ul)
-OList (same as Ol)
+DList (same as DL)
+UList (same as UL)
+OList (same as OL)
 ListItem (same as LI)
 Input (same as TextInput)
 TableRow (same as TR)
