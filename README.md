@@ -316,6 +316,7 @@ class MyDiv extends Div {
 		return [Div, Span];
 	}
 }
+```
 
 ### Render Methods
 
