@@ -190,7 +190,7 @@ document.body.appendChild(new Div({title: a}));
 a.put(2); // will update the title of the div
 ```
 
-You can also use a variable for input value properties (`value`, `valueAsNumber`, and `typedValue`), and the variable will be auto-updated with user changes to the input (`typedValue` is a special alkali property that maps to the `value`, with conversion to numbers for number inputs, dates for date inputs, etc.).
+You can also use a variable for input value properties (`value`, `valueAsNumber`, and `checked`), and the variable will be auto-updated with user changes to the input.
 
 You can alse use variable classes for property values as well. These are described below.
 

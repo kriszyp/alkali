@@ -205,14 +205,14 @@
 			return propertyVariable
 		},
 		for: function(subject) {
-			if (subject && subject.target && !subject.getForClass) {
+			if (subject && subject.target && !subject.constructor.getForClass) {
 				// makes HTML events work
 				subject = subject.target
 			}
 			if (typeof this === 'function') {
 				// this is a class, the subject should hopefully have an entry
 				if (subject) {
-					var instance = subject.getForClass(this)
+					var instance = subject.constructor.getForClass(subject, this)
 					if (instance && !instance.subject) {
 						instance.subject = subject
 					}
@@ -478,7 +478,6 @@
 		undefine: function(key, context) {
 			this.set(key, undefined, context)
 		},
-		getForClass: getForClass,
 
 		next: function(value) {
 			// for ES7 observable compatibility
@@ -1258,17 +1257,14 @@
 		ownedClasses.set(Target, createForInstance || function() { return new Target() })
 		return this
 	}
-	function getForClass(Target, type) {
-		var createInstance = this.constructor.ownedClasses && this.constructor.ownedClasses.get(Target)
+	function getForClass(subject, Target) {
+		var createInstance = subject.constructor.ownedClasses && subject.constructor.ownedClasses.get(Target)
 		if (createInstance) {
-			if (type === 'key') {
-				return this
-			}
-			var ownedInstances = this.ownedInstances || (this.ownedInstances = new WeakMap())
+			var ownedInstances = subject.ownedInstances || (subject.ownedInstances = new WeakMap())
 			var instance = ownedInstances.get(Target)
 			if (!instance) {
-				ownedInstances.set(Target, instance = createInstance(this))
-				instance.subject = this
+				ownedInstances.set(Target, instance = createInstance(subject))
+				instance.subject = subject
 			}
 			return instance
 		}
@@ -1310,11 +1306,10 @@
 	var defaultContext = {
 		name: 'Default context',
 		description: 'This object is the default context for classes, corresponding to a singleton instance of that class',
-		getForClass: function(Class, type) {
-			if (type === 'key') {
-				return this
+		constructor: {
+			getForClass: function(subject, Class) {
+				return Class.defaultInstance
 			}
-			return Class.defaultInstance
 		},
 		contains: function() {
 			return true // contains everything
@@ -1324,7 +1319,7 @@
 		if (!context) {
 			throw new TypeError('Accessing a generalized class without context to resolve to an instance, call for(context) (where context is an element or related variable instance) on your variable first')
 		}
-		var instance = context.subject.getForClass && context.subject.getForClass(Class) || Class.defaultInstance
+		var instance = context.subject.constructor.getForClass && context.subject.constructor.getForClass(context.subject, Class) || Class.defaultInstance
 		context.distinctSubject = mergeSubject(context.distinctSubject, instance.subject)
 		return instance
 	}
@@ -1341,6 +1336,7 @@
 		// contextualized setValue
 		return instanceForContext(this, context).put(value)
 	}
+	Variable.getForClass = getForClass
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply

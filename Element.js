@@ -1,13 +1,13 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-        define(['./Variable', './Updater', './util/lang'], factory)
-    } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./util/lang'), require('./Variable'), require('./Updater'))
-    } else {
-        root.alkali.Element = factory(root.alkali.lang, root.alkali.Variable, root.alkali.Updater)
-    }
+				define(['./Variable', './Updater', './util/lang'], factory)
+		} else if (typeof module === 'object' && module.exports) {
+				module.exports = factory(require('./util/lang'), require('./Variable'), require('./Updater'))
+		} else {
+				root.alkali.Element = factory(root.alkali.lang, root.alkali.Variable, root.alkali.Updater)
+		}
 }(this, function (Variable, Updater, lang) {
 	var knownElementProperties = {};
-	['textContent', 'innerHTML', 'title', 'href', 'value', 'typedValue', 'valueAsNumber', 'role', 'render'].forEach(function(property) {
+	['textContent', 'innerHTML', 'title', 'href', 'value', 'valueAsNumber', 'role', 'render'].forEach(function(property) {
 		knownElementProperties[property] = true
 	})
 
@@ -40,7 +40,11 @@
 	}, {
 		renderUpdate: function(newValue, element) {
 			var definition = styleDefinitions[this.name]
-			element.style[this.name] = definition ? definition(newValue) : newValue
+			if (definition) {
+				definition(element, newValue, this.name)
+			} else {
+				element.style[this.name] = newValue
+			}
 		}
 	})
 	// TODO: check for renderContent with text updater
@@ -63,43 +67,34 @@
 		TEXTAREA: 1
 		// SELECT: 1, we exclude this, so the default "content" of the element can be the options
 	}
-	var bidirectionalProperties = {
-		value: 1,
-		typedValue: 1,
-		valueAsNumber: 1,
-		valueAsDate: 1,
-		checked: 1
-	}
 	function booleanStyle(options) {
-		return function(value) {
+		return function(element, value, key) {
 			if (typeof value === 'boolean') {
 				// has a boolean conversion
-				return options[value ? 0 : 1]
+				value = options[value ? 0 : 1]
 			}
-			return value
+			element.style[key] = value
 		}
 	}
 
-	function defaultStyle(value) {
-		return function(value) {
-			if (typeof value === 'number') {
-				return value + 'px'
-			}
-			return value
+	function defaultStyle(element, value, key) {
+		if (typeof value === 'number') {
+			value = value + 'px'
 		}
+		element.style[key] = value
 	}
-	function identity(value) {
-		return value
+	function directStyle(element, value, key) {
+		element.style[key] = value
 	}
 
 	var styleDefinitions = {
 		display: booleanStyle(['initial', 'none']),
 		visibility: booleanStyle(['visible', 'hidden']),
-		color: identity,
-		opacity: identity,
-		zoom: identity,
-		minZoom: identity,
-		maxZoom: identity,
+		color: directStyle,
+		opacity: directStyle,
+		zoom: directStyle,
+		minZoom: directStyle,
+		maxZoom: directStyle,
 		position: booleanStyle(['absolute', '']),
 		textDecoration: booleanStyle(['underline', '']),
 		fontWeight: booleanStyle(['bold', 'normal'])
@@ -165,6 +160,7 @@
 				if (child instanceof Array) {
 					// array of sub-children
 					container = container || parent
+					childNode = childNode || parent
 					layoutChildren(childNode.contentNode || childNode, child, container)
 				} else if (child.notifies) {
 					// a variable
@@ -198,6 +194,72 @@
 		return childNode
 	}
 
+	function bidirectionalHandler(element, value, key) {
+		if (value && value.notifies) {
+			enterUpdater(PropertyUpdater, {
+				name: key,
+				variable: value,
+				element: element
+			})
+			bindChanges(element, value, key)
+		} else {
+			element[key] = value
+		}
+	}
+
+	var propertyHandlers = {
+		style: function(element, value) {
+			// TODO: handle variables, maybe index, etc.
+			for (var i in value) {
+				element[i] = value[i]
+			}
+		},
+		classes: function(element, classes) {
+			if (!(classes.length > -1)) {
+				// index the classes, if necessary
+				var i = 0
+				for (var key in classes) {
+					if (!classes[i]) {
+						classes[i] = key
+					}
+					i++
+				}
+				classes.length = i
+			}
+			for (var i = 0, l = classes.length; i < l; i++) {
+				// find each class name
+				var className = classes[i]
+				var flag = classes[className]
+				if (flag && flag.notifies) {
+					// if it is a variable, we react to it
+					enterUpdater(Updater, {
+						element: element,
+						className: className,
+						variable: flag
+					})
+				} else if (flag || flag === undefined) {
+					element.className += ' ' + className
+				}
+			}
+		},
+		render: function(element, value, key) {
+			// TODO: This doesn't need to be a property updater
+			// and maybe, at some point, find an optimization to eliminate the bind()
+			enterUpdater(PropertyUpdater, {
+				name: key,
+				variable: new Variable.GeneratorVariable(value.bind(element)),
+				element: element
+			})
+		},
+		each: function(){
+			// just used by content, doesn't need to be recorded on the element
+		},
+		value: bidirectionalHandler,
+		valueAsNumber: bidirectionalHandler,
+		valueAsDate: bidirectionalHandler,
+		checked: bidirectionalHandler
+	}
+
 	function applyProperties(element, properties) {
 		for (var i = 0, l = properties.length; i < l; i++) {
 			var key = properties[i]
@@ -212,32 +274,18 @@
 					})
 
 				} else {
-					element.style[key] = styleDefinition(value)
+					styleDefinition[key](element, value, key)
 				}
-			} else if (value && value.notifies && key !== 'content') {
+			} else if (propertyHandlers[key]) {
+				propertyHandlers[key](element, value, key, properties)
+			} else if (value && value.notifies) {
 				enterUpdater(PropertyUpdater, {
 					name: key,
 					variable: value,
 					element: element
 				})
-				if (bidirectionalProperties[key]) {
-					bindChanges(element, value)
-				}
-			} else if (typeof value === 'function') {
-				if (key.slice(0, 2) === 'on') {
-					element.addEventListener(key.slice(2), value)
-				} else if (isGenerator(value)) {
-					// TODO: make the special cases for content and render
-					// and maybe, at some point, find an optimization to eliminate the bind()
-					enterUpdater(PropertyUpdater, {
-						name: key,
-						variable: new Variable.GeneratorVariable(value.bind(element)),
-						element: element
-					})
-				} else {
-					// I don't know why else we could be getting a function, but set it
-					element[key] = value
-				}
+			} else if (typeof value === 'function' && key.slice(0, 2) === 'on') {
+				element.addEventListener(key.slice(2), value)
 			} else {
 				element[key] = value
 			}
@@ -273,12 +321,12 @@
 		return selector
 	}
 
-	function buildContent(content) {
-		var each = this.each
+	function buildContent(element, content, key, properties) {
+		var each = element.each || properties.each
 		if (each && content) {
 			// render as list
 			if (each.create) {
-				var ItemClass = this.itemAs || Item
+				var ItemClass = element.itemAs || Item
 				hasOwn(each, ItemClass, function (element) {
 					return new ItemClass(element._item, content)
 				})
@@ -287,11 +335,10 @@
 				enterUpdater(ListUpdater, {
 					each: each,
 					variable: content,
-					element: this
+					element: element
 				})
 			} else {
 				var fragment = document.createDocumentFragment()
-				var element = this
 				content.forEach(function(item) {
 					if (each.create) {
 						childElement = each.create({parent: element, _item: item}) // TODO: make a faster object here potentially
@@ -300,54 +347,72 @@
 					}
 					fragment.appendChild(childElement)
 				})
-				this.appendChild(fragment)
+				element.appendChild(fragment)
 			}
-		} else if (inputs[this.tagName]) {
+		} else if (inputs[element.tagName]) {
 			// render into input
-			this.buildInputContent(content)
+			buildInputContent(element, content)
+		} else if (content instanceof Array) {
+			// treat array as children (potentially of the content node)
+			element = element.contentNode || element
+			layoutChildren(element, content, element)
 		} else {
 			// render as string
 			try {
-				var text = content === undefined ? '' : content.valueOf(new Context(this))
+				var text = content === undefined ? '' : content.valueOf(new Context(element))
 				var textNode = document.createTextNode(text)
 			} catch (error) {
 				console.error(error.stack)
 				var textNode = document.createTextNode(error)
 			}
-			this.appendChild(textNode)
+			element.appendChild(textNode)
 			if (content && content.notifies) {
 				enterUpdater(TextUpdater, {
 					variable: content,
-					element: this,
+					element: element,
 					textNode: textNode
 				})
 			}
 		}
 	}
 
-	function bindChanges(element, variable) {
+	function bindChanges(element, variable, key, conversion) {
 		lang.nextTurn(function() { // wait for next turn in case inputChanges isn't set yet
 			var inputEvents = element.inputEvents || ['change']
 			for (var i = 0, l = inputEvents.length; i < l; i++) {
 				element.addEventListener(inputEvents[i], function (event) {
-					var result = variable.put(element['typedValue' in element ? 'typedValue' : 'value'], new Context(element))
+					var value = element[key]
+					var result = variable.put(conversion ? conversion(value, element) : value, new Context(element))
 				})
 			}
 		})
 	}
-	function buildInputContent(content) {
+
+	function conversion(value, element) {
+		if (element.type == 'number') {
+			return parseFloat(value)
+		}
+		return value
+	}
+
+	function buildInputContent(element, content) {
+		var inputType = element.type
+		var inputProperty = inputType in {date: 1, datetime: 1, time: 1} ?
+				'valueAsDate' : inputType === 'checkbox' ?
+					'checked' : 'value'
+
 		if (content && content.notifies) {
 			// a variable, respond to changes
 			enterUpdater(PropertyUpdater, {
 				variable: content,
-				name: 'typedValue' in this ? 'typedValue' : 'value',
-				element: this
+				name: inputProperty,
+				element: element
 			})
 			// and bind the other way as well, updating the variable in response to input changes
-			bindChanges(this, content)
+			bindChanges(element, content, inputProperty, conversion)
 		} else {
 			// primitive
-			this['typedValue' in this ? 'typedValue' : 'value'] = content
+			element[inputProperty] = content
 		}
 	}
 	var classHandlers = {
@@ -360,98 +425,122 @@
 		var applyOnCreate = Element._applyOnCreate
 		var prototype = Element.prototype
 		if (value && typeof value === 'object') {
-			if (value instanceof Array) {
-				Element.children = value
-			} else if (value.notifies) {
-				prototype.content = value
+			if (value instanceof Array || value.notifies) {
+				applyOnCreate.content = value
 			} else {
-				Object.getOwnPropertyNames(value).forEach(function(key) {
-					var descriptor = Object.getOwnPropertyDescriptor(value, key)
-					if (classHandlers[key]) {
-						classHandlers[key](Element, descriptor)
-					} else {
-						var onClassPrototype = (typeof descriptor.value === 'function' && !descriptor.value.notifies &&
-							!(isGenerator(descriptor.value) && key === 'render')) // a plain function/method and not a variable constructor
-							|| descriptor.get || descriptor.set // or a getter/setter
-						if (onClassPrototype) {
-							Object.defineProperty(prototype, key, descriptor)
-						}
-						if (!onClassPrototype || key.slice(0, 2) == 'on') {
-							// TODO: eventually we want to be able to set these as rules statically per element
-							/*if (styleDefinitions[key]) {
-								var styles = Element.styles || (Element.styles = [])
-								styles.push(key)
-								styles[key] = descriptor.value
-							} else {*/
-								if (!(key in applyOnCreate)) {
-									var lastLength = applyOnCreate.length || 0
-									applyOnCreate[lastLength] = key
-									applyOnCreate.length = lastLength + 1
-								}
-								// TODO: do deep merging of styles and classes, but not variables
-								applyOnCreate[key] = descriptor.value
-							//}
-						}
+				for (var key in value) {
+				// TODO: eventually we want to be able to set these as rules statically per element
+				/*if (styleDefinitions[key]) {
+					var styles = Element.styles || (Element.styles = [])
+					styles.push(key)
+					styles[key] = descriptor.value
+				} else {*/
+					if (!(key in applyOnCreate)) {
+						var lastLength = applyOnCreate.length || 0
+						applyOnCreate[lastLength] = key
+						applyOnCreate.length = lastLength + 1
 					}
-				})
+					// TODO: do deep merging of styles and classes, but not variables
+					applyOnCreate[key] = value[key]
+				}
 			}
 		} else if (typeof value === 'function' && !value.for) {
-			Element.initialize = function() {
-				var Base = getPrototypeOf(Element)
-				if (Base.initialize && !Base._initialized) {
-					Base._initialized = true
-					Base.initialize()
-				}
-				applyToClass(value(Element), Element)
-			}
+			throw new TypeError('Function as argument not supported')
 		} else {
-			prototype.content = value
+			applyOnCreate.content = value
 		}
 	}
-	function extend(selector, properties) {
+
+	function setInApplyList(applyOnCreate, key, value) {
+		if (!(key in applyOnCreate)) {
+			var lastLength = applyOnCreate.length || 0
+			applyOnCreate[lastLength] = key
+			applyOnCreate.length = lastLength + 1
+		}
+		applyOnCreate[key] = value
+	}
+
+	function getApplyList(Class) {
+		if (Class.hasOwnProperty('_applyOnCreate')) {
+			return Class._applyOnCreate
+		}
+		// this means we didn't extend and evaluate the prototype yet
+		if (Class.getForClass) {
+			// we are extending an alkali constructor
+			// if this class is inheriting from an alkali constructor, work our way up the chain
+			applyOnCreate = Class._applyOnCreate = Object.create(getApplyList(getPrototypeOf(Class)))
+			// we need to check the prototype for event handlers
+			var prototype = Class.prototype
+			var keys = Object.getOwnPropertyNames(prototype)
+			for (var i = 0, l = keys.length; i < l; i++) {
+				var key = keys[i]
+				if (key.slice(0, 2) == 'on' || (key === 'render' && isGenerator(prototype[key]))) {
+					if (!(key in applyOnCreate)) {
+						var lastLength = applyOnCreate.length || 0
+						applyOnCreate[lastLength] = key
+						applyOnCreate.length = lastLength + 1
+					}
+					applyOnCreate[key] = prototype[key]
+				}
+			}
+			return applyOnCreate
+		}
+		return null
+	}
+
+	function makeElementConstructor() {
 		function Element(selector, properties) {
 			if (this instanceof Element){
 				// create DOM element
 				// Need to detect if we have registered the element and `this` is actually already the correct instance
-				return create.apply(this.constructor, arguments)
+				return create.apply(Element.prototype === getPrototypeOf(this) ? Element :// this means it is from this constructor
+					this.constructor, // this means it was constructed from a subclass
+					arguments)
 			} else {
 				// extend to create new class
-				return extend.apply(Element, arguments)
+				return withProperties.apply(Element, arguments)
 			}
 		}
-		setPrototypeOf(Element, this)
-		var prototype = Element.prototype = Object.create(this.prototype)
-		prototype.constructor = Element
+		Element.create = create
+		Element.with = withProperties
+		Element.for = forTarget
+		Element.property = propertyForElement
+		Element.getForClass = getForClass
+		return Element
+	}
 
-		if (!Element.create) {
-			// if we are inheriting from a native prototype, we will create the inherited base static functions
-			Element.create = create
-			Element.extend = extend
-			Element.for = forTarget
-			Element.property = propertyForElement
+	function withProperties(selector, properties) {
+		var Element = makeElementConstructor()
+		Element.superConstructor = this
+		if (this.children) {
+			// just copy this property
+			Element.children = this.children
 		}
-		if (!prototype.buildContent) {
-			prototype.buildContent = buildContent
-			prototype.buildInputContent = buildInputContent
-			prototype.getForClass = getForClass
-			prototype.append = append
-		}
+		var prototype = Element.prototype = this.prototype
+
+		var applyOnCreate = Element._applyOnCreate = Object.create(getApplyList(this))
 
 		var i = 0 // for arguments
 		if (typeof selector === 'string') {
-			selector.replace(/(\.|#)?([-\w]+)/g, function(t, operator, name) {
+			var matched
+			selector.replace(/(\.|#)([-\w]+)/g, function(t, operator, name) {
+				matched = true
 				if (operator == '.') {
-					Element._class = (Element._class ? Element._class + ' ' : '') + name
-				} else if (operator == '#') {
-					Element._id = name
+					if (applyOnCreate.className) {
+						applyOnCreate.className += ' ' + name
+					} else {
+						setInApplyList(applyOnCreate, 'className', name)
+					}
 				} else {
-					Element._tag = name
+					setInApplyList(applyOnCreate, 'id', name)
 				}
 			})
+			if (!matched) {
+				applyOnCreate.content = selector
+			}
 
 			i++ // skip the first argument
 		}
-		Element._applyOnCreate = Object.create(this._applyOnCreate || null)
 
 		for (var l = arguments.length; i < l; i++) {
 			applyToClass(arguments[i], Element)
@@ -466,13 +555,9 @@
 			var parent = currentParent
 			currentParent = null
 		}
-		var tagName = this._tag
 		if (this._initialized != this) {
 			this._initialized = this
 			this.initialize && this.initialize()
-			if (!tagName) {
-				throw new Error('No tag name defined for element')
-			}
 			var styles = this.styles
 			if (styles) {
 				var rule = createCssRule(getUniqueSelector(this))
@@ -482,55 +567,48 @@
 					// TODO: if it is a contextualized variable, do this on the element
 					var styleDefinition = styleDefinitions[key]
 					if (styleDefinition) {
-						value = styleDefinition(value)
-						rule.style[key] = value
+						styleDefinition(rule, value, key)
 					}
 				}
 			}
 			if (!this.hasOwnProperty('_applyOnCreate')) {
-				applyOnCreate = this._applyOnCreate = Object.create(applyOnCreate || null)
-				// this means we didn't extend and evaluate the prototype, so we need to at least check the prototype for event handlers
-				var keys = Object.getOwnPropertyNames(this.prototype)
-				for (var i = 0, l = keys.length; i < l; i++) {
-					var key = keys[i]
-					if (key.slice(0, 2) == 'on' || (key === 'render' && isGenerator(this.prototype[key]))) {
-						if (!(key in applyOnCreate)) {
-							var lastLength = applyOnCreate.length || 0
-							applyOnCreate[lastLength] = key
-							applyOnCreate.length = lastLength + 1
-						}
-						applyOnCreate[key] = this.prototype[key]
-					}
-				}
-			}
-			if (tagName.indexOf('-') > -1) {
-				document.registerElement(tagName, this)
+				applyOnCreate = getApplyList(this)
 			}
 		}
-		var element = document.createElement(tagName)
+		var element = document.createElement(applyOnCreate.tagName)
+		applyOnCreate = Object.create(applyOnCreate)
 		if (selector && selector.parent) {
 			parent = selector.parent
 		}
 		if (parent) {
 			presumptiveParentMap.set(element, parent)
 		}
-		setPrototypeOf(element, this.prototype)
-		if (this._id) {
-			element.id = this._id
+		if (!(element instanceof this)) {
+			// ideally we want to avoid this call, as it is expensive, but for classes that
+			// don't register a tag name, we have to make sure the prototype chain is correct
+			setPrototypeOf(element, this.prototype)
 		}
-		if (this._class) {
-			element.className = this._class
+		if (element.constructor != this) {
+			element.constructor = this // need to do this for hasOwn contextualization to work
 		}
 		var i = 0
 		if (typeof selector == 'string') {
 			i++
 			selector.replace(/(\.|#)?([-\w]+)/g, function(t, operator, name) {
 				if (operator == '.') {
-					element.className = (element.className ? this.className + ' ' : '') + name
+					if (applyOnCreate.className) {
+						applyOnCreate += ' ' + name
+					} else {
+						element.className = name
+					}
 				} else if (operator == '#') {
-					element.id = name
+					if (applyOnCreate.id) {
+						applyOnCreate.id = name
+					} else {
+						element.id = name
+					}
 				} else {
-					throw new Error('Can not assign tag name when directly create an element')
+					setInApplyList(applyOnCreate, 'content', name)
 				}
 			})
 		}
@@ -539,108 +617,52 @@
 			// order static properties before variable binding applications, but for now.
 			element._item = selector._item
 		}
-		var childrenToRender
-		var hasOwnApplyOnCreate
 		for (var l = arguments.length; i < l; i++) {
 			var argument = arguments[i]
-			if (argument instanceof Array) {
-				childrenToRender = argument
-			} else if (argument.notifies) {
-				element.content = argument
+			if (argument instanceof Array || argument.notifies) {
+				applyOnCreate.content = argument
 			} else if (typeof argument === 'function' && argument.for) {
-				element.content = argument.for(element)
+				applyOnCreate.content = argument.for(element)
 			} else {
 				for (var key in argument) {
-					if (!hasOwnApplyOnCreate) {
-						hasOwnApplyOnCreate = true
-						applyOnCreate = Object.create(applyOnCreate)
-					}
-					if (!(key in applyOnCreate)) {
-						var lastLength = applyOnCreate.length || 0
-						applyOnCreate[lastLength] = key
-						applyOnCreate.length = lastLength + 1
-					}
 					// TODO: do deep merging of styles and classes, but not variables
-					applyOnCreate[key] = argument[key]
+					setInApplyList(applyOnCreate, key, argument[key])
 				}
 			}
 		}
+		// TODO: inline this
 		applyProperties(element, applyOnCreate, applyOnCreate)
-		// TODO: we may want to put these on the instance so it can be overriden
 		if (this.children) {
 			layoutChildren(element, this.children, element)
 		}
-		if (childrenToRender) {
-			var contentNode = element.contentNode || element
-			layoutChildren(contentNode, argument, contentNode)
-		}
-		if (element.content) {
-			element.buildContent(element.content)
-		}
-		var classes = this.classes
-		if (classes) {
-			if (!(classes.length > -1)) {
-				// index the classes, if necessary
-				var i = 0
-				for (var key in classes) {
-					if (!classes[i]) {
-						classes[i] = key
-					}
-					i++
-				}
-				classes.length = i
-			}
-			for (var i = 0, l = classes.length; i < l; i++) {
-				// find each class name
-				var className = classes[i]
-				var flag = classes[className]
-				if (flag && flag.notifies) {
-					// if it is a variable, we react to it
-					enterUpdater(Updater, {
-						element: element,
-						className: className,
-						variable: flag
-					})
-				} else if (flag || flag === undefined) {
-					element.className += ' ' + className
-				}
-			}
+		if (applyOnCreate.content) {
+			buildContent(element, applyOnCreate.content, 'content', applyOnCreate)
 		}
 		element.createdCallback && element.createdCallback()
 		element.created && element.created()
 		return element
 	}
 
-	function append(){
-		return layoutChildren(this, arguments, this)
+	var slice = [].slice
+	function append(parent){
+		return this.nodeType ?
+			layoutChildren(this, arguments, this) : // called as a method
+			layoutChildren(parent, slice.call(arguments, 1), parent) // called as a function
 	}
 
-	var Element = extend.call(HTMLElement)
+	function registerTag(tagName) {
+		getApplyList(this).tagName = tagName
+		if (document.registerElement) {
+			document.registerElement(tagName, this)
+		}
+	}
+
+	var Element = withProperties.call(HTMLElement)
 
 	Element.within = function(element){
 		// find closest child
 	}
 
-	var typedValueDescriptor = {
-		// TODO: eventually make this a getter/setter
-		get: function() {
-			var inputType = this.type
-			return inputType in {date: 1, datetime: 1, time: 1} ?
-				this.valueAsDate :
-				inputType === 'number' ?
-					parseFloat(this.value) :
-					inputType === 'checkbox' ? this.checked : this.value
-		},
-		set: function(value) {
-			var inputType = this.type
-			inputType in {date: 1, datetime: 1, time: 1} ?
-				this.valueAsDate = value :
-				inputType === 'checkbox' ?
-					this.checked = value :
-					this.value = value
-		}
-	}
-	var typedValuePrototype = Object.create(null, {typedValue: typedValueDescriptor})
 	generate([
 		'Video',
 		'Source',
@@ -748,17 +770,22 @@
 
 	var tags = {}
 	function getConstructor(tagName) {
+		tagName = tagName.toLowerCase()
 		return tags[tagName] ||
 			(tags[tagName] =
-				augmentBaseElement(extend.call(document.createElement(tagName.toLowerCase()).constructor, tagName.toLowerCase())))
+				setTag(withProperties.call(document.createElement(tagName).constructor), tagName))
 	}
 
+	function setTag(Element, tagName) {
+		Element._applyOnCreate.tagName = tagName
+		return Element
+	}
 	function generate(elements) {
 		elements.forEach(function(elementName) {
 			var ElementClass
 			Object.defineProperty(Element, elementName, {
 				get: function() {
-					return ElementClass || (ElementClass = augmentBaseElement(extend.call(document.createElement(elementName.toLowerCase()).constructor, elementName.toLowerCase())))
+					return ElementClass || (ElementClass = getConstructor(elementName))
 				}
 			})
 		})
@@ -769,9 +796,9 @@
 			Object.defineProperty(Element, inputType, {
 				get: function() {
 					// TODO: make all inputs extend from input generated from generate
-					return ElementClass || (ElementClass = augmentBaseElement(extend.call(HTMLInputElement, 'input', {
+					return ElementClass || (ElementClass = setTag(withProperties.call(HTMLInputElement, {
 						type: inputType.toLowerCase()
-					}, typedValuePrototype)))
+					}), 'input'))
 				}
 			})
 			// alias all the inputs with an Input suffix
@@ -783,8 +810,6 @@
 		})
 	}
 
-	Object.defineProperty(Element.TextArea.prototype, 'typedValue', typedValueDescriptor)
-	Object.defineProperty(Element.Select.prototype, 'typedValue', typedValueDescriptor)
 	var aliases = {
 		Anchor: 'A',
 		Paragraph: 'P',
@@ -810,6 +835,7 @@
 		})(alias, aliases[alias])
 	}
 
+	Element.append = append
 	Element.refresh = Updater.refresh
 	Element.content = function(element){
 		// container marker
@@ -818,8 +844,27 @@
 			create: element.create.bind(element)
 		}
 	}
+	// TODO: unify this in lang
+	Element.extend = function(Class, properties) {
+		function ExtendedElement() {
+			return Class.apply(this, arguments)
+		}
+		setPrototypeOf(ExtendedElement, Class)
+		var prototype = ExtendedElement.prototype = Object.create(Class.prototype)
+		prototype.constructor = ExtendedElement
+		Object.getOwnPropertyNames(properties).forEach(function(key) {
+			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
+			if (classHandlers[key]) {
+				classHandlers[key](ExtendedElement, descriptor)
+			} else {
+				Object.defineProperty(prototype, key, descriptor)
+			}
+		})
+		return ExtendedElement
+	}
+
 	function forTarget(target) {
-		return target.getForClass(this)
+		return target.constructor.getForClass(target, this)
 	}
 
 	function hasOwn(From, Target, createInstance) {
@@ -840,8 +885,7 @@
 	}
 
 	var globalInstances = {}
-	function getForClass(Target) {
-		var element = this
+	function getForClass(element, Target) {
 		var createInstance
 		while (element && !(createInstance = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
 			element = element.parentNode || presumptiveParentMap.get(element)
@@ -965,25 +1009,5 @@
 		})
 	}
 
-	function augmentBaseElement(Element) {
-		var prototype = Element.prototype
-		for(var i = 0, l = toAddToElementPrototypes.length; i < l; i++) {
-			var key = toAddToElementPrototypes[i]
-			Object.defineProperty(prototype, key, toAddToElementPrototypes[key])
-		}
-		createdBaseElements.push(Element)
-		return Element
-	}
-	createdBaseElements.push(Element)
-	Element.addToElementPrototypes = function(properties) {
-		var i = 0;
-		for (var key in properties) {
-			toAddToElementPrototypes.push(key)
-			toAddToElementPrototypes[key] = Object.getOwnPropertyDescriptor(properties, key)
-		}
-		for(var i = 0, l = createdBaseElements.length; i < l; i++) {
-			augmentBaseElement(createdBaseElements[i])
-		}
-	}
 	return Element
 }))

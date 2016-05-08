@@ -21,6 +21,8 @@ define([
 	var UL = Element.UL
 	var LI = Element.LI
 	var Item = Element.Item
+	var append = Element.append
+	var extend = Element.extend
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {
@@ -203,13 +205,14 @@ define([
 		contentNode: function() {
 			var title = new Variable('title')
 			var someContent = new Variable('content')
-			var Layout = Div('.top', {id: 'top'}, [
+			var Layout = extend(Div, {id: 'top'})
+			Layout.children = [
 				Div('.middle-1'), [
 					title,
 					content(Div('.content-node'))
 				],
 				Anchor('.middle-2', {href: 'https://github.com/kriszyp/alkali'})
-			])
+			]
 			var result = new Layout([
 				Div('.inside-layout', [someContent])
 			])
@@ -239,27 +242,19 @@ define([
 
 		append: function() {
 			var top = new Div('.top')
+			append(top, Span, Span('.second'))
+			assert.strictEqual(top.firstChild.tagName, 'SPAN')
+			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
+		},
+		
+		appendAsMethod: function() {
+			HTMLElement.prototype.append = append
+			var top = new Div('.top')
 			top.append(Span, Span('.second'))
 			assert.strictEqual(top.firstChild.tagName, 'SPAN')
 			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
 		},
 		
-		addToPrototype: function() {
-			Element.addToElementPrototypes({
-				get foo() {
-					return 3
-				},
-				bar: function() {
-					return this
-				}
-			})
-			var divElement = new Div()
-			assert.strictEqual(divElement.foo, 3)
-			assert.strictEqual(divElement.bar(), divElement)
-			var sectionElement = new Element.Section()
-			assert.strictEqual(sectionElement.foo, 3)
-			assert.strictEqual(sectionElement.bar(), sectionElement)
-		},
 		list: function() {
 			var arrayVariable = new Variable(['a', 'b', 'c'])
 			var listElement = new UL({
@@ -290,7 +285,7 @@ define([
 			})
 		},
 		applyPropertyToChild: function() {
-			var MyComponent = Div()
+			var MyComponent = extend(Div, {})
 			MyComponent.children = [
 				Anchor(MyComponent.property('title'), {
 					href: MyComponent.property('link')
@@ -373,6 +368,26 @@ define([
 					assert.strictEqual(div1.b, 'B')
 				})
 			})
+		},
+		performance: function() {
+			var container = document.body.appendChild(document.createElement('div'))
+			for (var i = 0; i < 10000; i++) {
+				container.appendChild(new Div([
+					Span,
+					Input('.test')
+				]))
+				container.innerHTML = ''
+			}
+		},
+		performanceBaseline: function() {
+			var container = document.body.appendChild(document.createElement('div'))
+			for (var i = 0; i < 10000; i++) {
+				var childDiv = container.appendChild(document.createElement('div'))
+				childDiv.appendChild(document.createElement('span'))
+				childDiv.appendChild(document.createElement('input')).className = 'test'
+				container.innerHTML = ''
+			}
+
 		}
 	})
 });
