@@ -975,25 +975,25 @@
 			var node = nodes[i]
 			if (node.nodeType === 1) {
 				action(node)
-	      var child = node.firstChild
-	      if (child) {
-	        traverse(child, action)
-	      }
+				var child = node.firstChild
+				if (child) {
+					traverse(child, action)
+				}
 			}
 		}
 	}
 	function traverse(firstChild, action) {
-	  var node = firstChild
-	  do {
-	    if (node.nodeType === 1) {
-	      action(node)
-	      var child = node.firstChild
-	      if (child) {
-	        traverse(child, action)
-	      }
-	    }
-	    node = node.nextSibling
-	  } while (node)
+		var node = firstChild
+		do {
+			if (node.nodeType === 1) {
+				action(node)
+				var child = node.firstChild
+				if (child) {
+					traverse(child, action)
+				}
+			}
+			node = node.nextSibling
+		} while (node)
 	}
 	function elementAttached(element) {
 		var Class = element.constructor
