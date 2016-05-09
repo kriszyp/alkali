@@ -285,7 +285,7 @@
 					})
 
 				} else {
-					styleDefinition[key](element, value, key)
+					styleDefinition(element, value, key)
 				}
 			} else if (propertyHandlers[key]) {
 				propertyHandlers[key](element, value, key, properties)
