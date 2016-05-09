@@ -369,16 +369,6 @@ define([
 				})
 			})
 		},
-		performance: function() {
-			var container = document.body.appendChild(document.createElement('div'))
-			for (var i = 0; i < 10000; i++) {
-				container.appendChild(new Div([
-					Span,
-					Input('.test')
-				]))
-				container.innerHTML = ''
-			}
-		},
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 10000; i++) {
@@ -388,6 +378,16 @@ define([
 				container.innerHTML = ''
 			}
 
+		},
+		performance: function() {
+			var container = document.body.appendChild(document.createElement('div'))
+			for (var i = 0; i < 10000; i++) {
+				container.appendChild(new Div([
+					Span,
+					Input('.test')
+				]))
+				container.innerHTML = ''
+			}
 		}
 	})
 });

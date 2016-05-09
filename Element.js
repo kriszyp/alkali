@@ -11,6 +11,7 @@
 		knownElementProperties[property] = true
 	})
 
+	var SELECTOR_REGEX = /(\.|#)?([-\w]+)(.+)?/
 	function isGenerator(func) {
 		if (typeof func === 'function') {
 			var constructor = func.constructor
@@ -134,7 +135,7 @@
 	}
 
 	function layoutChildren(parent, children, container) {
-		var fragment = children.length > 1 ? document.createDocumentFragment() : parent
+		var fragment = children.length > 3 ? document.createDocumentFragment() : parent
 		for(var i = 0, l = children.length; i < l; i++) {
 			var child = children[i]
 			var childNode
@@ -183,15 +184,25 @@
 		}
 		return childNode
 	}
-	function variableAsText(parent, variable) {
-		var text = variable.valueOf(new Context(parent))
-		var childNode = document.createTextNode(text)
-		enterUpdater(TextUpdater, {
-			element: parent,
-			textNode: childNode,
-			variable: variable
-		})
-		return childNode
+	function variableAsText(parent, content) {
+		if (content == null) {
+			return document.createTextNode('')
+		}
+		var text
+		try {
+			text = content.valueOf(new Context(parent))
+		} catch (error) {
+			text = error.stack
+		}
+		var textNode = document.createTextNode(text)
+		if (content.notifies) {
+			enterUpdater(TextUpdater, {
+				element: parent,
+				textNode: textNode,
+				variable: content
+			})
+		}
+		return textNode
 	}
 
 	function bidirectionalHandler(element, value, key) {
@@ -358,21 +369,7 @@
 			layoutChildren(element, content, element)
 		} else {
 			// render as string
-			try {
-				var text = content === undefined ? '' : content.valueOf(new Context(element))
-				var textNode = document.createTextNode(text)
-			} catch (error) {
-				console.error(error.stack)
-				var textNode = document.createTextNode(error)
-			}
-			element.appendChild(textNode)
-			if (content && content.notifies) {
-				enterUpdater(TextUpdater, {
-					variable: content,
-					element: element,
-					textNode: textNode
-				})
-			}
+			element.appendChild(variableAsText(element, content))
 		}
 	}
 
@@ -416,8 +413,8 @@
 		}
 	}
 	var classHandlers = {
-		hasOwn: function(Element, descriptor) {
-			hasOwn(Element, descriptor.value)
+		hasOwn: function(Element, value) {
+			hasOwn(Element, value)
 		}
 	}
 
@@ -435,13 +432,17 @@
 					styles.push(key)
 					styles[key] = descriptor.value
 				} else {*/
-					if (!(key in applyOnCreate)) {
-						var lastLength = applyOnCreate.length || 0
-						applyOnCreate[lastLength] = key
-						applyOnCreate.length = lastLength + 1
+					if (classHandlers[key]) {
+						hasOwn(Element, value[key])
+					} else {
+						if (!(key in applyOnCreate)) {
+							var lastLength = applyOnCreate.length || 0
+							applyOnCreate[lastLength] = key
+							applyOnCreate.length = lastLength + 1
+						}
+						// TODO: do deep merging of styles and classes, but not variables
+						applyOnCreate[key] = value[key]
 					}
-					// TODO: do deep merging of styles and classes, but not variables
-					applyOnCreate[key] = value[key]
 				}
 			}
 		} else if (typeof value === 'function' && !value.for) {
@@ -468,7 +469,8 @@
 		if (Class.getForClass) {
 			// we are extending an alkali constructor
 			// if this class is inheriting from an alkali constructor, work our way up the chain
-			applyOnCreate = Class._applyOnCreate = Object.create(getApplyList(getPrototypeOf(Class)))
+			var parentApplyList = getApplyList(getPrototypeOf(Class))
+			applyOnCreate = Class._applyOnCreate = parentApplyList ? Object.create(parentApplyList) : {}
 			// we need to check the prototype for event handlers
 			var prototype = Class.prototype
 			var keys = Object.getOwnPropertyNames(prototype)
@@ -522,23 +524,26 @@
 
 		var i = 0 // for arguments
 		if (typeof selector === 'string') {
-			var matched
-			selector.replace(/(\.|#)([-\w]+)/g, function(t, operator, name) {
-				matched = true
-				if (operator == '.') {
-					if (applyOnCreate.className) {
-						applyOnCreate.className += ' ' + name
+			var selectorMatch = selector.match(SELECTOR_REGEX)
+			if (selectorMatch) {
+				do {
+					var operator = selectorMatch[1]
+					var name = selectorMatch[2]
+					if (operator == '.') {
+						if (applyOnCreate.className) {
+							applyOnCreate.className += ' ' + name
+						} else {
+							setInApplyList(applyOnCreate, 'className', name)
+						}
 					} else {
-						setInApplyList(applyOnCreate, 'className', name)
+						setInApplyList(applyOnCreate, 'id', name)
 					}
-				} else {
-					setInApplyList(applyOnCreate, 'id', name)
-				}
-			})
-			if (!matched) {
+					var remaining = selectorMatch[3]
+					selectorMatch = remaining && remaining.match(SELECTOR_REGEX)
+				} while (selectorMatch)
+			} else {
 				applyOnCreate.content = selector
 			}
-
 			i++ // skip the first argument
 		}
 
@@ -550,12 +555,17 @@
 	var currentParent
 	function create(selector, properties) {
 		// TODO: make this a symbol
-		var applyOnCreate = this._applyOnCreate
+		var applyOnCreate
+		if (this.hasOwnProperty('_applyOnCreate')) {
+			applyOnCreate = this._applyOnCreate	
+		} else {
+			applyOnCreate = getApplyList(this)
+		}
 		if (currentParent) {
 			var parent = currentParent
 			currentParent = null
 		}
-		if (this._initialized != this) {
+/*		if (this._initialized != this) {
 			this._initialized = this
 			this.initialize && this.initialize()
 			var styles = this.styles
@@ -574,9 +584,11 @@
 			if (!this.hasOwnProperty('_applyOnCreate')) {
 				applyOnCreate = getApplyList(this)
 			}
-		}
+		}*/
 		var element = document.createElement(applyOnCreate.tagName)
-		applyOnCreate = Object.create(applyOnCreate)
+		if (selector) {
+			applyOnCreate = Object.create(applyOnCreate)
+		}
 		if (selector && selector.parent) {
 			parent = selector.parent
 		}
@@ -594,25 +606,31 @@
 		var i = 0
 		if (typeof selector == 'string') {
 			i++
-			selector.replace(/(\.|#)?([-\w]+)/g, function(t, operator, name) {
-				if (operator == '.') {
-					if (applyOnCreate.className) {
-						applyOnCreate += ' ' + name
+			var selectorMatch = selector.match(SELECTOR_REGEX)
+			if (selectorMatch) {
+				do {
+					var operator = selectorMatch[1]
+					var name = selectorMatch[2]
+					if (operator == '.') {
+						if (applyOnCreate.className) {
+							applyOnCreate.className += ' ' + name
+						} else {
+							element.className = name
+						}
 					} else {
-						element.className = name
+						if (applyOnCreate.id) {
+							applyOnCreate.id = name
+						} else {
+							element.id = name
+						}
 					}
-				} else if (operator == '#') {
-					if (applyOnCreate.id) {
-						applyOnCreate.id = name
-					} else {
-						element.id = name
-					}
-				} else {
-					setInApplyList(applyOnCreate, 'content', name)
-				}
-			})
-		}
-		if (selector && selector._item) {
+					var remaining = selectorMatch[3]
+					selectorMatch = remaining && remaining.match(SELECTOR_REGEX)
+				} while (selectorMatch)
+			} else {
+				applyOnCreate.content = selector
+			}
+		} else if (selector && selector._item) {
 			// this is kind of hack, to get the Item available before the properties, eventually we may want to
 			// order static properties before variable binding applications, but for now.
 			element._item = selector._item
@@ -855,7 +873,7 @@
 		Object.getOwnPropertyNames(properties).forEach(function(key) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
 			if (classHandlers[key]) {
-				classHandlers[key](ExtendedElement, descriptor)
+				classHandlers[key](ExtendedElement, descriptor.value)
 			} else {
 				Object.defineProperty(prototype, key, descriptor)
 			}
@@ -952,14 +970,30 @@
 		}
 	}
 	// setup the mutation observer so we can be notified of attachments and removals
-	function traverse(nodes, action) {
+	function eachElement(nodes, action) {
 		for (var i = 0, l = nodes.length; i < l; i++) {
 			var node = nodes[i]
 			if (node.nodeType === 1) {
 				action(node)
-				traverse(node.childNodes, action)
+	      var child = node.firstChild
+	      if (child) {
+	        traverse(child, action)
+	      }
 			}
 		}
+	}
+	function traverse(firstChild, action) {
+	  var node = firstChild
+	  do {
+	    if (node.nodeType === 1) {
+	      action(node)
+	      var child = node.firstChild
+	      if (child) {
+	        traverse(child, action)
+	      }
+	    }
+	    node = node.nextSibling
+	  } while (node)
 	}
 	function elementAttached(element) {
 		var Class = element.constructor
@@ -999,8 +1033,10 @@
 	if (typeof MutationObserver === 'function') {
 		var observer = new MutationObserver(function(mutations) {
 			mutations.forEach(function(mutation) {
-				traverse(mutation.addedNodes, elementAttached)
-				traverse(mutation.removedNodes, elementDetached)
+				eachElement(mutation.removedNodes, elementDetached)
+				if (Element.moveLiveElementEnabled) {
+					eachElement(mutation.addedNodes, elementAttached)
+				}
 			})
 		})
 		observer.observe(document.body, {
