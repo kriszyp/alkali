@@ -410,6 +410,29 @@ define([
 				})
 			})
 		},
+		renderProperty: function() {
+			var MyComponent = extend(Div, {
+				renderFoo: function(value) {
+					this.textContent = value + 'foo'
+				}
+			})
+			var foo = new Variable(1)
+			var div = new MyComponent({
+				foo: foo
+			})
+			document.body.appendChild(div)
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div.textContent, '1foo')
+				foo.put(2)
+				return new Promise(requestAnimationFrame).then(function() {
+					assert.strictEqual(div.textContent, '2foo')
+					div.foo = 3
+					return new Promise(requestAnimationFrame).then(function() {
+						assert.strictEqual(div.textContent, '3foo')
+					})
+				})
+			})
+		},/*
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 10000; i++) {
@@ -430,6 +453,6 @@ define([
 				]))
 				container.innerHTML = ''
 			}
-		}
+		}*/
 	})
 });

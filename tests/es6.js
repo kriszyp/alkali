@@ -110,6 +110,28 @@ define([
 			v.set('2', 'two')
 			assert.strictEqual(map.get(2), 2)
 			assert.strictEqual(map.get('2'), 'two')
+		},
+		renderGenerator: function() {
+			var a = new Variable(1)
+			var b = new Variable(2)
+			class GeneratorDiv extends Div {
+				*render() {
+					this.textContent = (yield a) + (yield b)
+				}
+			}
+			var div = new GeneratorDiv()
+			document.body.appendChild(div)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(div.textContent, '3')
+				a.put(2)
+				return new Promise(requestAnimationFrame).then(function(){
+					assert.strictEqual(div.textContent, '4')
+					b.put(3)
+					return new Promise(requestAnimationFrame).then(function(){
+						assert.strictEqual(div.textContent, '5')
+					})
+				})
+			})
 		}
 	})
 })

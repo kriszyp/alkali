@@ -1,13 +1,14 @@
+sudo: false
 language: node_js
 node_js:
-  - 0.10
-
+  - "5.1"
+cache:
+  directories:
+    - node_modules
 env:
   global:
-      - SAUCE_USERNAME: persvr-ci
-      - SAUCE_ACCESS_KEY: d8dc90f7-08ca-41a5-8055-c452116b9ef7
-
+      - SAUCE_USERNAME: kriszyp
+      - SAUCE_ACCESS_KEY: 468f7823-0321-4b0f-a3e3-3b25899c7c80
 install:
   - travis_retry npm install
-
 script: npm test && npm run test.sauce

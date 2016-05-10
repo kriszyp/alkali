@@ -22,20 +22,7 @@
 		this.subject = subject
 	}
 
-	var PropertyUpdater = lang.compose(Updater.PropertyUpdater, function PropertyUpdater() {
-		Updater.PropertyUpdater.apply(this, arguments)
-	}, {
-		renderUpdate: function(newValue, element) {
-			// TODO: cache or otherwise optimize this
-			var rendererName = 'render' + this.name[0].toUpperCase() + this.name.slice(1)
-			if (element[rendererName]) {
-				// custom renderer
-				element[rendererName](newValue)
-			} else {
-				element[this.name] = newValue
-			}
-		}
-	})
+	var PropertyUpdater = Updater.PropertyUpdater
 	var StyleUpdater = lang.compose(Updater.StyleUpdater, function StyleUpdater() {
 		Updater.StyleUpdater.apply(this, arguments)
 	}, {
@@ -501,18 +488,33 @@
 			var keys = Object.getOwnPropertyNames(prototype)
 			for (var i = 0, l = keys.length; i < l; i++) {
 				var key = keys[i]
-				if (key.slice(0, 2) == 'on' || (key === 'render' && isGenerator(prototype[key]))) {
+				if (key.slice(0, 2) === 'on' || (key === 'render' && isGenerator(prototype[key]))) {
 					if (!(key in applyOnCreate)) {
 						var lastLength = applyOnCreate.length || 0
 						applyOnCreate[lastLength] = key
 						applyOnCreate.length = lastLength + 1
 					}
 					applyOnCreate[key] = prototype[key]
+				} else if (key.slice(0, 6) === 'render') {
+					Object.defineProperty(prototype, key[6].toLowerCase() + key.slice(7), renderDescriptor(key))
 				}
 			}
 			return applyOnCreate
 		}
 		return null
+	}
+
+	function renderDescriptor(renderMethod) {
+		var map = new WeakMap()
+		return {
+			get: function() {
+				return map.get(this)
+			},
+			set: function(value) {
+				map.set(this, value)
+				this[renderMethod](value)
+			}
+		}
 	}
 
 	function makeElementConstructor() {
@@ -984,8 +986,8 @@
 			for (var i = 0, l = updaters.length; i < l; i++) {
 				updaters[i].stop()
 			}
+			target.needsRestart = true
 		}
-		target.needsRestart = true
 	}
 	function restart(target) {
 		var updaters = target.updaters
@@ -1037,8 +1039,10 @@
 				var mutation = mutations[i]
 				var nodes = mutation.removedNodes
 				var action = elementDetached
+				actionIteration:
 				for (var j = 0; j < 2; j++) { // two steps, removed nodes and added nodes
 					// iterate over node list
+					nodeIteration:
 					for (var k = 0, kl = nodes.length; k < kl; k++) {
 						var baseNode = nodes[k]
 						action(baseNode)
@@ -1058,10 +1062,11 @@
 								}
 								if (!nextNode) {
 									// come back out to parents
+									// TODO: try keeping a stack to make this faster
 									do {
 										currentNode = currentNode.parentNode
 										if (currentNode === baseNode) {
-											return
+											continue nodeIteration
 										}
 									} while (!(nextNode = currentNode.nextSibling))
 								}
@@ -1074,7 +1079,7 @@
 						nodes = mutation.addedNodes
 						action = elementAttached
 					} else {
-						return
+						break actionIteration
 					}
 				}
 			}
