@@ -369,6 +369,47 @@ define([
 				})
 			})
 		},
+		cleanup: function() {
+			var a = new Variable('a')
+			var div = new Div([
+				a,
+				Span(a)])
+			document.body.appendChild(div)
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(a.dependents.length, 2)
+				document.body.removeChild(div)
+				return new Promise(requestAnimationFrame).then(function() {
+					assert.strictEqual(a.dependents, false)
+				})
+			})
+		},
+		classes: function() {
+			var a = new Variable(false)
+			var b = new Variable(true)
+			var DivWithClass = Div('.first')
+			var div = new DivWithClass('.second.third', {
+				classes: {
+					a: a,
+					b: b
+				}
+			})
+			document.body.appendChild(div)
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div.className, 'first second third b')
+				a.put(true)
+				return new Promise(requestAnimationFrame).then(function() {
+					assert.strictEqual(div.className, 'first second third b a')
+					b.put(false)
+					return new Promise(requestAnimationFrame).then(function() {
+						assert.strictEqual(div.className, 'first second third a')
+						a.put(false)
+						return new Promise(requestAnimationFrame).then(function() {
+							assert.strictEqual(div.className, 'first second third')
+						})
+					})
+				})
+			})
+		},
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 10000; i++) {
@@ -382,8 +423,9 @@ define([
 		performance: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 10000; i++) {
+				var a = new Variable('a')
 				container.appendChild(new Div([
-					Span,
+					Span(a),
 					Input('.test')
 				]))
 				container.innerHTML = ''

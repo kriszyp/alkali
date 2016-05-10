@@ -48,6 +48,31 @@
 			}
 		}
 	})
+
+	var ClassNameUpdater = lang.compose(Updater.ElementUpdater, function ClassNameUpdater(options) {
+		this.className = options.className
+		Updater.apply(this, arguments)
+	}, {
+		renderUpdate: function(newValue, element) {
+			var currentClassName = element.className
+			var changingClassName = this.className
+			// remove the className (needed for addition or removal)
+			// see http://jsperf.com/remove-class-name-algorithm/2 for some tests on this
+			var removed = currentClassName && (' ' + currentClassName + ' ').replace(' ' + changingClassName + ' ', ' ')
+			if (newValue) {
+				// addition, add the className
+				changingClassName = currentClassName ? (removed + changingClassName).slice(1) : value;
+			} else {
+				// we already have removed the class, just need to trim
+				changingClassName = removed.slice(1, removed.length - 1)
+			}
+			// only assign if it changed, this can save a lot of time
+			if (changingClassName != currentClassName) {
+				element.className = changingClassName
+			}
+		}
+	})
+
 	// TODO: check for renderContent with text updater
 	var TextUpdater = Updater.TextUpdater
 	var ListUpdater = Updater.ListUpdater
@@ -243,7 +268,7 @@
 				var flag = classes[className]
 				if (flag && flag.notifies) {
 					// if it is a variable, we react to it
-					enterUpdater(Updater, {
+					enterUpdater(ClassNameUpdater, {
 						element: element,
 						className: className,
 						variable: flag
@@ -728,6 +753,7 @@
 		'Label',
 		'LI',
 		'KeyGen',
+		'Input',
 		'Image',
 		'IFrame',
 		'H1',
@@ -770,7 +796,6 @@
 	generateInputs([
 		'Checkbox',
 		'Password',
-		'Text',
 		'Submit',
 		'Radio',
 		'Color',
@@ -836,7 +861,8 @@
 		UList: 'UL',
 		OList: 'OL',
 		ListItem: 'LI',
-		Input: 'Text',
+		Text: 'Input',
+		TextInput: 'Input',
 		TableRow: 'TR',
 		TableCell: 'TD',
 		TableHeaderCell: 'TH',
@@ -970,31 +996,6 @@
 		}
 	}
 	// setup the mutation observer so we can be notified of attachments and removals
-	function eachElement(nodes, action) {
-		for (var i = 0, l = nodes.length; i < l; i++) {
-			var node = nodes[i]
-			if (node.nodeType === 1) {
-				action(node)
-				var child = node.firstChild
-				if (child) {
-					traverse(child, action)
-				}
-			}
-		}
-	}
-	function traverse(firstChild, action) {
-		var node = firstChild
-		do {
-			if (node.nodeType === 1) {
-				action(node)
-				var child = node.firstChild
-				if (child) {
-					traverse(child, action)
-				}
-			}
-			node = node.nextSibling
-		} while (node)
-	}
 	function elementAttached(element) {
 		var Class = element.constructor
 		if (Class.create) {
@@ -1032,12 +1033,51 @@
 	}
 	if (typeof MutationObserver === 'function') {
 		var observer = new MutationObserver(function(mutations) {
-			mutations.forEach(function(mutation) {
-				eachElement(mutation.removedNodes, elementDetached)
-				if (Element.moveLiveElementEnabled) {
-					eachElement(mutation.addedNodes, elementAttached)
+			for (var i = 0, il = mutations.length; i < il; i++) {
+				var mutation = mutations[i]
+				var nodes = mutation.removedNodes
+				var action = elementDetached
+				for (var j = 0; j < 2; j++) { // two steps, removed nodes and added nodes
+					// iterate over node list
+					for (var k = 0, kl = nodes.length; k < kl; k++) {
+						var baseNode = nodes[k]
+						action(baseNode)
+						// start traversal with child, if it exists
+						var currentNode = baseNode.firstChild
+						if (currentNode) {
+							do {
+								if (currentNode.nodeType === 1) {
+									action(currentNode)
+									// depth-first search
+									var nextNode = currentNode.firstChild
+									if (!nextNode) {
+										nextNode = currentNode.nextSibling
+									}
+								} else {
+									nextNode = currentNode.nextSibling
+								}
+								if (!nextNode) {
+									// come back out to parents
+									do {
+										currentNode = currentNode.parentNode
+										if (currentNode === baseNode) {
+											return
+										}
+									} while (!(nextNode = currentNode.nextSibling))
+								}
+								currentNode = nextNode
+							} while (true)
+						}
+					}
+					if (Element.moveLiveElementEnabled) {
+						// next step if this is enabled
+						nodes = mutation.addedNodes
+						action = elementAttached
+					} else {
+						return
+					}
 				}
-			})
+			}
 		})
 		observer.observe(document.body, {
 			childList: true,
