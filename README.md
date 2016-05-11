@@ -465,7 +465,7 @@ When added to elements their API is:
 * `parentElement.append(...elementArguments)` - This appends new child elements to the parent element using standard alkali arguments for children (constructors, variables, elements, etc.).
 * `parentElement.prepends(...elementArguments)` - This inserts new child elements in the parent element using standard alkali arguments for children (constructors, variables, elements, etc.), before other existing elements.
 
-Both of these methods are compatible with proposed DOM4 methods. While augment native objects isn't recommended for consumption by other libraries, adding these is recommended for application developers, and can be done:
+Both of these methods are compatible with proposed DOM4 methods. While augmenting native objects isn't recommended for consumption by other libraries, it is recommended for application developers, and can be done:
 ```
 import { append, prepend } from 'alkali'
 
