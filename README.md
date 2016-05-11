@@ -123,6 +123,18 @@ let b = Variable(2);
 let sum = Variable.all(a, b).to(([a, b]) => a + b);
 ```
 
+## Variables as Arrays
+
+Variables provide most of the array methods for when the value of a variable is an array. Methods including `push`, `splice`, `pop`, `filter`, and `forEach` are all available on arrays, and will act on the underlying, and send out the proper update notifications. Also, variables with arrays can be used as iterables in for-of loops. For example:
+```
+var letters = new Variable(['a', 'b', 'c']);
+arrayVariable.push('d');
+let lettersAfterB = letters.filter(letter => letter > 'b');
+for (let letter of lettersAfterB) {
+	...
+}
+```
+
 ## EcmaScript Generator Support
 
 EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that computes the maximum of two other variables by simply writing:
@@ -432,7 +444,7 @@ new Select({
 });
 
 ```
-Again, we can also use a variable that contains an array as the content to drive the list. When using a variable, the child elements will reactively be added, removed, or updated as the variable is modified in the future.
+Again, we can also use a variable that contains an array as the content to drive the list. When using a variable, the child elements will reactively be added, removed, or updated as the variable is modified in the future. If we use the array methods on the variable, the updates will be progressive or iterative, and will not require rerendering the whole list.
 
 
 ## Alkali Element API
