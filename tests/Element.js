@@ -22,6 +22,7 @@ define([
 	var LI = Element.LI
 	var Item = Element.Item
 	var append = Element.append
+	var prepend = Element.prepend
 	var extend = Element.extend
 	registerSuite({
 		name: 'Element',
@@ -253,6 +254,17 @@ define([
 			top.append(Span, Span('.second'))
 			assert.strictEqual(top.firstChild.tagName, 'SPAN')
 			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
+		},
+
+		prependAsMethod: function() {
+			HTMLElement.prototype.prepend = prepend
+			HTMLElement.prototype.append = append
+			var top = new Div('.top')
+			top.append(Span('.last'))
+			top.prepend(Span, Span('.second'))
+			assert.strictEqual(top.firstChild.tagName, 'SPAN')
+			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
+			assert.strictEqual(top.firstChild.nextSibling.nextSibling.className, 'last')
 		},
 		
 		list: function() {

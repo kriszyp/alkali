@@ -146,8 +146,8 @@
 		}
 	}
 
-	function layoutChildren(parent, children, container) {
-		var fragment = children.length > 3 ? document.createDocumentFragment() : parent
+	function layoutChildren(parent, children, container, prepend) {
+		var fragment = (children.length > 3 || prepend) ? document.createDocumentFragment() : parent
 		for(var i = 0, l = children.length; i < l; i++) {
 			var child = children[i]
 			var childNode
@@ -192,7 +192,11 @@
 			}
 		}
 		if (fragment != parent) {
-			parent.appendChild(fragment)
+			if (prepend) {
+				parent.insertBefore(fragment, parent.firstChild)
+			} else {
+				parent.appendChild(fragment)
+			}
 		}
 		return childNode
 	}
@@ -230,7 +234,11 @@
 		}
 	}
 
+	function noop() {}
 	var propertyHandlers = {
+		content: noop, // content and children have special handling in create
+		children: noop,
+		each: noop, // just used by content, doesn't need to be recorded on the element
 		style: function(element, value) {
 			// TODO: handle variables, maybe index, etc.
 			for (var i in value) {
@@ -267,15 +275,13 @@
 		},
 		render: function(element, value, key) {
 			// TODO: This doesn't need to be a property updater
+			// we should also verify it is a generator
 			// and maybe, at some point, find an optimization to eliminate the bind()
 			enterUpdater(PropertyUpdater, {
 				name: key,
 				variable: new Variable.GeneratorVariable(value.bind(element)),
 				element: element
 			})
-		},
-		each: function(){
-			// just used by content, doesn't need to be recorded on the element
 		},
 		value: bidirectionalHandler,
 		valueAsNumber: bidirectionalHandler,
@@ -695,6 +701,12 @@
 			layoutChildren(parent, slice.call(arguments, 1), parent) // called as a function
 	}
 
+	function prepend(parent){
+		return this.nodeType ?
+			layoutChildren(this, arguments, this, true) : // called as a method
+			layoutChildren(parent, slice.call(arguments, 1), parent, true) // called as a function
+	}
+
 	function registerTag(tagName) {
 		getApplyList(this).tagName = tagName
 		if (document.registerElement) {
@@ -882,6 +894,7 @@
 	}
 
 	Element.append = append
+	Element.prepend = prepend
 	Element.refresh = Updater.refresh
 	var options = Element.options = {
 		moveLiveElementsEnabled: true,
