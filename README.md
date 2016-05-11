@@ -4,13 +4,15 @@ There are several key paradigms in alkali:
 
 ## Variables
 
-The central entity in the data model system is a "Variable" (this notion has variously been known by various names such as "reactive", "stream", "signal" and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the value.
+The central entity in the data model system is a "Variable" (similar notion has variously been known by various names such as "reactive", "signal", "property", "stream", "observable", and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the value.
 
-Notifications of data changes are delivered by invalidation notifications. When a downstream subscriber is interested in the results of a variable change, it can request the latest value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. Variables support bi-directional flow. They can be updated as well as monitored.
+Notifications of data changes are delivered by update notifications. When a downstream subscriber is interested in the results of a variable change, it can request the latest value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. And Variables support bi-directional flow. They can be updated as well as monitored.
 
 Variables also support promises as values, and the variable pipeline will handle waiting for a promises to resolve to do computations.
 
 Alkali uses extendable element constructors and updaters that are designed to consume variables, binding to variables values, and reactively responding to variable changes. They can also bound to inputs that will update variables in respond to user changes.
+
+The Variable class can be extended and variable classes can be used like variables, where the instance to be acted on, can be resolved as needed. This allows for categorical relationships between variable and element classes to be defined, and resolved based on context.
 
 The main/index module in alkali exports all of functionality in alkali. If you are using ES6 module format, you can import different constructors and utilities like:
 ```
@@ -107,28 +109,6 @@ variable.set(name, value)
 ### subscribe(listener)
 
 This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables to Elements and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
-
-### notifies(target)
-
-The `target` can be another variable, or any object with an `updated(updateEvent)` method that will be called with update notifications. The `updateEvent` has the following properties:
-`type` - This is the type of notification. The most common is `'refresh'`.
-`key`	- This is the name of the property or index of the position that was changed.
-
-### stopNotifies(target)
-
-This stops the notifications to the dependent variable, undoing the action of `notifies`.
-
-### updated(updateEvent)
-
-This is called to indicate that the variable has been updated. This is typically called between dependent variables, but you can also call this to indicate that an object in a variable has been modified.
-
-### apply(instance, functionVariable)
-
-This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables are updated, than the returned variable will update. The function can be re-executed with the changed values on the next call to valueOf.
-
-### fixed
-
-This property can be set to true, when a variable holds another variable (acting as proxy), so that subsequent `put()` will not replace the contained variable, but will replace the value in the target variable.
 
 ### Variable.all(array)
 
@@ -234,6 +214,8 @@ new TextInput(a);
 ```
 The variable `a` will be mapped to this new input. This means that any changes made to `a` will cause the input to be updated, and any changes that the user makes to the input will update the variable (two-way binding).
 
+When an element is detached from the DOM, it will no longer listen for variable changes (allowing the variables to be cleaned up).
+
 #### String Argument
 You can also simply provide a string (or any primitive, including numbers or booleans), and this will also be directly inserted as a text node. For example:
 ```
@@ -253,9 +235,9 @@ new Span({
 });
 ```
 
-## Class Extension (Components)
+## Extending Elements
 
-Element classes are designed to be extended so that you can easily create your own custom classes or components. Extended element classes can define default properties, bindings, and children elements as well. When you call a class with the `new` operator or call the `create` method, you are creating a new element instance. But, if you call a class without the `new` operator or if you use the `extend` method, you will create a new subclass of the called element class. Calling the classes to extend a class works much like create new instances, taking the same types of arguments. An extended class is a true extension of a native element, and constructs true extended native DOM element. For example, we could create a custom div class with a pre-defined HTML class attribute:
+The Alkali element classes are designed to be extended or derived so that you can easily create your own custom components and constructors. Extended element classes can define default properties, bindings, and children elements as well. When you call a class with the `new` operator or call the `create` method, you are creating a new element instance. But, you can also derive new constructors or classes. The first way to do this is by creating an extended constructor. By calling a class without the `new` operator or if you use the `with` method, you will create a new constructor of the original element class (or constructor). Creating new constructors works much like creating new instances, taking the same types of arguments, and defines a set of properties or event handlers to be assigned to an element instance on instantiation. An extended constructor constructs true extended native DOM element. For example, we could create a custom div constructor with a pre-defined HTML class attribute:
 ```
 let MyDiv = Div('.my-class')
 // and we can create new elements from this, just like with standard element classes
@@ -270,7 +252,7 @@ let MyComponent = Div({
 	P
 ]);
 ```
-These resulting extended classes can be used like any other element classes, including in child layouts, making it easy to create a hierarchy of layout:
+These resulting extended constructors can be used like any other element classes, including in child layouts, making it easy to create a hierarchy of layout:
 ```
 let AnotherComponent = Div([
 	H2(someVariable),
@@ -288,7 +270,8 @@ And we can create element instances by using a new operator with nested construc
 	]);
 ```
 
-Element classes can also be extended using the native class extension mechanism. For example, we could write:
+## Creating/Extending Element Classes (Components)
+True custom element classes or components can also be created by using the native JavaScript class extension mechanism, or any transpilation or class emulation (like Babel). We can extend from an existing element class (or constructor), and create a real new class with its own prototype (that inherits the native methods and properties). This is appropriate to use when creating new components with their own behavior defined in methods and event handlers. For example, we could write:
 ```
 class MyDiv extends Div {
 	onclick() {
@@ -299,7 +282,7 @@ class MyDiv extends Div {
 	}
 }
 ```
-One of the advantages of using classes is that it allows you to use the `super` operator to call super class methods, permitting more sophisticated element class composition. Note that there are some limitations to using native class syntax. EcmaScript does not currently support properties, nor does it support direct constructor calls, so classes created this way must be extended through the `extend` method (instances can still be created with the `new` operator). Assigning default properties or children can be done by using extending with a call before or after class extending:
+One of the advantages of using classes is that it allows you to use the `super` operator to call super class methods, permitting more sophisticated element class composition. Note that there are some limitations to using native class syntax. EcmaScript does not currently support properties, nor does it support direct constructor calls, so if you want to create a new derived constructor from a natively constructed class, this must be done through the `with` method (instances can still be created with the `new` operator). Assigning default properties or children can be done by calling with properties before or after class extending:
 ```
 class MyDiv extends Div({title: 'default title'}) {
 	// class methods
@@ -316,6 +299,10 @@ class MyDiv extends Div {
 		return [Div, Span];
 	}
 }
+```
+And we can create a constructor from MyDiv with properties to be assigned to the instances:
+```
+MyDivWithClass = MyDiv.with('.a-class', {title: 'a different title'});
 ```
 
 ### Render Methods
@@ -337,9 +324,9 @@ let myDiv = new MyDiv({name: nameVariable}) // renderName called with original v
 nameVariable.put('New name') // will trigger another renderName call
 ```
 
-### Generator `render` Method
+### Generator `*render` Method
 
-If you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define a `render` method as a generator, making it very simple to construct an element that reacts to known variables. This method can written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The method will be called when the element is first created, and again anytime any of the "yielded" variables changes. For example:
+If you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define a `*render` method as a generator, making it very simple to construct an element that reacts to known variables. This method can written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The method will be called when the element is first created, and again anytime any of the "yielded" variables changes. For example:
 
 ```
 class MyLink extends Anchor {
@@ -374,7 +361,7 @@ class MyComponent extends Div {
 
 ## Variable Classes
 
-Variables can be used in property or content values for element classes as well, but you may need more than a single instance for the different element instances. Variables classes can be used to provide variables within element classes, with instances that are auto-generated for each different element context. One way to do this is to create a new `Variable` class, and use the element class's `hasOwn` property. This will define a relationship between an element class and a variable class. Variable classes have the same api as normal variables, and you can then use the variable class within properties of the defined element, or any child elements. For example:
+Variables can be used in property or content values for element classes as well, but you may need more than a single instance for the different element instances. Variables classes can be used to provide variables within element constructors, with instances that are auto-generated for each different element context. One way to do this is to create a new `Variable` class, and use the element class's `hasOwn` property. This will define a relationship between an element class and a variable class. Variable classes have the same api as normal variables, and you can then use the variable class within properties of the defined element, or any child elements. For example:
 
 ```
 let MyVariable = Variable.extend()
@@ -447,16 +434,34 @@ Again, we can also use a variable that contains an array as the content to drive
 
 ## Alkali Element API
 
-Any element constructor that is derived from Alkali's `Element` module has the following static methods/properties:
-* create(...elementArguments) - Creates a new element instance
-* extend(...elementArguments) - Creates a new element constructor
-* property(name) - Returns a generalized variable for the property of elements of this class
-* for(subject) - Gets an instance of the element for the given subject
-* children - This an array of the children (constructors, variables, or elements) that will be constructed on instantiation
+All the element classes/constructors that are exported or generated by Alkali have the following static methods/properties:
+* `create(...elementArguments)` - Creates a new element instance
+* `with(...elementArguments)` - Creates a new element constructor
+* `property(name)` - Returns a generalized variable for the property of elements of this class
+* `for(subject)` - Gets an instance of the element for the given subject
+* `children` - This an array of the children (constructors, variables, or elements) that will be constructed on instantiation
+* `inputEvents` - This is an array of events types to listen for when a variable is connected to an input's value. By default this is `['change']`.
 
-And DOM elements created from Alkali constructors have the following methods/properties on the instances (in addition to the standard DOM API, since these are standard DOM elements):
-* append(...children) - Creates new child elements of this element. This can take standard alkali arguments for children (constructors, variables, elements, etc.)
-* inputEvents - This is an array of events types to listen for when a variable is connected to an input's value. By default this is `['change']`.
+### Alkali Element Exports
+
+Several additional exports are available from alkali for working with elements. These include two methods that can be added to HTMLElement prototype to easily add elements to existing elements, using Alkali constructors and variables. 
+
+When added to elements their API is:
+* `parentElement.append(...elementArguments)` - This appends new child elements to the parent element using standard alkali arguments for children (constructors, variables, elements, etc.).
+* `parentElement.prepends(...elementArguments)` - This inserts new child elements in the parent element using standard alkali arguments for children (constructors, variables, elements, etc.), before other existing elements.
+
+Both of these methods are compatible with proposed DOM4 methods. While augment native objects isn't recommended for consumption by other libraries, adding these is recommended for application developers, and can be done:
+```
+import { append, prepend } from 'alkali'
+
+HTMLElement.prototype.append = append
+HTMLElement.prototype.prepend = prepend
+```
+
+#### Options
+
+Alkali also exports an options object. It has the following properties:
+`options.moveLiveElementsEnabled` - This indicates whether or not alkali supports elements with variables, restarting the variables when an element is reattached. This is enabled (`true`) by default, but it requires expensive mutation observation, and it is recommended that you disable it, and avoid reattaching alkali constructed elements (that should be created, attached, removed and left to be collected).
 
 ## Updaters
 
@@ -557,6 +562,34 @@ Alkali includes a variable Copy constructor, that allows you to maintain a copy 
 	myForm.on('submit', function() {
 		workingCopy.save(); // now save the changes back to the original object
 	})
+
+
+## Additional Variable Methods
+
+The following methods are also available on variables (but less frequently needed/used):
+
+### notifies(target)
+
+The `target` can be another variable, or any object with an `updated(updateEvent)` method that will be called with update notifications. The `updateEvent` has the following properties:
+`type` - This is the type of notification. The most common is `'refresh'`.
+`key`	- This is the name of the property or index of the position that was changed.
+
+### stopNotifies(target)
+
+This stops the notifications to the dependent variable, undoing the action of `notifies`.
+
+### updated(updateEvent)
+
+This is called to indicate that the variable has been updated. This is typically called between dependent variables, but you can also call this to indicate that an object in a variable has been modified.
+
+### apply(instance, functionVariable)
+
+This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables are updated, than the returned variable will update. The function can be re-executed with the changed values on the next call to valueOf.
+
+### fixed
+
+This property can be set to true, when a variable holds another variable (acting as proxy), so that subsequent `put()` will not replace the contained variable, but will replace the value in the target variable.
+
 
 
 ## Which Listener To Use?

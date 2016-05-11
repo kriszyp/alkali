@@ -883,6 +883,9 @@
 
 	Element.append = append
 	Element.refresh = Updater.refresh
+	var options = Element.options = {
+		moveLiveElementsEnabled: true,
+	}
 	Element.content = function(element){
 		// container marker
 		return {
@@ -1074,7 +1077,7 @@
 							} while (true)
 						}
 					}
-					if (Element.moveLiveElementEnabled) {
+					if (options.moveLiveElementsEnabled) {
 						// next step if this is enabled
 						nodes = mutation.addedNodes
 						action = elementAttached
