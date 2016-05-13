@@ -3,13 +3,14 @@
   "author": "Kris Zyp",
   "version": "0.4.0",
   "description": "Reactivity with native JavaScript objects and HTML elements",
+  "license": "BSD-3-Clause",
   "licenses": [
     {
       "type": "AFLv2.1",
       "url": "http://trac.dojotoolkit.org/browser/dojo/trunk/LICENSE#L43"
     },
     {
-      "type": "BSD",
+      "type": "BSD-3-Clause",
       "url": "http://trac.dojotoolkit.org/browser/dojo/trunk/LICENSE#L13"
     }
   ],
@@ -23,7 +24,7 @@
   "devDependencies": {
     "dojo": "^1.10.2",
     "dojo-dstore": "^1.1.0",
-    "intern-geezer": "^2.2.2",
+    "intern-geezer": "^2",
     "bluebird": "3.3.3"
   }
 }
