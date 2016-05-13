@@ -463,7 +463,7 @@ Several additional exports are available from alkali for working with elements. 
 
 When added to elements their API is:
 * `parentElement.append(...elementArguments)` - This appends new child elements to the parent element using standard alkali arguments for children (constructors, variables, elements, etc.).
-* `parentElement.prepends(...elementArguments)` - This inserts new child elements in the parent element using standard alkali arguments for children (constructors, variables, elements, etc.), before other existing elements.
+* `parentElement.prepend(...elementArguments)` - This inserts new child elements in the parent element using standard alkali arguments for children (constructors, variables, elements, etc.), before other existing elements.
 
 Both of these methods are compatible with proposed DOM4 methods. While augmenting native objects isn't recommended for consumption by other libraries, it is recommended for application developers, and can be done:
 ```
@@ -581,7 +581,11 @@ Alkali includes a variable Copy constructor, that allows you to maintain a copy 
 
 ## Additional Variable Methods
 
-The following methods are also available on variables (but less frequently needed/used):
+The following methods are also available on variables (but mostly used internally):
+
+### updated(updateEvent)
+
+This is called to indicate that the variable has been updated. This is typically called between dependent variables, but you can also call this to indicate that an object in a variable has been modified.
 
 ### notifies(target)
 
@@ -592,10 +596,6 @@ The `target` can be another variable, or any object with an `updated(updateEvent
 ### stopNotifies(target)
 
 This stops the notifications to the dependent variable, undoing the action of `notifies`.
-
-### updated(updateEvent)
-
-This is called to indicate that the variable has been updated. This is typically called between dependent variables, but you can also call this to indicate that an object in a variable has been modified.
 
 ### apply(instance, functionVariable)
 

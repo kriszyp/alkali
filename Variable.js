@@ -546,19 +546,39 @@
 			return new Variable(operator).apply(null, [this])
 		},
 		get schema() {
-			var schema = new Schema(this)
+			// default schema is the constructor
+			return this.notifyingValue ? this.notifyingValue.schema : this.constructor
+		},
+		set schema(schema) {
+			// but allow it to be overriden
 			Object.defineProperty(this, 'schema', {
 				value: schema
 			})
-			return schema
 		},
-		get validate() {
-			var schema = this.schema
-			var validate = new Validating(this, schema)
-			Object.defineProperty(this, 'validate', {
-				value: validate
+		validate: function(target, schema) {
+			if (this.notifyingValue) {
+				return this.notifyingValue.validate(target, schema)
+			}
+			if (schema.type && (schema.type !== typeof target)) {
+				return ['Target type of ' + typeof target + ' does not match schema type of ' + schema.type]
+			}
+			var valid = []
+			valid.isValid = true
+			return valid
+		},
+
+		get validation() {
+			var validation = new Validating(this)
+			Object.defineProperty(this, 'validation', {
+				value: validation
 			})
-			return validate
+			return validation
+		},
+		set validation(validation) {
+			// but allow it to be overriden
+			Object.defineProperty(this, 'validation', {
+				value: validation
+			})
 		},
 		getId: function() {
 			return this.id || (this.id = nextId++)
@@ -709,6 +729,21 @@
 						}
 					}
 				}
+			})
+		},
+		validate: function(target, schema) {
+			return this.parent.validate(target.valueOf(), schema)
+		}
+	})
+	Object.defineProperty(Property.prototype, 'schema', {
+		get: function() {
+			var parentSchemaProperties = this.parent.schema.properties
+			return parentSchemaProperties && parentSchemaProperties[this.key]
+		},
+		set: function(schema) {
+			// have to repeat the override
+			Object.defineProperty(this, 'schema', {
+				value: schema
 			})
 		}
 	})
@@ -1134,24 +1169,7 @@
 		}
 	})
 
-	var Validating = lang.compose(Caching, function(target, schema) {
-		this.target = target
-		this.targetSchema = schema
-	}, {
-		forDependencies: function(callback) {
-			Caching.prototype.forDependencies.call(this, callback)
-			callback(this.target)
-			callback(this.targetSchema)
-		},
-		getVersion: function(context) {
-			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getVersion(context), this.targetSchema.getVersion(context))
-		},
-		getValue: function(context) {
-			return doValidation(this.target.valueOf(context), this.targetSchema.valueOf(context))
-		}
-	})
-
-	var Schema = lang.compose(Caching, function(target) {
+	var Validating = lang.compose(Caching, function(target) {
 		this.target = target
 	}, {
 		forDependencies: function(callback) {
@@ -1162,20 +1180,11 @@
 			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getVersion(context))
 		},
 		getValue: function(context) {
-			if (this.value) { // if it has an explicit schema, we can use that.
-				return this.value
-			}
-			// get the schema, going through target parents until it is found
-			return getSchema(this.target)
-			function getSchema(target) {
-				return when(target.valueOf(), function(value, context) {
-					var schema
-					return (value && value._schema) || (target.parent && (schema = target.parent.schema)
-						&& (schema = schema.valueOf()) && schema[target.key])
-				})
-			}
+			var target = this.target
+			return target.validate(target, target.schema)
 		}
 	})
+
 	function validate(target) {
 		var schemaForObject = schema(target)
 		return new Validating(target, schemaForObject)

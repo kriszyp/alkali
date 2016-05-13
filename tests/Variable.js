@@ -412,25 +412,24 @@ define([
 				a: 1,
 				b: 'foo'
 			}
-			var variable = new Variable(object)
-			var schema = variable.schema
-			schema.put({
-				a: 'number',
-				b: 'string'
-			})
-			doValidation = function(target, schema){
-				if(typeof target != schema){
-					return ['error']
+			var TypedVariable = Variable.extend({
+				schema: {
+					properties: {
+						a: {type: 'number'},
+						b: {type: 'string'}
+					}
 				}
-				return []
-			}
+			})
+			var variable = new TypedVariable(object)
 			var propertyA = variable.property('a')
-			assert.equal(propertyA.schema.valueOf(), 'number')
-			assert.deepEqual(propertyA.validate.valueOf(), [])
+			assert.equal(propertyA.schema.type, 'number')
+			assert.deepEqual(propertyA.validation.valueOf().isValid, true)
 			propertyA.put('not a number')
-			assert.deepEqual(propertyA.validate.valueOf(), ['error'])
+			assert.deepEqual(propertyA.validation.valueOf().length, 1)
 			variable.set('a', 8)
-			assert.deepEqual(propertyA.validate.valueOf(), [])
+			assert.deepEqual(propertyA.validation.valueOf().length, 0)
+		},
+		schemaCustomValidate: function() {
 		},
 
 		composite: function() {
