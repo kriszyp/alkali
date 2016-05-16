@@ -395,6 +395,7 @@
 		subscribe: function(listener) {
 			// ES7 Observable (and baconjs) compatible API
 			var updated
+			var updateQueued
 			var variable = this
 			// it is important to make sure you register for notifications before getting the value
 			if (typeof listener === 'function') {
@@ -406,11 +407,13 @@
 					}
 				}
 				updated = function() {
+					updateQueued = false
 					listener(event)
 				}
 			}	else if (listener.next) {
 				// Assuming ES7 Observable API. It is actually a streaming API, this pretty much violates all principles of reactivity, but we will support it
 				updated = function() {
+					updateQueued = false
 					listener.next(variable.valueOf())
 				}
 			} else {
@@ -418,7 +421,13 @@
 			}
 
 			var handle = this.notifies({
-				updated: updated
+				updated: function() {
+					if (updateQueued) {
+						return
+					}
+					updateQueued = true
+					lang.nextTurn(updated)
+				}
 			})
 			var initialValue = this.valueOf()
 			if (initialValue !== undefined) {
