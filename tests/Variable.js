@@ -548,6 +548,13 @@ define([
 			})
 			v.set('', 'test')
 			assert.strictEqual(updated, true)
+		},
+		getPropertyWithVariable: function() {
+			var foo = new Variable('foo')
+			var bar = new Variable({ foo: foo })
+
+			assert.strictEqual(bar.get('foo'), 'foo')
+			assert.strictEqual(bar.property('foo').valueOf(), 'foo')
 		}
 	})
 })

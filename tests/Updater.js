@@ -51,7 +51,7 @@ define([
 				resolvePromise = resolve;
 			});
 			var variable = new Variable(promise);
-			var updater = new Updater.ElementUpdater({
+			var updater = new Updater.PropertyUpdater({
 				variable: variable,
 				element: div,
 				renderUpdate: function(value){
@@ -64,6 +64,18 @@ define([
 				return new Promise(requestAnimationFrame);
 			});
 
+		},
+		getPropertyWithVariable: function() {
+			var foo = new Variable('foo')
+			var bar = new Variable({ foo: foo })
+			var updater = new Updater.PropertyUpdater({
+				variable: bar.property('foo'),
+				element: div,
+				name: 'foo'
+			});
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.equal(div.foo, 'foo')
+			})
 		},
 		UpdaterInvalidation: function() {
 			document.body.appendChild(div);
