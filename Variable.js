@@ -1035,10 +1035,14 @@
 				if (variable.dependents) {
 					var map = variable.contextMap || (variable.contextMap = new WeakMap())
 					var contextualizedVariable
-					if (map.has(context.distinctSubject)) {
-						contextualizedVariable = map.get(context.distinctSubject)
+					if (context) {
+						if (map.has(context.distinctSubject)) {
+							contextualizedVariable = map.get(context.distinctSubject)
+						} else {
+							map.set(context.distinctSubject, contextualizedVariable = new ContextualizedVariable(variable, context.distinctSubject))
+						}
 					} else {
-						map.set(context.distinctSubject, contextualizedVariable = new ContextualizedVariable(variable, context.distinctSubject))
+						contextualizedVariable = variable
 					}
 					array.forEach(function(object) {
 						registerListener(object, contextualizedVariable)
