@@ -11,7 +11,7 @@
 		knownElementProperties[property] = true
 	})
 
-	var SELECTOR_REGEX = /(\.|#)?([-\w]+)(.+)?/
+	var SELECTOR_REGEX = /(\.|#)([-\w]+)(.+)?/
 	function isGenerator(func) {
 		if (typeof func === 'function') {
 			var constructor = func.constructor
