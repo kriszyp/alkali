@@ -23,6 +23,7 @@
 	}
 
 	var PropertyUpdater = Updater.PropertyUpdater
+	var AttributeUpdater = Updater.AttributeUpdater
 	var StyleUpdater = lang.compose(Updater.StyleUpdater, function StyleUpdater() {
 		Updater.StyleUpdater.apply(this, arguments)
 	}, {
@@ -80,6 +81,7 @@
 		TEXTAREA: 1
 		// SELECT: 1, we exclude this, so the default "content" of the element can be the options
 	}
+
 	function booleanStyle(options) {
 		return function(element, value, key) {
 			if (typeof value === 'boolean') {
@@ -267,10 +269,9 @@
 				}
 			}
 		},
-		class: function(element, className) {
-			// just treat it like className
-			applyProperty(element, 'className', className)
-		},
+		class: applyAttribute,
+		for: applyAttribute,
+		role: applyAttribute,
 		render: function(element, value, key) {
 			// TODO: This doesn't need to be a property updater
 			// we should also verify it is a generator
@@ -295,7 +296,7 @@
 			if (typeof value === 'string') {
 				element.setAttribute('style', value)
 			} else if (value && value.notifies) {
-				enterUpdater(Updater.AttributeUpdater, {
+				enterUpdater(AttributeUpdater, {
 					name: 'style',
 					variable: value,
 					elment: element
@@ -305,15 +306,15 @@
 			}
 		}
 	}
-	function applyProperty(element, key, value) {
+	function applyAttribute(element, value, key) {
 		if (value && value.notifies) {
-			enterUpdater(PropertyUpdater, {
+			enterUpdater(AttributeUpdater, {
 				name: key,
 				variable: value,
 				element: element
 			})
 		} else {
-			element[key] = value
+			element.setAttribute(key, value)
 		}
 	}
 

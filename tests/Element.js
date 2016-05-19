@@ -5,6 +5,7 @@ define([
 	'intern/chai!assert'
 ], function (Element, Variable, registerSuite, assert) {
 	var Div = Element.Div
+	var Label = Element.Label
 	var Span = Element.Span
 	var Checkbox = Element.Checkbox
 	var Radio = Element.Radio
@@ -102,6 +103,11 @@ define([
 			var numberInput = new NumberInput(numberVariable)
 			document.body.appendChild(numberInput)
 			assert.strictEqual(numberInput.type, 'number')
+			if (isNaN(numberInput.valueAsNumber)) {
+				// in IE, valueAsNumber doesn't work
+				assert.strictEqual(numberInput.value, '2020')
+				return
+			}
 			assert.strictEqual(numberInput.valueAsNumber, 2020)
 			numberVariable.put(122)
 			return new Promise(requestAnimationFrame).then(function(){
@@ -118,6 +124,10 @@ define([
 			var startingDate = new Date(1458345600000)
 			var dateVariable = new Variable(startingDate)
 			var dateInput = new DateInput(dateVariable)
+			if (dateInput.type === 'text') {
+				// this browser doesn't support this
+				return
+			}
 			document.body.appendChild(dateInput)
 			assert.strictEqual(dateInput.type, 'date')
 			assert.strictEqual(dateInput.valueAsDate.getTime(), startingDate.getTime())
@@ -495,9 +505,47 @@ define([
 			})
 		},
 
+		attributeProperties: function() {
+			var v = new Variable('one')
+			var label = new Label({
+				role: 'button',
+				for: v
+			})
+			document.body.appendChild(label)
+			assert.strictEqual(label.getAttribute('role'), 'button')
+			assert.strictEqual(label.htmlFor, 'one')
+			v.put('two')
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(label.htmlFor, 'two')
+			})
+		},
 
-		/*
-		performanceBaseline: function() {
+		overrideDefaultWithRender: function() {
+			var widthRendered, textContentRendered
+			var MyComponent = extend(Div, {
+				renderWidth: function() {
+					widthRendered = true
+				},
+				renderTextContent: function() {
+					textContentRendered = true
+				}
+			})
+			var component = new MyComponent({
+				width: '10px'
+			})
+			assert.strictEqual(component.style.width, '') // shouldn't get set
+			assert.strictEqual(widthRendered, true)
+			widthRendered = false
+			component.width = '20px'
+			assert.strictEqual(widthRendered, true)
+			assert.strictEqual(component.width, '20px')
+			component.textContent = 'hello'
+			assert.strictEqual(textContentRendered, true)
+			assert.strictEqual(component.textContent, 'hello')
+			assert.strictEqual(component.innerHTML, '') // make sure it blocks normal textContent
+		},
+
+	/*	performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 10000; i++) {
 				var childDiv = container.appendChild(document.createElement('div'))
