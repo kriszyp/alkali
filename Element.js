@@ -285,11 +285,11 @@
 		valueAsNumber: bidirectionalHandler,
 		valueAsDate: bidirectionalHandler,
 		checked: bidirectionalHandler,
-		dataset: applySubProperties(function(newValue, element) {
-			element.dataset[this.name] = newValue
+		dataset: applySubProperties(function(newValue, element, key) {
+			element.dataset[key || this.name] = newValue
 		}),
-		attributes: applySubProperties(function(newValue, element) {
-			element.setAttribute(this.name, newValue)
+		attributes: applySubProperties(function(newValue, element, key) {
+			element.setAttribute(key || this.name, newValue)
 		}),
 		style: function(element, value, key) {
 			if (typeof value === 'string') {
@@ -301,7 +301,7 @@
 					elment: element
 				})
 			} else {
-				styleObjectHandler(element, value)
+				styleObjectHandler(element, value, key)
 			}
 		}
 	}
@@ -317,8 +317,8 @@
 		}
 	}
 
-	var styleObjectHandler = applySubProperties(function(newValue, element) {
-		element.style[this.name] = newValue
+	var styleObjectHandler = applySubProperties(function(newValue, element, key) {
+		element.style[key || this.name] = newValue
 	})
 
 	function applySubProperties(renderer) {
@@ -330,14 +330,15 @@
 		return function(element, value, key) {
 			var target = element[key]
 			for (var subKey in value) {
-				if (value && value.notifies) {
+				var subValue = value[subKey]
+				if (subValue && subValue.notifies) {
 					enterUpdater(SubPropertyUpdater, {
-						name: key,
-						variable: value,
+						name: subKey,
+						variable: subValue,
 						element: element
 					})
 				} else {
-					renderer(value[subKey], element)
+					renderer(subValue, element, subKey)
 				}
 			}
 		}
@@ -348,7 +349,9 @@
 			var key = properties[i]
 			var value = properties[key]
 			var styleDefinition = styleDefinitions[key]
-			if (styleDefinition) {
+			if (propertyHandlers[key]) {
+				propertyHandlers[key](element, value, key, properties)
+			} else if ((styleDefinition = styleDefinitions[key]) && element[key] === undefined) {
 				if (value && value.notifies) {
 					enterUpdater(StyleUpdater, {
 						name: key,
@@ -358,15 +361,12 @@
 				} else {
 					styleDefinition(element, value, key)
 				}
-			} else if (propertyHandlers[key]) {
-				propertyHandlers[key](element, value, key, properties)
 			} else if (value && value.notifies) {
 				enterUpdater(PropertyUpdater, {
 					name: key,
 					variable: value,
 					element: element
 				})
-				Object.defineProperty(element, key, getDelegatingDescriptor(key))
 			} else if (typeof value === 'function' && key.slice(0, 2) === 'on') {
 				element.addEventListener(key.slice(2), value)
 			} else {
@@ -568,7 +568,7 @@
 		var map = new WeakMap()
 		return {
 			get: function() {
-				return map.get(this)
+				return map.has(this) ? map.get(this) : null
 			},
 			set: function(value) {
 				map.set(this, value)

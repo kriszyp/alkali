@@ -447,7 +447,7 @@ define([
 		},
 		attributes: function() {
 			var v = new Variable('one')
-			var div = new MyComponent({
+			var div = new Div({
 				attributes: {
 					role: 'button',
 					'aria-describedby': v
@@ -463,7 +463,7 @@ define([
 		},
 		dataset: function() {
 			var v = new Variable('one')
-			var div = new MyComponent({
+			var div = new Div({
 				dataset: {
 					foo: 'foo-value',
 					bar: v
@@ -480,7 +480,7 @@ define([
 		},
 		styleObject: function() {
 			var v = new Variable('25px')
-			var div = new MyComponent({
+			var div = new Div({
 				style: {
 					marginLeft: '10px',
 					paddingLeft: v
@@ -491,7 +491,7 @@ define([
 			assert.strictEqual(div.style.paddingLeft, '25px')
 			v.put('35px')
 			return new Promise(requestAnimationFrame).then(function() {
-				assert.strictEqual(div.style.paddingLeft, 'two')
+				assert.strictEqual(div.style.paddingLeft, '35px')
 			})
 		},
 
