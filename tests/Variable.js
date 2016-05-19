@@ -286,9 +286,11 @@ define([
 				a: 1
 			})
 			var parentNotified
-			parent.subscribe(function(event){
-				event.value()
-				parentNotified = true
+			parent.notifies({
+				updated: function(event){
+					parent.valueOf()
+					parentNotified = true
+				}
 			})
 			parentNotified = false
 			parent.set('a', 2)
@@ -304,9 +306,11 @@ define([
 				}
 			})
 			var parentNotified
-			parent.subscribe(function(event){
-				event.value()
-				parentNotified = true
+			parent.notifies({
+				updated: function(event){
+					parent.valueOf()
+					parentNotified = true
+				}
 			})
 			parentNotified = false
 			parent.property('a').set('b', 2)
@@ -327,15 +331,21 @@ define([
 			var parentReference = new Variable()
 			parentReference.put(parent)
 			var parentNotified
-			parent.property('a').property('b').subscribe(function(event){
-				event.value()
-				parentNotified = true
+			var b = parent.property('a').property('b'
+			b.notifies({
+				updated: function(event){
+					parentNotified = true
+				}
 			})
+			b.valueOf()
 			var siblingNotified
-			parent.property('a').property('c').subscribe(function(event){
-				event.value()
-				siblingNotified = true
+			var c = parent.property('a').property('c')
+			c.notifies({
+				updated: function(event) {
+					siblingNotified = true
+				}
 			})
+			c.valueOf()
 			siblingNotified = false
 			parentNotified = false
 			parentReference.property('a').property('b').set('d', 6)
