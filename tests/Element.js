@@ -444,7 +444,59 @@ define([
 					})
 				})
 			})
-		},/*
+		},
+		attributes: function() {
+			var v = new Variable('one')
+			var div = new MyComponent({
+				attributes: {
+					role: 'button',
+					'aria-describedby': v
+				}
+			})
+			document.body.appendChild(div)
+			assert.strictEqual(div.getAttribute('role'), 'button')
+			assert.strictEqual(div.getAttribute('aria-describedby'), 'one')
+			v.put('two')
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div.getAttribute('aria-describedby'), 'two')
+			})
+		},
+		dataset: function() {
+			var v = new Variable('one')
+			var div = new MyComponent({
+				dataset: {
+					foo: 'foo-value',
+					bar: v
+				}
+			})
+			document.body.appendChild(div)
+			assert.strictEqual(div.getAttribute('data-foo'), 'foo-value')
+			assert.strictEqual(div.dataset.foo, 'foo-value')
+			assert.strictEqual(div.getAttribute('data-bar'), 'one')
+			v.put('two')
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div.getAttribute('data-bar'), 'two')
+			})
+		},
+		styleObject: function() {
+			var v = new Variable('25px')
+			var div = new MyComponent({
+				style: {
+					marginLeft: '10px',
+					paddingLeft: v
+				}
+			})
+			document.body.appendChild(div)
+			assert.strictEqual(div.style.marginLeft, '10px')
+			assert.strictEqual(div.style.paddingLeft, '25px')
+			v.put('35px')
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div.style.paddingLeft, 'two')
+			})
+		},
+
+
+		/*
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 10000; i++) {

@@ -239,12 +239,6 @@
 		content: noop, // content and children have special handling in create
 		children: noop,
 		each: noop, // just used by content, doesn't need to be recorded on the element
-		style: function(element, value) {
-			// TODO: handle variables, maybe index, etc.
-			for (var i in value) {
-				element[i] = value[i]
-			}
-		},
 		classes: function(element, classes) {
 			if (!(classes.length > -1)) {
 				// index the classes, if necessary
@@ -273,6 +267,10 @@
 				}
 			}
 		},
+		class: function(element, className) {
+			// just treat it like className
+			applyProperty(element, 'className', className)
+		},
 		render: function(element, value, key) {
 			// TODO: This doesn't need to be a property updater
 			// we should also verify it is a generator
@@ -286,7 +284,63 @@
 		value: bidirectionalHandler,
 		valueAsNumber: bidirectionalHandler,
 		valueAsDate: bidirectionalHandler,
-		checked: bidirectionalHandler
+		checked: bidirectionalHandler,
+		dataset: applySubProperties(function(newValue, element) {
+			element.dataset[this.name] = newValue
+		}),
+		attributes: applySubProperties(function(newValue, element) {
+			element.setAttribute(this.name, newValue)
+		}),
+		style: function(element, value, key) {
+			if (typeof value === 'string') {
+				element.setAttribute('style', value)
+			} else if (value && value.notifies) {
+				enterUpdater(Updater.AttributeUpdater, {
+					name: 'style',
+					variable: value,
+					elment: element
+				})
+			} else {
+				styleObjectHandler(element, value)
+			}
+		}
+	}
+	function applyProperty(element, key, value) {
+		if (value && value.notifies) {
+			enterUpdater(PropertyUpdater, {
+				name: key,
+				variable: value,
+				element: element
+			})
+		} else {
+			element[key] = value
+		}
+	}
+
+	var styleObjectHandler = applySubProperties(function(newValue, element) {
+		element.style[this.name] = newValue
+	})
+
+	function applySubProperties(renderer) {
+		var SubPropertyUpdater = lang.compose(PropertyUpdater, function SubPropertyUpdater(options) {
+			PropertyUpdater.apply(this, arguments)
+		}, {
+			renderUpdate: renderer
+		})	
+		return function(element, value, key) {
+			var target = element[key]
+			for (var subKey in value) {
+				if (value && value.notifies) {
+					enterUpdater(SubPropertyUpdater, {
+						name: key,
+						variable: value,
+						element: element
+					})
+				} else {
+					renderer(value[subKey], element)
+				}
+			}
+		}
 	}
 
 	function applyProperties(element, properties) {
@@ -301,7 +355,6 @@
 						variable: value,
 						element: element
 					})
-
 				} else {
 					styleDefinition(element, value, key)
 				}
@@ -313,6 +366,7 @@
 					variable: value,
 					element: element
 				})
+				Object.defineProperty(element, key, getDelegatingDescriptor(key))
 			} else if (typeof value === 'function' && key.slice(0, 2) === 'on') {
 				element.addEventListener(key.slice(2), value)
 			} else {
