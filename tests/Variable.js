@@ -331,7 +331,7 @@ define([
 			var parentReference = new Variable()
 			parentReference.put(parent)
 			var parentNotified
-			var b = parent.property('a').property('b'
+			var b = parent.property('a').property('b')
 			b.notifies({
 				updated: function(event){
 					parentNotified = true
@@ -446,10 +446,12 @@ define([
 			var a = new Variable(1)
 			var b = new Variable(2)
 			var c = new Variable(3)
-			var result
-			Variable.all([a, b, c]).subscribe({
-				next: function(resolved){
-					result = resolved
+			var composite = Variable.all([a, b, c])
+			var result = composite.valueOf()
+
+			composite.notifies({
+				updated: function(){
+					result = composite.valueOf()
 				}
 			})
 			assert.deepEqual(result, [1, 2, 3])
