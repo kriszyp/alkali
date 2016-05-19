@@ -97,8 +97,10 @@ define([
 			map.set('a', 2)
 			var v = new Variable(map)
 			var updated
-			v.property('a').subscribe(function(){
-				updated = true
+			v.property('a').notifies({
+				updated: function(){
+					updated = true
+				}
 			})
 			assert.strictEqual(v.get('a'), 2)
 			updated = false
