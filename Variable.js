@@ -545,12 +545,18 @@
 
 		map: function (operator) {
 			// TODO: eventually make this act on the array items instead
-			return this.to(operator)
+			var stack = new Error().stack
+			return this.to(function(value) {
+				if (value && value.forEach) {
+					console.warn('Variable `map()` usage with arrays is deprecated, should use `to()` instead at ', stack)
+				}
+				return operator(value)
+			})
 		},
 		to: function (operator) {
 			// TODO: create a more efficient map, we don't really need a full variable here
 			if (!operator) {
-				throw new Error('No function provided to map')
+				throw new Error('No function provided to transform')
 			}
 			return new Variable(operator).apply(null, [this])
 		},
@@ -1032,26 +1038,33 @@
 			var args = this.args
 			var variable = this
 			return when(this.source.valueOf(context), function(array) {
-				if (variable.dependents) {
-					var map = variable.contextMap || (variable.contextMap = new WeakMap())
-					var contextualizedVariable
-					if (context) {
-						if (map.has(context.distinctSubject)) {
-							contextualizedVariable = map.get(context.distinctSubject)
+				if (array && array.forEach) {
+					if (variable.dependents) {
+						var map = variable.contextMap || (variable.contextMap = new WeakMap())
+						var contextualizedVariable
+						if (context) {
+							if (map.has(context.distinctSubject)) {
+								contextualizedVariable = map.get(context.distinctSubject)
+							} else {
+								map.set(context.distinctSubject, contextualizedVariable = new ContextualizedVariable(variable, context.distinctSubject))
+							}
 						} else {
-							map.set(context.distinctSubject, contextualizedVariable = new ContextualizedVariable(variable, context.distinctSubject))
+							contextualizedVariable = variable
 						}
-					} else {
-						contextualizedVariable = variable
+						array.forEach(function(object) {
+							registerListener(object, contextualizedVariable)
+						})
 					}
-					array.forEach(function(object) {
-						registerListener(object, contextualizedVariable)
-					})
+				} else {
+					if (method === 'map'){
+						// fast path, and special behavior for map
+						return args[0](array)
+					}
+					// if not an array convert to an array
+					array = [array]
 				}
-				if (context) {
-					variable = variable.for(context)
-				}
-				return array && array[method] && array[method].apply(array, args)
+				// apply method
+				return array[method].apply(array, args)
 			})
 		},
 		updated: function(event, by, context) {
@@ -1268,6 +1281,26 @@
 		// an iterable, but for now we are just looking for array-like
 		if (array.length > -1) {
 			return new Composite(array)
+		}
+		if (arguments.length > 1) {
+			// support multiple arguments as an array
+			return new Composite(arguments)
+		}
+		if (typeof array === 'object') {
+			// allow an object as a hash to be mapped
+			var keyMapping = []
+			var valueArray = []
+			for (var key in array) {
+				keyMapping.push(key)
+				valueArray.push(array[key])
+			}
+			return new Variable(function(results) {
+				var resultObject = {}
+				for (var i = 0; i < results.length; i++) {
+					resultObject[keyMapping[i]] = results[i]
+				}
+				return resultObject
+			}).apply(null, valueArray)
 		}
 		throw new TypeError('Variable.all requires an array')
 	}
