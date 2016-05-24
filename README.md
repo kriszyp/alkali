@@ -2,7 +2,7 @@ Alkali is a package for creating efficient, reactive data, that drives native HT
 
 There are several key paradigms in alkali:
 
-## Variables
+# Variables
 
 The central entity in the data model system is a "Variable" (similar notion has variously been known by various names such as "reactive", "signal", "property", "stream", "observable", and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the value.
 
@@ -35,7 +35,7 @@ The Variable is main API for creating variables and their derivative.
 
 This is the constructor for a variable. You may create a variable with an initial value, provided as the argument.
 
-### valueOf()
+### `valueOf()`
 
 This returns the current value of the variable. This method also allows variables to be used directly in expressions in place of primitive values, where JavaScript coercion will automatically convert a value. For example a variable with the number 4 can be used:
 ```
@@ -47,13 +47,13 @@ four < 5 -> true
 four == 4 -> true
 ```
 
-### put(value)
+### `put(value)`
 
-This allows us to update the value of a variable with a new value. This can be given a standard value, or you can pass in another variable, in which case this variable will be "linked" to the other, receiving all values and updates from the provided variable.
+`put` allows us to update the value of a variable with a new value. This can be given a standard value, or you can pass in another variable, in which case this variable will be "linked" to the other, receiving all values and updates from the provided variable.
 
 If the `value` passed in is not different than the current value, no changes will be made and this will return `Variable.noChange`. If the value can not be assigned, it will return `Variable.deny`.
 
-### property(propertyName)
+### `property(propertyName)`
 
 This returns a variable representing the value of the property of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in a property variable will update the corresponding property on the parent object. For example:
 ```
@@ -64,7 +64,8 @@ foo.valueOf() -> 1
 foo.put(2);
 object.foo -> 2
 ```
-### to(function)
+
+### `to(function)`
 
 This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be provided to the returned variable. For example:
 ```
@@ -89,7 +90,7 @@ let sum = a.to((aValue) => {
 // sum will reactively update to changes in either a or b
 ```
 
-### get(propertyName)
+### `get(propertyName)`
 
 This returns the value of the named property. The following are functionally equivalent:
 
@@ -97,7 +98,7 @@ This returns the value of the named property. The following are functionally equ
 variable.property(name).valueOf() === variable.get(name)
 ```
 
-### set(propertyName, value)
+### `set(propertyName, value)`
 
 This sets the value of the named property.  The following are functionally equivalent:
 
@@ -108,6 +109,14 @@ and
 ```
 variable.set(name, value)
 ```
+
+### `schema`
+
+This is a property that provides a variable representing the schema for the variable. The schema can include metadata and validation information (used for the `validation` property below). A schema can define sub-property schemas that will be applied to variable properties, as well. You can get and set this property. By default, this will return the constructor for plain variables, will get the `schema.properties[propertyName]` for property variables, and will use returned variables for derived variables.
+
+### `validation`
+
+This is a property that provides a variable representing the validation of this variable. Alkali provides very basic validation, but generally you will want to implement your own `validate` method, which can use the `schema` to validate variable values. See the validation section below for more information.
 
 ### subscribe(listener)
 
@@ -123,9 +132,13 @@ let b = Variable(2);
 let sum = Variable.all(a, b).to(([a, b]) => a + b);
 ```
 
+`Variable.all` will also work with a set of arguments, instead of an array. It was will also work with an object, in which case each property value will be resolved, and the result will resolved to an object with the resolved values.
+
 ## Variables as Arrays
 
-Variables provide most of the array methods for when the value of a variable is an array. Methods including `push`, `splice`, `pop`, `filter`, and `forEach` are all available on arrays, and will act on the underlying, and send out the proper update notifications. Also, variables with arrays can be used as iterables in for-of loops. For example:
+Variables provide most of the array methods for when the value of a variable is an array. Methods including `push`, `splice`, `pop`, `filter`, and `forEach` are all available on variables, and will act on the underlying array, and send out the proper update notifications for modifications. When arrays are modified through variables, the update notifications are incremental, and can be much more efficient for downstream listeners that support them (including alkali element lists).
+
+Also, variables with arrays can be used as iterables in for-of loops. For example:
 ```
 var letters = new Variable(['a', 'b', 'c']);
 arrayVariable.push('d');
@@ -149,7 +162,7 @@ The resulting variable will reactively update in response to changes in the vari
 
 This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
 
-## Element Construction
+# Element Construction
 
 Alkali includes functionality for constructing and extending from native DOM elements, and binding these elements to variables for reactive UIs. The `alkali` module exports the full set of native element constructors (see the list at the end of the documentation), as properties, to use for streamlined creation of DOM elements. For example, using EcmaScript's module format to import:
 
@@ -170,7 +183,7 @@ let divElement = new Div('.my-class#my-id');
 ```
 All remaining arguments can be in any order and be any of these types:
 
-#### Properties Argument
+## Properties Argument
 
 An argument can be an object with properties that will be copied to the target element. For example, we could create anchor element with a link:
 ```
@@ -191,7 +204,7 @@ You can alse use variable classes for property values as well. These are describ
 
 Alkali uses an optimized strategy for updating elements, by waiting for the next animation frame to update, and only updating elements that are connected to the DOM.
 
-#### Children Array Argument
+### Children Array Argument
 
 An argument can be array that defines children nodes. An array should consist of items where each item corresponds to the node that will be created as a child. This array can contain any of the following:
 * Element classes - These will generate new elements
@@ -215,7 +228,7 @@ let table = new Table([
 ]);
 ```
 
-#### Variable Argument
+### Variable Argument
 
 A variable may be provided directly as an argument as well. This variable will be connected to the default "content" of the element. For most elements, this variable will be mapped to the text content of the element. For example:
 ```
@@ -231,7 +244,7 @@ The variable `a` will be mapped to this new input. This means that any changes m
 
 When an element is detached from the DOM, it will no longer listen for variable changes (allowing the variables to be cleaned up).
 
-#### String Argument
+### String Argument
 You can also simply provide a string (or any primitive, including numbers or booleans), and this will also be directly inserted as a text node. For example:
 ```
 new Div('.my-class', 'Some text to put in the div');
@@ -352,6 +365,16 @@ class MyLink extends Anchor {
 }
 ```
 
+The `*render` method can be used on classes, constructors, or element instantiation. For example, without even creating a class we can write:
+```
+new Div({
+	*render() {
+		this.title = yield titleVariable;
+		...
+	}
+})
+```
+
 ### Construction Lifecycle Methods
 
 There are several methods that are called as part of the construction of an element that can be used to define additional behavior of an element. These include:
@@ -446,6 +469,65 @@ new Select({
 ```
 Again, we can also use a variable that contains an array as the content to drive the list. When using a variable, the child elements will reactively be added, removed, or updated as the variable is modified in the future. If we use the array methods on the variable, the updates will be progressive or iterative, and will not require rerendering the whole list.
 
+## Metadata and Validation
+
+Alkali provides metadata/schema information, as well as validation functionality that can be associated with variables and their properties and derived variables. This can further facilitate the encapsulation of a property, allowing you variable-aware UI controls to interact with a variable or property's future value changes, as well as metadata and validation that further defines the property.
+
+You can define the schema for a variable by setting the `schema` property on a variable or defining a getter for the property. If you don't define a schema, the default schema is the variable's constructor. In any case, you can define metadata on your schema that is available for downstream use. A schema can also define metadata for properties, which is generally more useful. This is done by putting property definitions, in a `properties` object, with each property defining a schema for the corresponding property. For example, we could define a variable class that specifies that the `email` property should have a metadata property of `required: true`:
+```
+class ValidatedVariable extends Variable {
+	get schema() {
+		return {
+			properties: {
+				email: {
+					required: true,
+					description: 'Email address'
+				}
+			}
+		};
+	}
+}
+```
+Now we could define a UI control that makes use of this:
+```
+class FormField extends Label {
+	
+}
+let content = FormField.property('content')
+FormField.children = [
+	content.schema.description, ': ',
+	Input(content, {
+		required: content.schema.required
+	})
+]
+```
+This form field class only relies on the variable/property to construct the label, input, and required attribute. We could then use it:
+```
+var entry = new ValidatedVariable({})
+form.append(FormField(entry.property('email')))
+```
+We could also add a `validate` method that will be called to determine the `validation` of the variable:
+class ValidatedVariable extends Variable {
+	validate(value, schema) {
+		if (schema.pattern && !schema.pattern.test(value)) {
+			return ['Value is not the right format']
+		}
+	}
+	get schema() {
+		return {
+			properties: {
+				email: {
+					pattern: /\w+@\w+/,
+					...
+}
+...
+FormField.children = [
+  ...
+	Input(content),
+	Span('.errors', content.validation, {
+		each: errors
+}
+```
 
 ## Alkali Element API
 
@@ -459,7 +541,7 @@ All the element classes/constructors that are exported or generated by Alkali ha
 
 ### Alkali Element Exports
 
-Several additional exports are available from alkali for working with elements. These include two methods that can be added to HTMLElement prototype to easily add elements to existing elements, using Alkali constructors and variables. 
+Several additional exports are available from alkali for working with elements. These include two methods that can be added to `HTMLElement.prototype` to easily add elements to existing elements, using Alkali constructors and variables. 
 
 When added to elements their API is:
 * `parentElement.append(...elementArguments)` - This appends new child elements to the parent element using standard alkali arguments for children (constructors, variables, elements, etc.).
