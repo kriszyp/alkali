@@ -2,8 +2,10 @@ define([
 	'../Updater',
 	'../Variable',
 	'intern!object',
-	'intern/chai!assert'
-], function (Updater, Variable, registerSuite, assert) {
+	'intern/chai!assert',
+	'bluebird/js/browser/bluebird'
+], function (Updater, Variable, registerSuite, assert, Promise) {
+	window.Promise = Promise
 	var div = document.createElement('div');
 	registerSuite({
 		name: 'Updater',
@@ -82,10 +84,10 @@ define([
 			var outer = new Variable(false);
 			var signal = new Variable();
 			var arr = [1,2,3];
-			var data = signal.map(function() { return arr; });
-			var inner = data.map(function(a) { return a.map(function(o) { return o*2; }); });
-			var derived = outer.map(function (o) {
-				return inner.map(function(i){
+			var data = signal.to(function() { return arr; });
+			var inner = data.to(function(a) { return a.map(function(o) { return o*2; }); });
+			var derived = outer.to(function (o) {
+				return inner.to(function(i){
 					return [o, i];
 				});
 			});
