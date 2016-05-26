@@ -185,9 +185,12 @@ All remaining arguments can be in any order and be any of these types:
 
 ## Properties Argument
 
-An argument can be an object with properties that will be copied to the target element. For example, we could create anchor element with a link:
+An argument can be an object with properties that will be copied to the target element. For example, we could create `<a>` element with a link:
 ```
-new Anchor({href: 'a url'});
+new Anchor({
+	href: 'a url',
+	textContent: 'click here'
+});
 ```
 Each of the property values will be assigned to the newly created element.
 
@@ -204,16 +207,16 @@ You can alse use variable classes for property values as well. These are describ
 
 Alkali uses an optimized strategy for updating elements, by waiting for the next animation frame to update, and only updating elements that are connected to the DOM.
 
-By default, properties are copied directly to the element that is being, or will be, created. However, Alkali provides special handling for a certain properties:
+By default, properties are copied directly to the element that is being, or will be, created. However, Alkali provides special handling for certain properties:
 * `content` - This represents the main content of an element, and can depend on the type of element. For most elements, this represents the inner content of element. If it is a primitive, it will be the text content (inserted as a text node). If it is an array, it will generate a set of child elements. For inputs, the content corresponds to the `value` or `checked` property of the input, typed to the type of value that the input expects (numbers for number inputs), with bi-directional binding.
-* `class`, `for`, `role` - This are copied to their corresponding attributes.
+* `class`, `for`, `role` - These are copied to their corresponding attributes.
 * `attributes` This can be an object, and the properties are copied to attributes on the element.
 * `dataset` - This can be an object, and the properties are copied to the elements `dataset` object to construct custom-user attributes.
 * `style` - This can be an object, and the properties are copied to the elements `style` object to construct inline styles.
-* CSS style properties - Inline style properties can be defined directly in the properties argument as well, and will create inline styles.
+* CSS style properties - Inline style properties can be defined directly in the properties argument as well, and will create inline styles. When used as direct properties, booleans will be converted to named values for certain properties (for `display`, `visibility`), and numbers will be appended with `px` for dimensional properties.
 * `render`, `classes` - These have special handling described below.
 
-In addition, custom handling
+In addition, custom handling of properties can be defined creating render methods or getters and setters as described below.
 
 ### Children Array Argument
 
@@ -241,27 +244,27 @@ let table = new Table([
 
 ### Variable Argument
 
-A variable may be provided directly as an argument as well. This variable will be connected to the default "content" of the element. For most elements, this variable will be mapped to the text content of the element. For example:
+A variable may be provided directly as an argument as well. This variable will be connected to the default `content` of the element. Again, for most elements, this variable will be mapped to the text content of the element. For example:
 ```
 let greeting = new Variable('Hello');
 new Span(greeting);
 ```
-However, for input elements, the "content" of the element is the value of the input. This makes it easy to setup bi-direction bindings from inputs to variables. For example:
+And for input elements, the `content` of the element is the value of the input. This makes it easy to setup bi-direction bindings from inputs to variables. For example:
 ```
 let a = new Variable();
 new TextInput(a);
 ```
 The variable `a` will be mapped to this new input. This means that any changes made to `a` will cause the input to be updated, and any changes that the user makes to the input will update the variable (two-way binding).
 
-When an element is detached from the DOM, it will no longer listen for variable changes (allowing the variables to be cleaned up).
+When an element is detached from the DOM, it will no longer listen for variable changes (allowing the variables and all dependencies to be automatically cleaned up).
 
 ### String Argument
 You can also simply provide a string (or any primitive, including numbers or booleans), and this will also be directly inserted as a text node. For example:
 ```
-new Div('.my-class', 'Some text to put in the div');
+new Div('Some text to put in the div');
 ```
 
-Note that a string intended for text content can't be the first argument, as it would be interpreted as a selector.
+Note that if you are using a string as the first argument, if it starts with a '.' or '#', it will be interpreted as a selector. Only the first argument can be selector, so a string-as-text can be safely used with any starting character for subsequent arguments.
 
 
 ### Event Handlers
@@ -270,7 +273,8 @@ The properties argument may also define event handlers. These event handlers are
 new Span({
 	onclick(event) {
 		// click event occurred
-	}
+	},
+	onmouseover: mouseOverHandler
 });
 ```
 
@@ -327,9 +331,18 @@ class MyDiv extends Div({title: 'default title'}) {
 	// class methods
 }
 ```
-You can also define children by setting the static children property of a class:
+And we can create a constructor from MyDiv with properties to be assigned to the instances:
 ```
-MyDiv.children = [Div, Span];
+MyDivWithClass = MyDiv.with('.a-class', {title: 'a different title'});
+```
+
+#### Children
+You can also define a set of children for by setting the static children property of a class:
+```
+MyDiv.children = [
+	Div,
+	Span
+];
 ```
 or
 ```
@@ -339,9 +352,25 @@ class MyDiv extends Div {
 	}
 }
 ```
-And we can create a constructor from MyDiv with properties to be assigned to the instances:
+This is distinct from providing an array of elements or other values as the `content` (or as an argument) of an element. The `children` is more of the intrinsic structure of an element, and the `content` is inserted after the children are created. Consequently we could define a structure like:
 ```
-MyDivWithClass = MyDiv.with('.a-class', {title: 'a different title'});
+import { Div, Span, content } from 'alkali'
+...
+MyDiv.children = [
+	Span('Hello'),
+	content(Div)
+]
+
+new MyDiv([Span('.inner-span', 'World')])
+```
+Which would create a structure like:
+```
+<div>
+  <span>Hello</span>
+  <div>
+  	<span class="inner-span">World</span>
+  </div>
+</div>
 ```
 
 ### Render Methods
