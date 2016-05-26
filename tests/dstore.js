@@ -3,9 +3,8 @@ define([
 	'../dstore',
 	'dstore/Memory',
 	'intern!object',
-	'intern/chai!assert',
-	'./has!promise?:bluebird/js/browser/bluebird'
-], function (Variable, dstore, Memory, registerSuite, assert, bluebird) {
+	'intern/chai!assert'
+], function (Variable, dstore, Memory, registerSuite, assert) {
 	var DstoreVariable = dstore.DstoreVariable
 	registerSuite({
 		name: 'dstore',

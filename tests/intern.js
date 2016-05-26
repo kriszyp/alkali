@@ -67,10 +67,10 @@ define({
 	},
 
 	// Non-functional test suite(s) to run in each browser
-	suites: [ 'alkali/tests/all' ],
+	suites: typeof window === 'undefined' ? [ 'alkali/tests/unit' ] : [ 'alkali/tests/all' ],
 
 	// Functional test suite(s) to run in each browser once non-functional tests are completed
-	functionalSuites: [],
+	functionalSuites: [ 'alkali/tests/all' ],
 
 	// A regular expression matching URLs to files that should not be included in code coverage analysis
 	excludeInstrumentation: /^dojox?|^tests?\//

@@ -5,7 +5,6 @@ define([
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
 ], function (Updater, Variable, registerSuite, assert, Promise) {
-	window.Promise = Promise
 	var div = document.createElement('div');
 	registerSuite({
 		name: 'Updater',

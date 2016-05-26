@@ -1,9 +1,6 @@
 define([
-	'./Variable',
-	'./Copy',
+	'./unit',
 	'./Updater',
-	'./Element',
-	'./es6',
-	'./dstore'
+	'./Element'
 ], function () {
 });

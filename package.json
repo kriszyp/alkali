@@ -18,6 +18,11 @@
     "type": "git",
     "url": "http://github.com/kriszyp/alkali"
   },
+  "scripts": {
+    "test": "intern-client config=tests/intern",
+    "test.sauce": "intern-runner config=tests/intern",
+    "test.proxy": "intern-runner config=tests/intern --proxyOnly"
+  },
   "dependencies": {
   },
   "dojoBuild": "package.js",

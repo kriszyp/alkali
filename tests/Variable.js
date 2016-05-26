@@ -3,10 +3,7 @@ define([
 	'intern!object',
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Variable, registerSuite, assert, bluebird) {
-	if (typeof window != 'undefined' && !window.Promise) {
-		window.Promise = bluebird
-	}
+], function (Variable, registerSuite, assert, Promise) {
 	registerSuite({
 		name: 'Variable',
 

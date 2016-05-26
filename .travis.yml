@@ -11,4 +11,4 @@ env:
       - SAUCE_ACCESS_KEY: 468f7823-0321-4b0f-a3e3-3b25899c7c80
 install:
   - travis_retry npm install
-script: npm test && npm run test.sauce
+script: npm test
