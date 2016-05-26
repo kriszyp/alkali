@@ -703,7 +703,11 @@
 						if (applyOnCreate.className) {
 							applyOnCreate.className += ' ' + name
 						} else {
-							element.classList.add(name)
+							if (element.className) {
+							    element.className += ' ' + name
+							} else {
+							    element.className = name
+							}
 						}
 					} else {
 						if (applyOnCreate.id) {
