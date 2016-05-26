@@ -1,6 +1,7 @@
 # Alkali
 [![Build Status](https://travis-ci.org/kriszyp/alkali.svg?branch=master)](https://travis-ci.org/kriszyp/alkali)
 [![devDependency status](https://david-dm.org/kriszyp/alkali/dev-status.svg)](https://david-dm.org/kriszyp/alkali#info=devDependencies)
+
 Alkali is a package for creating efficient, reactive data, that drives native HTML elements. The namesake, alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight, and likewise this library is designed to be a lightweight, dependency-free, package for accessing simple pure native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native DOM elements. Alkali is designed to be for speed and scalability, using a true functional reactive, cache and invalidation-based system that provides optimized rendering performance. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
 
 There are several key paradigms in alkali:
