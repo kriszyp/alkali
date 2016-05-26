@@ -204,9 +204,20 @@ You can alse use variable classes for property values as well. These are describ
 
 Alkali uses an optimized strategy for updating elements, by waiting for the next animation frame to update, and only updating elements that are connected to the DOM.
 
+By default, properties are copied directly to the element that is being, or will be, created. However, Alkali provides special handling for a certain properties:
+* `content` - This represents the main content of an element, and can depend on the type of element. For most elements, this represents the inner content of element. If it is a primitive, it will be the text content (inserted as a text node). If it is an array, it will generate a set of child elements. For inputs, the content corresponds to the `value` or `checked` property of the input, typed to the type of value that the input expects (numbers for number inputs), with bi-directional binding.
+* `class`, `for`, `role` - This are copied to their corresponding attributes.
+* `attributes` This can be an object, and the properties are copied to attributes on the element.
+* `dataset` - This can be an object, and the properties are copied to the elements `dataset` object to construct custom-user attributes.
+* `style` - This can be an object, and the properties are copied to the elements `style` object to construct inline styles.
+* CSS style properties - Inline style properties can be defined directly in the properties argument as well, and will create inline styles.
+* `render`, `classes` - These have special handling described below.
+
+In addition, custom handling
+
 ### Children Array Argument
 
-An argument can be array that defines children nodes. An array should consist of items where each item corresponds to the node that will be created as a child. This array can contain any of the following:
+An argument can be an array that defines a set of elements to use as the content or children of the created element. An array should consist of items where each item corresponds to the node that will be created as a child. This array can contain any of the following:
 * Element classes - These will generate new elements
 * Element instances - This is will be directly inserted
 * Variables or primitives - These will be converted to text nodes
@@ -335,7 +346,7 @@ MyDivWithClass = MyDiv.with('.a-class', {title: 'a different title'});
 
 ### Render Methods
 
-Alkali encourages declarative definitions of elements/components, however, it is common to need programmatic rendering. The easiest way to do this is with `render` methods, which respond to property values and changes. To define a `render` method, simply define a method that begins with `render` suffixed with the property name capitalized. For example, we could define a `renderTitle` method, and any time we set the `title` property or provide a variable as the `title` and it is updated, the `renderTitle` method will be called.
+With alkali, you can define custom rendering of properties on elements, providing similar functionality to native element properties. The easiest way to do this is with `render` methods, which will respond to property values and changes. To define a `render` method, simply define a method that begins with `render` suffixed with the property name capitalized. For example, we could define a `renderTitle` method, and any time we set the `title` property or provide a variable as the `title` and it is updated, the `renderTitle` method will be called.
 
 The `render` methods are called with the new value as the first argument (and a boolean indicating if this update, as opposed to the first rendering) For example:
 
@@ -350,6 +361,22 @@ let myDiv = new MyDiv({name: 'Mine'}) // renderName will be called with 'Mine'
 let nameVariable = new Variable('Starting name')
 let myDiv = new MyDiv({name: nameVariable}) // renderName called with original value
 nameVariable.put('New name') // will trigger another renderName call
+myDiv.name = 'Another name' // will also trigger the renderName call
+```
+
+#### Getters and Setters
+The render methods provide custom handling of a property, and will override any existing functionality for a given property. This basically provides it very simple way to define a getter/setter for a property. But, if you would like to define property handling that delegates to existing property handling, it is recommended that you define your own getters and setters with super calls to the native setters and getters:
+```
+class MyDiv extends Div {
+	set title(newTitle) {
+		// set the title with the default behavior of the native setter
+		super.title = new Title;
+		// do our own thing with title
+	}
+	get title() {
+		return super.title;
+	}
+}
 ```
 
 ### Generator `*render` Method
