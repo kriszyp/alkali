@@ -438,14 +438,14 @@ new Div({
 ### Construction Lifecycle Methods
 
 There are several methods that are called as part of the construction of an element that can be used to define additional behavior of an element. These include:
-* `created` (and `createdCallback`) - This is called for each new element instance. It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
-* `attached` (and `attachedCallback`) - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
-* `detached` - This is called when an element is detached from the document tree. This can be a useful place to perform cleanup operations. However, elements may be reattached as well (and `attached` would be called again).
+* `created(properties)` (and `createdCallback`) - This is called for each new element instance, and is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
+* `attached()` (and `attachedCallback`) - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
+* `detached()` - This is called when an element is detached from the document tree. This can be a useful place to perform cleanup operations. However, elements may be reattached as well (and `attached` would be called again).
 
 For example:
 ```
 class MyComponent extends Div {
-	created() {
+	created(properties) {
 		// we can interact with the element instance now
 		this.innerHTML = 'Hello, ';
 		this.appendChild(new Span('World'));

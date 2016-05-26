@@ -546,6 +546,34 @@ define([
 			assert.strictEqual(component.textContent, 'hello')
 			assert.strictEqual(component.innerHTML, '') // make sure it blocks normal textContent
 		},
+		lifecycle: function() {
+			var created = false
+			var attached = false
+			var detached = false
+			MyDiv = extend(Div, {
+				created: function(properties) {
+					if (properties.foo) {
+						created = true
+					}
+				},
+				attached: function() {
+					attached = true
+				},
+				detached: function() {
+					detached = true
+				}
+			})
+			var div = new MyDiv({foo: 'bar'})
+			assert.isTrue(created)
+			document.body.appendChild(div)
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.isTrue(attached)
+				document.body.removeChild(div)
+				return new Promise(requestAnimationFrame).then(function() {
+					assert.isTrue(detached)
+				})
+			})
+		},
 
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))

@@ -740,7 +740,7 @@
 			buildContent(element, applyOnCreate.content, 'content', applyOnCreate)
 		}
 		element.createdCallback && element.createdCallback()
-		element.created && element.created()
+		element.created && element.created(applyOnCreate)
 		return element
 	}
 
