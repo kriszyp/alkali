@@ -1101,23 +1101,36 @@
 	}
 	if (typeof MutationObserver === 'function') {
 		var observer = new MutationObserver(function(mutations) {
+			var detached = []
+			var attached = []
 			for (var i = 0, il = mutations.length; i < il; i++) {
 				var mutation = mutations[i]
 				var nodes = mutation.removedNodes
 				var action = elementDetached
+				var seen = detached
+				// invoke action on element if we haven't already
+				var visit = function(node, action) {
+					if (seen.indexOf(node) == -1) {
+						try {
+							action(node)
+						} finally {
+							seen.push(node)
+						}
+					}
+				}
 				actionIteration:
 				for (var j = 0; j < 2; j++) { // two steps, removed nodes and added nodes
 					// iterate over node list
 					nodeIteration:
 					for (var k = 0, kl = nodes.length; k < kl; k++) {
 						var baseNode = nodes[k]
-						action(baseNode)
+						visit(baseNode, action)
 						// start traversal with child, if it exists
 						var currentNode = baseNode.firstChild
 						if (currentNode) {
 							do {
 								if (currentNode.nodeType === 1) {
-									action(currentNode)
+									visit(currentNode, action)
 									// depth-first search
 									var nextNode = currentNode.firstChild
 									if (!nextNode) {
@@ -1144,6 +1157,7 @@
 						// next step if this is enabled
 						nodes = mutation.addedNodes
 						action = elementAttached
+						seen = attached
 					} else {
 						break actionIteration
 					}

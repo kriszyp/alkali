@@ -548,29 +548,35 @@ define([
 		},
 		lifecycle: function() {
 			var created = false
-			var attached = false
-			var detached = false
-			MyDiv = extend(Div, {
+			var attached = 0
+			var detached = 0
+			var MyDiv = extend(Div, {
 				created: function(properties) {
 					if (properties.foo) {
 						created = true
 					}
+					var div = document.createElement('div')
+					this.appendChild(div)
 				},
 				attached: function() {
-					attached = true
+					console.log('attached called')
+					attached++
 				},
 				detached: function() {
-					detached = true
+					detached++
 				}
 			})
+			var parentEl = document.createElement('div')
+			document.body.appendChild(parentEl)
 			var div = new MyDiv({foo: 'bar'})
 			assert.isTrue(created)
-			document.body.appendChild(div)
+			parentEl.appendChild(div)
 			return new Promise(requestAnimationFrame).then(function() {
-				assert.isTrue(attached)
-				document.body.removeChild(div)
+				assert.equal(attached, 1, 'expected a single attach event')
+				parentEl.removeChild(div)
+				document.body.removeChild(parentEl)
 				return new Promise(requestAnimationFrame).then(function() {
-					assert.isTrue(detached)
+					assert.equal(detached, 1, 'expected a single detach event')
 				})
 			})
 		},
