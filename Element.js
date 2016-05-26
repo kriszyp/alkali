@@ -346,8 +346,7 @@
 	}
 
 	function applyProperties(element, properties) {
-		for (var i = 0, l = properties.length; i < l; i++) {
-			var key = properties[i]
+		for (var key in properties) {
 			var value = properties[key]
 			var styleDefinition = styleDefinitions[key]
 			if (propertyHandlers[key]) {
@@ -508,11 +507,6 @@
 					if (classHandlers[key]) {
 						hasOwn(Element, value[key])
 					} else {
-						if (!(key in applyOnCreate)) {
-							var lastLength = applyOnCreate.length || 0
-							applyOnCreate[lastLength] = key
-							applyOnCreate.length = lastLength + 1
-						}
 						// TODO: do deep merging of styles and classes, but not variables
 						applyOnCreate[key] = value[key]
 					}
@@ -525,16 +519,7 @@
 		}
 	}
 
-	function setInApplyList(applyOnCreate, key, value) {
-		if (!(key in applyOnCreate)) {
-			var lastLength = applyOnCreate.length || 0
-			applyOnCreate[lastLength] = key
-			applyOnCreate.length = lastLength + 1
-		}
-		applyOnCreate[key] = value
-	}
-
-	function getApplyList(Class) {
+	function getApplySet(Class) {
 		if (Class.hasOwnProperty('_applyOnCreate')) {
 			return Class._applyOnCreate
 		}
@@ -542,19 +527,17 @@
 		if (Class.getForClass) {
 			// we are extending an alkali constructor
 			// if this class is inheriting from an alkali constructor, work our way up the chain
-			var parentApplyList = getApplyList(getPrototypeOf(Class))
-			applyOnCreate = Class._applyOnCreate = parentApplyList ? Object.create(parentApplyList) : {}
+			applyOnCreate = Class._applyOnCreate = {}
+			var parentApplySet = getApplySet(getPrototypeOf(Class))
+			for (var key in parentApplySet) {
+				applyOnCreate[key] = parentApplySet[key]
+			}
 			// we need to check the prototype for event handlers
 			var prototype = Class.prototype
 			var keys = Object.getOwnPropertyNames(prototype)
 			for (var i = 0, l = keys.length; i < l; i++) {
 				var key = keys[i]
 				if (key.slice(0, 2) === 'on' || (key === 'render' && isGenerator(prototype[key]))) {
-					if (!(key in applyOnCreate)) {
-						var lastLength = applyOnCreate.length || 0
-						applyOnCreate[lastLength] = key
-						applyOnCreate.length = lastLength + 1
-					}
 					applyOnCreate[key] = prototype[key]
 				} else if (key.slice(0, 6) === 'render') {
 					Object.defineProperty(prototype, key[6].toLowerCase() + key.slice(7), renderDescriptor(key))
@@ -608,7 +591,13 @@
 		}
 		var prototype = Element.prototype = this.prototype
 
-		var applyOnCreate = Element._applyOnCreate = Object.create(getApplyList(this))
+		var hasOwnApplySet
+		var applyOnCreate = Element._applyOnCreate = {}
+		var parentApplySet = getApplySet(this)
+		// copy parent properties
+		for (var key in parentApplySet) {
+			applyOnCreate[key] = parentApplySet[key]
+		}
 
 		var i = 0 // for arguments
 		if (typeof selector === 'string') {
@@ -621,10 +610,10 @@
 						if (applyOnCreate.className) {
 							applyOnCreate.className += ' ' + name
 						} else {
-							setInApplyList(applyOnCreate, 'className', name)
+							applyOnCreate.className = name
 						}
 					} else {
-						setInApplyList(applyOnCreate, 'id', name)
+						applyOnCreate.id = name
 					}
 					var remaining = selectorMatch[3]
 					selectorMatch = remaining && remaining.match(SELECTOR_REGEX)
@@ -643,12 +632,7 @@
 	var currentParent
 	function create(selector, properties) {
 		// TODO: make this a symbol
-		var applyOnCreate
-		if (this.hasOwnProperty('_applyOnCreate')) {
-			applyOnCreate = this._applyOnCreate	
-		} else {
-			applyOnCreate = getApplyList(this)
-		}
+		var applyOnCreate = getApplySet(this)
 		if (currentParent) {
 			var parent = currentParent
 			currentParent = null
@@ -670,13 +654,10 @@
 				}
 			}
 			if (!this.hasOwnProperty('_applyOnCreate')) {
-				applyOnCreate = getApplyList(this)
+				applyOnCreate = getApplySet(this)
 			}
 		}*/
 		var element = document.createElement(applyOnCreate.tagName)
-		if (selector) {
-			applyOnCreate = Object.create(applyOnCreate)
-		}
 		if (selector && selector.parent) {
 			parent = selector.parent
 		}
@@ -691,60 +672,70 @@
 		if (element.constructor != this) {
 			element.constructor = this // need to do this for hasOwn contextualization to work
 		}
-		var i = 0
-		if (typeof selector == 'string') {
-			i++
-			var selectorMatch = selector.match(SELECTOR_REGEX)
-			if (selectorMatch) {
-				do {
-					var operator = selectorMatch[1]
-					var name = selectorMatch[2]
-					if (operator == '.') {
-						if (applyOnCreate.className) {
-							applyOnCreate.className += ' ' + name
-						} else {
-							if (element.className) {
-							    element.className += ' ' + name
+		if (arguments.length > 0) {
+			// copy applyOnCreate when we have arguments
+			var ElementApplyOnCreate = applyOnCreate
+			applyOnCreate = {}
+			for (var key in ElementApplyOnCreate) {
+				applyOnCreate[key] = ElementApplyOnCreate[key]
+			}
+			var i = 0
+			if (typeof selector == 'string') {
+				i++
+				var selectorMatch = selector.match(SELECTOR_REGEX)
+				if (selectorMatch) {
+					do {
+						var operator = selectorMatch[1]
+						var name = selectorMatch[2]
+						if (operator == '.') {
+							if (applyOnCreate.className) {
+								applyOnCreate.className += ' ' + name
 							} else {
-							    element.className = name
+								if (element.className) {
+								    element.className += ' ' + name
+								} else {
+								    element.className = name
+								}
+							}
+						} else {
+							if (applyOnCreate.id) {
+								applyOnCreate.id = name
+							} else {
+								// just skip right to the element
+								element.id = name
 							}
 						}
-					} else {
-						if (applyOnCreate.id) {
-							applyOnCreate.id = name
-						} else {
-							element.id = name
-						}
-					}
-					var remaining = selectorMatch[3]
-					selectorMatch = remaining && remaining.match(SELECTOR_REGEX)
-				} while (selectorMatch)
-			} else {
-				applyOnCreate.content = selector
+						var remaining = selectorMatch[3]
+						selectorMatch = remaining && remaining.match(SELECTOR_REGEX)
+					} while (selectorMatch)
+				} else {
+					applyOnCreate.content = selector
+				}
+			} else if (selector && selector._item) {
+				// this is kind of hack, to get the Item available before the properties, eventually we may want to
+				// order static properties before variable binding applications, but for now.
+				element._item = selector._item
 			}
-		} else if (selector && selector._item) {
-			// this is kind of hack, to get the Item available before the properties, eventually we may want to
-			// order static properties before variable binding applications, but for now.
-			element._item = selector._item
-		}
-		for (var l = arguments.length; i < l; i++) {
-			var argument = arguments[i]
-			if (argument instanceof Array || argument.notifies) {
-				applyOnCreate.content = argument
-			} else if (typeof argument === 'function' && argument.for) {
-				applyOnCreate.content = argument.for(element)
-			} else {
-				for (var key in argument) {
-					// TODO: do deep merging of styles and classes, but not variables
-					setInApplyList(applyOnCreate, key, argument[key])
+			for (var l = arguments.length; i < l; i++) {
+				var argument = arguments[i]
+				if (argument instanceof Array || argument.notifies) {
+					applyOnCreate.content = argument
+				} else if (typeof argument === 'function' && argument.for) {
+					applyOnCreate.content = argument.for(element)
+				} else {
+					for (var key in argument) {
+						// TODO: do deep merging of styles and classes, but not variables
+						applyOnCreate[key] = argument[key]
+					}
 				}
 			}
 		}
 		// TODO: inline this
-		applyProperties(element, applyOnCreate, applyOnCreate)
+		applyProperties(element, applyOnCreate)
 		if (this.children) {
 			layoutChildren(element, this.children, element)
 		}
+		// always do this last, so it can be properly inserted inside the children
 		if (applyOnCreate.content) {
 			buildContent(element, applyOnCreate.content, 'content', applyOnCreate)
 		}
@@ -767,7 +758,7 @@
 	}
 
 	function registerTag(tagName) {
-		getApplyList(this).tagName = tagName
+		getApplySet(this).tagName = tagName
 		if (document.registerElement) {
 			document.registerElement(tagName, this)
 		}

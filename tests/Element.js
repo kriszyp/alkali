@@ -547,7 +547,7 @@ define([
 			assert.strictEqual(component.innerHTML, '') // make sure it blocks normal textContent
 		},
 
-	/*	performanceBaseline: function() {
+		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 10000; i++) {
 				var childDiv = container.appendChild(document.createElement('div'))
@@ -567,6 +567,6 @@ define([
 				]))
 				container.innerHTML = ''
 			}
-		}*/
+		}
 	})
 });
