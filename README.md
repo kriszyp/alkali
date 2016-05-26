@@ -563,6 +563,7 @@ var entry = new ValidatedVariable({})
 form.append(FormField(entry.property('email')))
 ```
 We could also add a `validate` method that will be called to determine the `validation` of the variable:
+```
 class ValidatedVariable extends Variable {
 	validate(value, schema) {
 		if (schema.pattern && !schema.pattern.test(value)) {
