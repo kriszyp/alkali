@@ -415,8 +415,10 @@ define([
 					b: b
 				}
 			})
+                        var div2 = new Div('.one.two')
 			document.body.appendChild(div)
 			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div2.className, 'one two')
 				assert.strictEqual(div.className, 'first second third b')
 				a.put(true)
 				return new Promise(requestAnimationFrame).then(function() {
