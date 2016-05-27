@@ -1100,28 +1100,31 @@
 		//}
 	}
 	if (typeof MutationObserver === 'function') {
-		var observer = new MutationObserver(function(mutations) {
-			var lifeStates = [{
-				name: 'detached',
-				nodes: 'removedNodes',
-				action: elementDetached
-			}, {
-				name: 'attached',
-				nodes: 'addedNodes',
-				action: elementAttached
-			}]
-			var visited = []
-			var visit = function(node, state) {
-				// a symbol would be nice
-				var flag = "__alkali_" + state.name
-				if (node[flag]) return
-				try {
+		var lifeStates = [{
+			name: 'detached',
+			nodes: 'removedNodes',
+			action: elementDetached
+		}, {
+			name: 'attached',
+			nodes: 'addedNodes',
+			action: elementAttached
+		}]
+		function firstVisit(node, state) {
+			if (state.name === 'attached') {
+				if (node.__alkaliAttached__) {
+					return false
+				} else {
+					node.__alkaliAttached__ = true
 					state.action(node)
-				} finally {
-					node[flag] = true
-					visited.push(node)
+					return true
 				}
+			} else if (node.__alkaliAttached__) {
+				node.__alkaliAttached__ = false
+				state.action(node)
 			}
+			return true
+		}
+		var observer = new MutationObserver(function(mutations) {
 			for (var i = 0, il = mutations.length; i < il; i++) {
 				var mutation = mutations[i]
 				// invoke action on element if we haven't already
@@ -1133,46 +1136,38 @@
 					nodeIteration:
 					for (var k = 0, kl = nodes.length; k < kl; k++) {
 						var baseNode = nodes[k]
-						visit(baseNode, state)
-						// start traversal with child, if it exists
-						var currentNode = baseNode.firstChild
-						if (currentNode) {
-							do {
-								if (currentNode.nodeType === 1) {
-									visit(currentNode, state)
-									// depth-first search
-									var nextNode = currentNode.firstChild
-									if (!nextNode) {
+						if (firstVisit(baseNode, state)) {
+							// start traversal with child, if it exists
+							var currentNode = baseNode.firstChild
+							if (currentNode) {
+								do {
+									var nextNode
+									if (currentNode.nodeType === 1 && firstVisit(currentNode, state)) {
+										// depth-first search
+										nextNode = currentNode.firstChild
+										if (!nextNode) {
+											nextNode = currentNode.nextSibling
+										}
+									} else {
 										nextNode = currentNode.nextSibling
 									}
-								} else {
-									nextNode = currentNode.nextSibling
-								}
-								if (!nextNode) {
-									// come back out to parents
-									// TODO: try keeping a stack to make this faster
-									do {
-										currentNode = currentNode.parentNode
-										if (currentNode === baseNode) {
-											continue nodeIteration
-										}
-									} while (!(nextNode = currentNode.nextSibling))
-								}
-								currentNode = nextNode
-							} while (true)
+									if (!nextNode) {
+										// come back out to parents
+										// TODO: try keeping a stack to make this faster
+										do {
+											currentNode = currentNode.parentNode
+											if (currentNode === baseNode) {
+												continue nodeIteration
+											}
+										} while (!(nextNode = currentNode.nextSibling))
+									}
+									currentNode = nextNode
+								} while (true)
+							}
 						}
 					}
-					if (options.moveLiveElementsEnabled) {
-						// next step if this is enabled
-					} else {
-						break actionIteration
-					}
-				}
-			}
-			// clean up any flags set
-			for (i = 0, il = visited.length; i < il; i++) {
-				for (j = 0, jl = lifeStates.length; j < jl; j++) {
-					delete visited[i]['__alkali_' + lifeStates[j].name]
+					// if (options.moveLiveElementsEnabled) {
+						// TODO: any options that we can really do here?
 				}
 			}
 		})
