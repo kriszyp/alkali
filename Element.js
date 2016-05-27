@@ -1101,36 +1101,45 @@
 	}
 	if (typeof MutationObserver === 'function') {
 		var observer = new MutationObserver(function(mutations) {
-			var detached = []
-			var attached = []
+			var lifeStates = [{
+				name: 'detached',
+				nodes: 'removedNodes',
+				action: elementDetached
+			}, {
+				name: 'attached',
+				nodes: 'addedNodes',
+				action: elementAttached
+			}]
+			var visited = []
+			var visit = function(node, state) {
+				// a symbol would be nice
+				var flag = "__alkali_" + state.name
+				if (node[flag]) return
+				try {
+					state.action(node)
+				} finally {
+					node[flag] = true
+					visited.push(node)
+				}
+			}
 			for (var i = 0, il = mutations.length; i < il; i++) {
 				var mutation = mutations[i]
-				var nodes = mutation.removedNodes
-				var action = elementDetached
-				var seen = detached
 				// invoke action on element if we haven't already
-				var visit = function(node, action) {
-					if (seen.indexOf(node) == -1) {
-						try {
-							action(node)
-						} finally {
-							seen.push(node)
-						}
-					}
-				}
 				actionIteration:
-				for (var j = 0; j < 2; j++) { // two steps, removed nodes and added nodes
+				for (var j = 0, jl = lifeStates.length; j < jl; j++) { // two steps, removed nodes and added nodes
+					var state = lifeStates[j]
+					var nodes = mutation[state.nodes]
 					// iterate over node list
 					nodeIteration:
 					for (var k = 0, kl = nodes.length; k < kl; k++) {
 						var baseNode = nodes[k]
-						visit(baseNode, action)
+						visit(baseNode, state)
 						// start traversal with child, if it exists
 						var currentNode = baseNode.firstChild
 						if (currentNode) {
 							do {
 								if (currentNode.nodeType === 1) {
-									visit(currentNode, action)
+									visit(currentNode, state)
 									// depth-first search
 									var nextNode = currentNode.firstChild
 									if (!nextNode) {
@@ -1155,12 +1164,15 @@
 					}
 					if (options.moveLiveElementsEnabled) {
 						// next step if this is enabled
-						nodes = mutation.addedNodes
-						action = elementAttached
-						seen = attached
 					} else {
 						break actionIteration
 					}
+				}
+			}
+			// clean up any flags set
+			for (i = 0, il = visited.length; i < il; i++) {
+				for (j = 0, jl = lifeStates.length; j < jl; j++) {
+					delete visited[i]['__alkali_' + lifeStates[j].name]
 				}
 			}
 		})

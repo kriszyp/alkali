@@ -559,7 +559,6 @@ define([
 					this.appendChild(div)
 				},
 				attached: function() {
-					console.log('attached called')
 					attached++
 				},
 				detached: function() {
