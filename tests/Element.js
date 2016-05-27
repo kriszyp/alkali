@@ -2,8 +2,9 @@ define([
 	'../Element',
 	'../Variable',
 	'intern!object',
-	'intern/chai!assert'
-], function (Element, Variable, registerSuite, assert) {
+	'intern/chai!assert',
+	'bluebird/js/browser/bluebird'
+], function (Element, Variable, registerSuite, assert, Promise) {
 	var Div = Element.Div
 	var Label = Element.Label
 	var Span = Element.Span
