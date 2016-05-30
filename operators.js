@@ -13,7 +13,7 @@
 		// jshint evil: true
 		return operatingFunctions[expression] ||
 			(operatingFunctions[expression] =
-				new Function('a', 'b', 'return ' + expression));
+				new Function('a', 'b', 'deny', 'return ' + expression));
 	}
 	function operator(operator, name, precedence, forward, reverseA, reverseB){
 		// defines the standard operators
@@ -42,6 +42,8 @@
 				operators[operator] = operatorHandler = new Variable(forward);
 
 				addFlags(operatorHandler);
+				args = Array.prototype.slice.call(args);
+				args.push(deny)
 				return operatorHandler.apply(instance, args);
 			}
 		};
