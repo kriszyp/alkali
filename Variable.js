@@ -271,6 +271,11 @@
 			this.forDependencies(function(dependency) {
 				dependency.notifies(variable)
 			})
+			if (this.listeningToObject === null) {
+				// we were previously listening to an object, but it needs to be restored
+				// calling valueOf will cause the listening object to be restored
+				this.valueOf()
+			}
 		},
 		cleanup: function() {
 			var handles = this.handles
@@ -381,8 +386,8 @@
 		notifies: function(target) {
 			var dependents = this.dependents
 			if (!dependents || !this.hasOwnProperty('dependents')) {
-				this.init()
 				this.dependents = dependents = []
+				this.init()
 			}
 			dependents.push(target)
 			var variable = this
