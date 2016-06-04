@@ -110,6 +110,7 @@
 		zoom: directStyle,
 		minZoom: directStyle,
 		maxZoom: directStyle,
+		fontWeight: directStyle,
 		position: booleanStyle(['absolute', '']),
 		textDecoration: booleanStyle(['underline', '']),
 		fontWeight: booleanStyle(['bold', 'normal'])
@@ -230,7 +231,9 @@
 				variable: value,
 				element: element
 			})
-			bindChanges(element, value, key)
+			if (inputs[element.tagName] || element.tagName === 'SELECT') {
+				bindChanges(element, value, key)
+			}
 		} else {
 			element[key] = value
 		}
@@ -452,6 +455,9 @@
 				element.addEventListener(inputEvents[i], function (event) {
 					var value = element[key]
 					var result = variable.put(conversion ? conversion(value, element) : value, new Context(element))
+					if (result === Variable.deny) {
+						throw new Error('Variable change denied')
+					}
 				})
 			}
 		})
