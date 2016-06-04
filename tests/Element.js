@@ -417,10 +417,12 @@ define([
 				}
 			})
                         var div2 = new Div('.one.two')
+			var divWithoutInitialClass = new Div({ classes: { dynamicclass: b }})
 			document.body.appendChild(div)
 			return new Promise(requestAnimationFrame).then(function() {
 				assert.strictEqual(div2.className, 'one two')
 				assert.strictEqual(div.className, 'first second third b')
+				assert.strictEqual(divWithoutInitialClass.className, 'dynamicclass')
 				a.put(true)
 				return new Promise(requestAnimationFrame).then(function() {
 					assert.strictEqual(div.className, 'first second third b a')

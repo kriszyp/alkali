@@ -49,7 +49,7 @@
 			var removed = currentClassName && (' ' + currentClassName + ' ').replace(' ' + changingClassName + ' ', ' ')
 			if (newValue) {
 				// addition, add the className
-				changingClassName = currentClassName ? (removed + changingClassName).slice(1) : value;
+				changingClassName = currentClassName ? (removed + changingClassName).slice(1) : changingClassName;
 			} else {
 				// we already have removed the class, just need to trim
 				changingClassName = removed.slice(1, removed.length - 1)
