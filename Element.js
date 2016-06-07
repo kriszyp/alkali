@@ -67,7 +67,13 @@
 	
 	var toAddToElementPrototypes = []
 	var createdBaseElements = []
-	var testStyle = document.createElement('div').style
+	var doc = typeof document !== 'undefined' ? document : {
+		createElement: function(tag) {
+			return {}
+		}
+	}
+
+	var testStyle = doc.createElement('div').style
 	var childTagForParent = {
 		TABLE: ['tr','td'],
 		TBODY: ['tr','td'],
@@ -118,7 +124,6 @@
 	;["alignContent","alignItems","alignSelf","animation","animationDelay","animationDirection","animationDuration","animationFillMode","animationIterationCount","animationName","animationPlayState","animationTimingFunction","backfaceVisibility","background","backgroundAttachment","backgroundBlendMode","backgroundClip","backgroundColor","backgroundImage","backgroundOrigin","backgroundPosition","backgroundPositionX","backgroundPositionY","backgroundRepeat","backgroundRepeatX","backgroundRepeatY","backgroundSize","baselineShift","border","borderBottom","borderBottomColor","borderBottomLeftRadius","borderBottomRightRadius","borderBottomStyle","borderBottomWidth","borderCollapse","borderColor","borderImage","borderImageOutset","borderImageRepeat","borderImageSlice","borderImageSource","borderImageWidth","borderLeft","borderLeftColor","borderLeftStyle","borderLeftWidth","borderRadius","borderRight","borderRightColor","borderRightStyle","borderRightWidth","borderSpacing","borderStyle","borderTop","borderTopColor","borderTopLeftRadius","borderTopRightRadius","borderTopStyle","borderTopWidth","borderWidth","bottom","boxShadow","boxSizing","bufferedRendering","captionSide","clear","clip","clipPath","clipRule","color","colorInterpolation","colorInterpolationFilters","colorRendering","counterIncrement","counterReset","cursor","direction","display","emptyCells","fill","fillOpacity","fillRule","filter","flex","flexBasis","flexDirection","flexFlow","flexGrow","flexShrink","flexWrap","float","floodColor","floodOpacity","font","fontFamily","fontFeatureSettings","fontKerning","fontSize","fontStretch","fontStyle","fontVariant","fontVariantLigatures","fontWeight","height","imageRendering","isolation","justifyContent","left","letterSpacing","lightingColor","lineHeight","listStyle","listStyleImage","listStylePosition","listStyleType","margin","marginBottom","marginLeft","marginRight","marginTop","marker","markerEnd","markerMid","markerStart","mask","maskType","maxHeight","maxWidth","maxZoom","minHeight","minWidth","minZoom","mixBlendMode","motion","motionOffset","motionPath","motionRotation","objectFit","objectPosition","opacity","order","orientation","orphans","outline","outlineColor","outlineOffset","outlineStyle","outlineWidth","overflow","overflowWrap","overflowX","overflowY","padding","paddingBottom","paddingLeft","paddingRight","paddingTop","page","pageBreakAfter","pageBreakBefore","pageBreakInside","paintOrder","perspective","perspectiveOrigin","pointerEvents","position","quotes","resize","right","shapeImageThreshold","shapeMargin","shapeOutside","shapeRendering","size","speak","src","stopColor","stopOpacity","stroke","strokeDasharray","strokeDashoffset","strokeLinecap","strokeLinejoin","strokeMiterlimit","strokeOpacity","strokeWidth","tabSize","tableLayout","textAlign","textAlignLast","textAnchor","textCombineUpright","textDecoration","textIndent","textOrientation","textOverflow","textRendering","textShadow","textTransform","top","touchAction","transform","transformOrigin","transformStyle","transition","transitionDelay","transitionDuration","transitionProperty","transitionTimingFunction","unicodeBidi","unicodeRange","userZoom","vectorEffect","verticalAlign","visibility","whiteSpace","widows","width","willChange","wordBreak","wordSpacing","wordWrap","writingMode","zIndex","zoom"].forEach(function(property) {
 		styleDefinitions[property] = styleDefinitions[property] || defaultStyle
 	})
-	var doc = document
 	var styleSheet
 	var presumptiveParentMap = new WeakMap()
 
@@ -126,9 +131,9 @@
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	function createCssRule(selector) {
 		if (!styleSheet) {
-			var styleSheetElement = document.createElement("style")
+			var styleSheetElement = doc.createElement("style")
 			styleSheetElement.setAttribute("type", "text/css")
-//			styleSheet.appendChild(document.createTextNode(css))
+//			styleSheet.appendChild(doc.createTextNode(css))
 			document.head.insertBefore(styleSheetElement, document.head.firstChild)
 			styleSheet = styleSheetElement.sheet
 		}
@@ -150,7 +155,7 @@
 	}
 
 	function layoutChildren(parent, children, container, prepend) {
-		var fragment = (children.length > 3 || prepend) ? document.createDocumentFragment() : parent
+		var fragment = (children.length > 3 || prepend) ? doc.createDocumentFragment() : parent
 		for(var i = 0, l = children.length; i < l; i++) {
 			var child = children[i]
 			var childNode
@@ -190,7 +195,7 @@
 				}
 			} else {
 				// a primitive value
-				childNode = document.createTextNode(child)
+				childNode = doc.createTextNode(child)
 				fragment.appendChild(childNode)
 			}
 		}
@@ -205,7 +210,7 @@
 	}
 	function variableAsText(parent, content) {
 		if (content == null) {
-			return document.createTextNode('')
+			return doc.createTextNode('')
 		}
 		var text
 		try {
@@ -213,7 +218,7 @@
 		} catch (error) {
 			text = error.stack
 		}
-		var textNode = document.createTextNode(text)
+		var textNode = doc.createTextNode(text)
 		if (content.notifies) {
 			enterUpdater(TextUpdater, {
 				element: parent,
@@ -424,7 +429,7 @@
 					element: element
 				})
 			} else {
-				var fragment = document.createDocumentFragment()
+				var fragment = doc.createDocumentFragment()
 				content.forEach(function(item) {
 					if (each.create) {
 						childElement = each.create({parent: element, _item: item}) // TODO: make a faster object here potentially
@@ -663,7 +668,7 @@
 				applyOnCreate = getApplySet(this)
 			}
 		}*/
-		var element = document.createElement(applyOnCreate.tagName)
+		var element = doc.createElement(applyOnCreate.tagName)
 		if (selector && selector.parent) {
 			parent = selector.parent
 		}
@@ -770,7 +775,7 @@
 		}
 	}
 
-	var Element = withProperties.call(HTMLElement)
+	var Element = withProperties.call(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
 
 	Element.within = function(element){
 		// find closest child
@@ -886,7 +891,7 @@
 		tagName = tagName.toLowerCase()
 		return tags[tagName] ||
 			(tags[tagName] =
-				setTag(withProperties.call(document.createElement(tagName).constructor), tagName))
+				setTag(withProperties.call(doc.createElement(tagName).constructor), tagName))
 	}
 
 	function setTag(Element, tagName) {
