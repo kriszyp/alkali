@@ -2,7 +2,7 @@
 [![Build Status](https://travis-ci.org/kriszyp/alkali.svg?branch=master)](https://travis-ci.org/kriszyp/alkali)
 [![devDependency status](https://david-dm.org/kriszyp/alkali/dev-status.svg)](https://david-dm.org/kriszyp/alkali#info=devDependencies)
 
-Alkali is a package for creating efficient, reactive data, that drives native HTML elements. The namesake, alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight, and likewise this library is designed to be a lightweight, dependency-free, package for accessing simple pure native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native DOM elements. Alkali is designed to be for speed and scalability, using a true functional reactive, cache and invalidation-based system that provides optimized rendering performance. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
+[Alkali](https://kriszyp.github.io/alkali/) is a package for creating efficient, reactive data, that drives native HTML elements. The namesake, alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight, and likewise this library is designed to be a lightweight, dependency-free, package for accessing simple pure native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native DOM elements. Alkali is designed to be for speed and scalability, using a true functional reactive, cache and invalidation-based system that provides optimized rendering performance. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
 
 There are several key paradigms in alkali:
 
@@ -156,7 +156,7 @@ for (let letter of lettersAfterB) {
 
 EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that computes the maximum of two other variables by simply writing:
 ```
-import react from 'alkali/react'
+import { react } from 'alkali'
 
 let sumOfAAndB = react(function*(){
 	return Math.max(yield a, yield b)
@@ -721,6 +721,17 @@ Alkali includes a variable Copy constructor, that allows you to maintain a copy 
 		workingCopy.save(); // now save the changes back to the original object
 	})
 
+## Creating Custom Tag Named Elements
+
+Custom elements can be registered with their own custom tag name as well. This can be done by extending the generic `Element` class, and calling `registerTag` on a class. This will set the tag name of the created elements. It will also attempt to call `document.registerElement` to register the element with the browser, if it is available in the browser. For example:
+```
+import { Element } from 'alkali'
+class MyCustomElement extends Element {
+	...
+}
+MyCustomElement.registerTag('custom-element')
+```
+Note that this functionality is currently only available on the generic `Element` class, as other base elements with specific functionality, like inputs and tables, will not properly inherit their functionality in all browsers (that do not support `registerElement`). Using `registerTag` is recommended for classes that will be frequently used and can extend generic element functionality.
 
 ## Additional Variable Methods
 

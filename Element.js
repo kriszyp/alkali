@@ -770,12 +770,14 @@
 
 	function registerTag(tagName) {
 		getApplySet(this).tagName = tagName
-		if (document.registerElement) {
+		if (document.registerElement && this.prototype.constructor === this) {
 			document.registerElement(tagName, this)
 		}
 	}
 
 	var Element = withProperties.call(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
+
+	Element.registerTag = registerTag
 
 	Element.within = function(element){
 		// find closest child

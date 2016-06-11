@@ -583,6 +583,18 @@ define([
 			})
 		},
 
+		registerTag: function() {
+			var CustomElement = extend(Element, {
+				foo: function() {
+					return 3
+				}
+			})
+			CustomElement.registerTag('custom-tag')
+			var custom = new CustomElement()
+			assert.equal(custom.tagName.toUpperCase(), 'CUSTOM-TAG')
+			assert.equal(custom.foo(), 3)
+		},
+
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 10000; i++) {
