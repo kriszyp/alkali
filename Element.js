@@ -1,11 +1,4 @@
-(function (root, factory) { if (typeof define === 'function' && define.amd) {
-				define(['./Variable', './Updater', './util/lang'], factory)
-		} else if (typeof module === 'object' && module.exports) {
-				module.exports = factory(require('./util/lang'), require('./Variable'), require('./Updater'))
-		} else {
-				root.alkali.Element = factory(root.alkali.lang, root.alkali.Variable, root.alkali.Updater)
-		}
-}(this, function (Variable, Updater, lang) {
+define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, lang) {
 	var knownElementProperties = {};
 	['textContent', 'innerHTML', 'title', 'href', 'value', 'valueAsNumber', 'role', 'render'].forEach(function(property) {
 		knownElementProperties[property] = true
@@ -1191,4 +1184,4 @@
 	}
 
 	return Element
-}))
+})

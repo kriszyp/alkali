@@ -1,11 +1,4 @@
-(function (root, factory) { if (typeof define === 'function' && define.amd) {
-        define(['./util/lang'], factory)
-    } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./util/lang'))
-    } else {
-        root.alkali.Updater = factory(root.alkali.lang)
-    }
-}(this, function (lang, Variable) {
+define(['./util/lang'], function (lang, Variable) {
 	var doc = typeof document !== 'undefined' && document
 	var invalidatedElements
 	var queued
@@ -391,4 +384,4 @@
 		}
 	}
 	return Updater
-}));
+})
