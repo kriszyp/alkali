@@ -551,12 +551,12 @@ define(['./util/lang'], function (lang) {
 				return operator(value)
 			})
 		},
-		to: function (operator) {
+		to: function (transformFunction) {
 			// TODO: create a more efficient map, we don't really need a full variable here
-			if (!operator) {
+			if (!transformFunction) {
 				throw new Error('No function provided to transform')
 			}
-			return new Variable(operator).apply(null, [this])
+			return new Call(transformFunction, [this])
 		},
 		get schema() {
 			// default schema is the constructor
@@ -837,7 +837,9 @@ define(['./util/lang'], function (lang) {
 		forDependencies: function(callback) {
 			// depend on the args
 			Composite.prototype.forDependencies.call(this, callback)
-			callback(this.functionVariable)
+			if (this.functionVariable.notifies) {
+				callback(this.functionVariable)
+			}
 		},
 
 		getValue: function(context) {
@@ -853,7 +855,11 @@ define(['./util/lang'], function (lang) {
 
 		getVersion: function(context) {
 			// TODO: shortcut if we are live and since equals this.lastUpdate
-			return Math.max(Composite.prototype.getVersion.call(this, context), this.functionVariable.getVersion(context))
+			var argsVersion = Composite.prototype.getVersion.call(this, context)
+			if (this.functionVariable.getVersion) {
+				return Math.max(argsVersion, this.functionVariable.getVersion(context))
+			}
+			return argsVersion
 		},
 
 		execute: function(context) {
