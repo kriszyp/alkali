@@ -259,7 +259,7 @@ body h1.project-name {
 .demo-contents {
 	overflow: hidden;
   height: 50px;
-  transition: height 0.5s, margin-bottom 0.5s;
+  transition: height 0.2s ease-out, margin-bottom 0.2s ease-out;
   margin-bottom: 15px;
   background-color: #fafafa;
 }
@@ -283,7 +283,7 @@ body h1.project-name {
   width: 100%;
   bottom: -15px;
   background: linear-gradient(to bottom, rgba(255,255,255,0) 0%,rgb(255,255,255) 65%,rgba(255,255,255,0) 100%);
-  transition: bottom 0.5s;
+  transition: bottom 0.2s ease-out;
 }
 .demo:hover .fade {
 	bottom: -25px;
@@ -311,4 +311,12 @@ textarea {
 label {
 	display: block;
 	margin: 5px;
+}
+.performance-image {
+  float: right;
+  width: 260px;
+  height: 200px;
+}
+.performance .output {
+  width: auto;
 }

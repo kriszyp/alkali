@@ -15,14 +15,14 @@
       <h2 class="project-tagline">Lightweight. Pure. Clean. And highly reactive.</h2>
       <a href="https://github.com/kriszyp/alkali" class="btn">View on GitHub</a>
       <a href="https://github.com/kriszyp/alkali/zipball/master" class="btn">Download .zip</a>
-      <a href="https://github.com/kriszyp/alkali/tarball/master" class="btn">Download .tar.gz</a>
+      <a href="https://github.com/kriszyp/alkali-todo" class="btn">TodoMVC App</a>
     </section>
 
     <section class="main-content">
       <h3>
 <a id="alkali" class="anchor" href="#alkali" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Alkali</h3>
 
-<p>The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. Likewise, the alkali library provides reactive, conductive data flows, with pure JavaScript objects, native element extensibility, for nimble, fast, responsive applications. Build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions or overhead.</p>
+<p>The alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight. Likewise, the alkali library provides reactive, conductive data flows, with pure JavaScript objects, native element extensibility, for nimble, fast, responsive applications. Build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without large framework impositions or overhead.</p>
 
 <ul>
   <li>
@@ -41,8 +41,9 @@ new Form([
 ])
     </pre>
   </li>
-  <li>
+  <li class="performance">
     <h4>High-perfomance granular lazy-execution for optimized rendering</h4>
+    <a href="http://kriszyp.github.io/todomvc-perf-comparison/"><img src="https://github.com/kriszyp/todomvc-perf-comparison/raw/master/sampleResults.png" class="performance-image"/></a>
     <p>End-to-end optimization, using rendering frame-driven lazy execution, cached computations, granular data flows, and incremental updates that make your applications fast by default, without the bloat of component abstractions or virtual doms.</p>
     <pre class='example'>
 someNumbers = new Variable([1, 2])
@@ -50,7 +51,9 @@ someNumbers = new Variable([1, 2])
 sum = someNumbers.to((array) =>
 	array.reduce((a, b) => a + b))
 // make all the changes you want
-
+someNumbers.put([2, 4])
+someNumbers.push(5)
+someNumbers.splice(2, 1, 6)
 // and the renderer will only recompute as needed for the rendering frame
 new Div(sum)
     </pre>
@@ -69,6 +72,13 @@ new Table([
   <li>
     <h4>Extensible, web component-based architecture</h4>
     <p>Extend native elements, for to-the-metal interaction. Leave behind leaky, heavy abstractions and wrappers. The native component system is the last component system you will ever need to adopt.</p>
+    <pre class='example'>
+MyDiv = Div('.a-class')
+// use native APIs and properties
+container.appendChild(new MyDiv({
+  innerHTML: 'some content'
+}))
+    </pre>
   <li>
     <h4>Leverages new EcmaScript generator and class syntax</h4>
     <p>Use generator syntax for reactive functions, and class syntax to extend native elements.</p>
@@ -86,10 +96,21 @@ new MyDiv()
   <li>
     <h4>Reactive nested objects/properties, collections, and validation</h4>
     <p>A robust data model designed for complex object structures, and built-in validation.</p>
-  </li>
+    <pre class='example'>
+person = new Variable({})
+new Form([
+  Label([
+    'Age: ',
+    NumberInput(person.property('age')),
+    Div(person.property('age').validation)]),
+  Label([
+    'Name: ',
+    NumberInput(person.property('name')),
+    Div(person.property('name').validation)])
+])  </li>
   <li>
     <h4>Inspectable, deterministic dependencies</h4>
-    <p>With the <a href="http://kriszyp.github.io/litmus/">Litmus</a> explorer for Alkali, you can directly inspect elements, and see and even modify variables and their dependencies that drive the elements, with full property and mapping structures.</p>
+    <p>With the <a href="http://kriszyp.github.io/litmus/">Litmus</a> explorer for Alkali, you can <a href="javascript:if(window.litmus){litmus()}else{var s=document.createElement('script');s.src='https://rawgit.com/kriszyp/litmus/master/builds/bundle.js';s.onload=function(){litmus()};document.head.appendChild(s)}">directly inspect elements</a>, and see and even modify variables and their dependencies that drive the elements, with full property and mapping structures.</p>
 </ul>
 
 
