@@ -152,7 +152,7 @@ for (let letter of lettersAfterB) {
 }
 ```
 
-## EcmaScript Generator Support
+## EcmaScript Generator Support (`react()`)
 
 EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that computes the maximum of two other variables by simply writing:
 ```
@@ -165,6 +165,10 @@ let sumOfAAndB = react(function*(){
 The resulting variable will reactively update in response to changes in the variable `a` or `b`.
 
 This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
+
+### `spawn()`
+
+Alkali also exports a `spawn` function, which waits for promises like `react`, but rather than returning a variable that will execute the provided transform generator/function on-demand, will immediately execute the generator, returning a promise (if there are promises yielded in the generator). This is effectively the same as task.js's `spawn` function.
 
 # Element Construction
 
