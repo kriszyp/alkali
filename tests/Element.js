@@ -593,7 +593,7 @@ define([
 			var custom = new CustomElement()
 			assert.equal(custom.tagName.toUpperCase(), 'CUSTOM-TAG')
 			assert.equal(custom.foo(), 3)
-		},
+		}/*,
 
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
@@ -615,6 +615,6 @@ define([
 				]))
 				container.innerHTML = ''
 			}
-		}
+		}*/
 	})
 });

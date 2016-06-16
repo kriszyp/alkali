@@ -134,6 +134,48 @@ define([
 					})
 				})
 			})
+		},
+		reactPromises: function() {
+			let currentResolver, currentRejecter, sum = 0, done = false
+			let errorThrown
+			var sequence = react(function*() {
+				while (!done) {
+					try {
+						sum += yield new Promise((resolve, reject) => {
+							currentResolver = resolve
+							currentRejecter = reject
+						})
+					} catch (e) {
+						errorThrown = e
+					}
+				}
+				return sum
+			})
+			var sequencePromise = sequence.valueOf() // start it
+			currentResolver(2)
+			return Promise.resolve().then(() => {
+				assert.strictEqual(sum, 2)
+				currentResolver(3)
+				return Promise.resolve().then(() => {
+					assert.strictEqual(sum, 5)
+					currentResolver(4)
+					return Promise.resolve().then(() => {
+						assert.strictEqual(sum, 9)
+						currentRejecter('error occurred')
+						return Promise.resolve().then(() => {
+							assert.strictEqual(errorThrown, 'error occurred')
+							done = true
+							currentResolver(1)
+							return Promise.resolve().then(() => {
+								assert.strictEqual(sum, 10)
+								return sequencePromise.then((result) => {
+									assert.strictEqual(result, 10)
+								})
+							})
+						})
+					})
+				})
+			})
 		}
 	})
 })

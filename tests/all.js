@@ -1,6 +1,7 @@
 define([
 	'./unit',
 	'./Updater',
-	'./Element'
+	'./Element',
+      './es6'
 ], function () {
 });

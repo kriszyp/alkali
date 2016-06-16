@@ -1817,12 +1817,12 @@ return /******/ (function(modules) { // webpackBootstrap
 					return operator(value)
 				})
 			},
-			to: function (operator) {
+			to: function (transformFunction) {
 				// TODO: create a more efficient map, we don't really need a full variable here
-				if (!operator) {
+				if (!transformFunction) {
 					throw new Error('No function provided to transform')
 				}
-				return new Variable(operator).apply(null, [this])
+				return new Call(transformFunction, [this])
 			},
 			get schema() {
 				// default schema is the constructor
@@ -2103,7 +2103,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			forDependencies: function(callback) {
 				// depend on the args
 				Composite.prototype.forDependencies.call(this, callback)
-				callback(this.functionVariable)
+				if (this.functionVariable.notifies) {
+					callback(this.functionVariable)
+				}
 			},
 
 			getValue: function(context) {
@@ -2119,7 +2121,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			getVersion: function(context) {
 				// TODO: shortcut if we are live and since equals this.lastUpdate
-				return Math.max(Composite.prototype.getVersion.call(this, context), this.functionVariable.getVersion(context))
+				var argsVersion = Composite.prototype.getVersion.call(this, context)
+				if (this.functionVariable.getVersion) {
+					return Math.max(argsVersion, this.functionVariable.getVersion(context))
+				}
+				return argsVersion
 			},
 
 			execute: function(context) {
@@ -2409,11 +2415,13 @@ return /******/ (function(modules) { // webpackBootstrap
 				var lastValue
 				var i
 				var generatorIterator
+				var isThrowing
 				if (resuming) {
 					// resuming from a promise
 					generatorIterator = resuming.iterator
 					i = resuming.i
 					lastValue = resuming.value
+					isThrowing = resuming.isThrowing
 				} else {
 					// a fresh start
 					i = 0
@@ -2422,7 +2430,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				
 				var args = this.args
 				do {
-					var stepReturn = generatorIterator.next(lastValue)
+					var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](lastValue)
 					if (stepReturn.done) {
 						return stepReturn.value
 					}
@@ -2448,10 +2456,17 @@ return /******/ (function(modules) { // webpackBootstrap
 						var variable = this
 						// and return the promise so that the getValue caller can wait on this
 						return lastValue.then(function(value) {
-							return getValue.call(this, context, {
+							return getValue.call(variable, context, {
 								i: i,
 								iterator: generatorIterator,
 								value: value
+							})
+						}, function(error) {
+							return getValue.call(variable, context, {
+								i: i,
+								iterator: generatorIterator,
+								value: error,
+								isThrowing: true
 							})
 						})
 					}

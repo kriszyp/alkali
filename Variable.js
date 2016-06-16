@@ -1149,11 +1149,13 @@ define(['./util/lang'], function (lang) {
 			var lastValue
 			var i
 			var generatorIterator
+			var isThrowing
 			if (resuming) {
 				// resuming from a promise
 				generatorIterator = resuming.iterator
 				i = resuming.i
 				lastValue = resuming.value
+				isThrowing = resuming.isThrowing
 			} else {
 				// a fresh start
 				i = 0
@@ -1162,7 +1164,7 @@ define(['./util/lang'], function (lang) {
 			
 			var args = this.args
 			do {
-				var stepReturn = generatorIterator.next(lastValue)
+				var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](lastValue)
 				if (stepReturn.done) {
 					return stepReturn.value
 				}
@@ -1188,10 +1190,17 @@ define(['./util/lang'], function (lang) {
 					var variable = this
 					// and return the promise so that the getValue caller can wait on this
 					return lastValue.then(function(value) {
-						return getValue.call(this, context, {
+						return getValue.call(variable, context, {
 							i: i,
 							iterator: generatorIterator,
 							value: value
+						})
+					}, function(error) {
+						return getValue.call(variable, context, {
+							i: i,
+							iterator: generatorIterator,
+							value: error,
+							isThrowing: true
 						})
 					})
 				}
