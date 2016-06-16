@@ -3,20 +3,10 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 	function deepCopy(source, target, derivativeMap) {
 		if(source && typeof source == 'object'){
 			if(source instanceof Array){
-				if(target instanceof Array){
-					// truncate as necessary
-					if (target.length > source.length) {
-						target.splice(source.length, target.length - source.length)
-					}
-				} else {
-					target = derivativeMap && derivativeMap.get(source)
-					if (!target) {
-						target = []
-						derivativeMap && derivativeMap.set(source, target)
-					}
-				}
+				var originalTarget = target instanceof Array && target || 0
+				target = [] // always create a new array for array targets
 				for(var i = 0, l = source.length; i < l; i++){
-					target[i] = deepCopy(source[i], target[i], derivativeMap)
+					target[i] = deepCopy(source[i], originalTarget[i], derivativeMap)
 				}
 			}else {
 				if (!target || typeof target !== 'object') {

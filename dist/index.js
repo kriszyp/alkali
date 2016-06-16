@@ -56,13 +56,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1), __webpack_require__(2), __webpack_require__(5), __webpack_require__(4), __webpack_require__(6), __webpack_require__(7)], __WEBPACK_AMD_DEFINE_RESULT__ = function(Element, Variable, react, Updater, operators, Copy) {
 		var main = Object.create(Element)
-	  main.Copy = Copy
+		main.Copy = Copy
 		main.Element = Element
 		main.Variable = Variable
 		main.all = Variable.all
 		main.react = react
+		main.spawn = function(func) {
+			return react(func).valueOf()
+		}
 		main.Updater = Updater
-	  Object.assign(main, Updater)
+		Object.assign(main, Updater)
 		Object.assign(main, operators)
 		return main
 	}.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__))
@@ -3596,20 +3599,10 @@ return /******/ (function(modules) { // webpackBootstrap
 		function deepCopy(source, target, derivativeMap) {
 			if(source && typeof source == 'object'){
 				if(source instanceof Array){
-					if(target instanceof Array){
-						// truncate as necessary
-						if (target.length > source.length) {
-							target.splice(source.length, target.length - source.length)
-						}
-					} else {
-						target = derivativeMap && derivativeMap.get(source)
-						if (!target) {
-							target = []
-							derivativeMap && derivativeMap.set(source, target)
-						}
-					}
+					var originalTarget = target instanceof Array && target || 0
+					target = [] // always create a new array for array targets
 					for(var i = 0, l = source.length; i < l; i++){
-						target[i] = deepCopy(source[i], target[i], derivativeMap)
+						target[i] = deepCopy(source[i], originalTarget[i], derivativeMap)
 					}
 				}else {
 					if (!target || typeof target !== 'object') {
