@@ -3597,14 +3597,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(3), __webpack_require__(2)], __WEBPACK_AMD_DEFINE_RESULT__ = function (lang, Variable) {
 
 		function deepCopy(source, target, derivativeMap) {
-			if(source && typeof source == 'object'){
-				if(source instanceof Array){
-					var originalTarget = target instanceof Array && target || 0
+			if (source && typeof source == 'object') {
+				if (source instanceof Array) {
 					target = [] // always create a new array for array targets
-					for(var i = 0, l = source.length; i < l; i++){
-						target[i] = deepCopy(source[i], originalTarget[i], derivativeMap)
+					for(var i = 0, l = source.length; i < l; i++) {
+						target[i] = deepCopy(source[i], null, derivativeMap)
 					}
-				}else {
+				} else {
 					if (!target || typeof target !== 'object') {
 						target = derivativeMap && derivativeMap.get(source)
 						if (!target) {
@@ -3612,7 +3611,7 @@ return /******/ (function(modules) { // webpackBootstrap
 							derivativeMap && derivativeMap.set(source, target)
 						}
 					}
-					for(var i in source){
+					for (var i in source) {
 						target[i] = deepCopy(source[i], target[i], derivativeMap)
 					}
 				}
@@ -3621,38 +3620,39 @@ return /******/ (function(modules) { // webpackBootstrap
 			return source
 		}
 
-		var Copy = lang.compose(Variable, function(copiedFrom){
+		var Copy = lang.compose(Variable, function(copiedFrom) {
 			// this is the variable that we derive from
 			this.copiedFrom = copiedFrom
 			this.derivativeMap = new lang.WeakMap(null, 'derivative')
 			this.isDirty = new Variable(false)
 		}, {
-			valueOf: function(context){
-				if(this.state){
+			valueOf: function(context) {
+				if(this.state) {
 					this.state = null
 				}
 				var value = this.copiedFrom.valueOf(context)
-				if(value && typeof value == 'object'){
+				if(value && typeof value == 'object') {
 					var derivative = this.derivativeMap.get(value)
-					if (derivative == null){
+					if (derivative == null) {
 						this.derivativeMap.set(value, derivative = deepCopy(value, undefined, this.derivativeMap))
+						this.setValue(derivative, context)
 					}
 					return derivative
 				}
 				var thisValue = this.getValue(context)
-				if(thisValue === undefined){
+				if(thisValue === undefined) {
 					return value
 				}
 				return thisValue
 			},
-			getCopyOf: function(value){
+			getCopyOf: function(value) {
 				var derivative = this.derivativeMap.get(value)
-				if (derivative == null){
+				if (derivative == null) {
 					this.derivativeMap.set(value, derivative = deepCopy(value, undefined, this.derivativeMap))
 				}
 				return derivative
 			},
-			save: function(){
+			save: function() {
 				// copy back to the original object
 				var original = this.copiedFrom.valueOf()
 				var newCopiedFrom = deepCopy(this.valueOf(), original)
@@ -3668,12 +3668,12 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.isDirty.put(false)
 				this.onSave && this.onSave()
 			},
-			revert: function(){
+			revert: function() {
 				var original = this.copiedFrom.valueOf()
 				this.put(deepCopy(original, this.derivativeMap.get(original), this.derivativeMap))
 				this.isDirty.put(false)
 			},
-			updated: function(){
+			updated: function() {
 				this.isDirty.put(true)
 				return Variable.prototype.updated.apply(this, arguments)
 			}
