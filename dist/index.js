@@ -139,6 +139,8 @@ return /******/ (function(modules) { // webpackBootstrap
 		var doc = typeof document !== 'undefined' ? document : {
 			createElement: function(tag) {
 				return {}
+			},
+			addEventListener: function() {
 			}
 		}
 
@@ -524,7 +526,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		function bindChanges(element, variable, key, conversion) {
 			lang.nextTurn(function() { // wait for next turn in case inputChanges isn't set yet
-				var inputEvents = element.inputEvents || ['change']
+				var inputEvents = element.inputEvents || ['change', 'alkali-change']
 				for (var i = 0, l = inputEvents.length; i < l; i++) {
 					element.addEventListener(inputEvents[i], function (event) {
 						var value = element[key]
@@ -537,6 +539,19 @@ return /******/ (function(modules) { // webpackBootstrap
 			})
 		}
 
+		doc.addEventListener('click', function(event) {
+			var target = event.target
+			if (target.type === 'radio') {
+				var radios = document.querySelectorAll('input[type=radio]')
+				for (var i = 0, l = radios.length; i < l; i++) {
+					var radio = radios[i]
+					if (radio.name === target.name && radio !== target) {
+						radio.dispatchEvent(new Event('alkali-change', {}))
+					}
+				}
+			}
+		})
+
 		function conversion(value, element) {
 			if (element.type == 'number') {
 				return parseFloat(value)
@@ -547,7 +562,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		function buildInputContent(element, content) {
 			var inputType = element.type
 			var inputProperty = inputType in {date: 1, datetime: 1, time: 1} ?
-					'valueAsDate' : inputType === 'checkbox' ?
+					'valueAsDate' : (inputType === 'checkbox' || inputType === 'radio') ?
 						'checked' : 'value'
 
 			if (content && content.notifies) {

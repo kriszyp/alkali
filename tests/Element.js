@@ -23,6 +23,7 @@ define([
 	var UL = Element.UL
 	var LI = Element.LI
 	var Item = Element.Item
+	var Radio = Element.Radio
 	var append = Element.append
 	var prepend = Element.prepend
 	var extend = Element.extend
@@ -97,6 +98,17 @@ define([
 			boolVariable.put(false)
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(checkboxInput.checked, false)
+			})
+		},
+		radio: function() {
+			var boolVariable = new Variable(true)
+			var radio = new Radio(boolVariable)
+			document.body.appendChild(radio)
+			assert.strictEqual(radio.type, 'radio')
+			assert.strictEqual(radio.checked, true)
+			boolVariable.put(false)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(radio.checked, false)
 			})
 		},
 		numberInput: function() {
