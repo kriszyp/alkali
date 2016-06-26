@@ -352,7 +352,7 @@ define([
 		array: function () {
 			var array = [1, 2]
 			var variable = new Variable(array)
-			var twice = variable.each(function(item){
+			var twice = variable.map(function(item){
 				return item * 2
 			})
 			var results = []
@@ -505,6 +505,51 @@ define([
 			arrayVariable.push(1)
 			assert.strictEqual(greaterThanFour.valueOf().length, 2)
 		},
+
+		mapReduceArray: function() {
+			var arrayVariable = new Variable([3, 5, 7])
+			var mapOperations = 0
+			var doubled = arrayVariable.map(function(item) {
+				mapOperations++
+				return item * 2
+			})
+			var sum = doubled.reduce(function(a, b) {
+				return a + b
+			}, 0)
+			var updated = false
+			sum.notifies({
+				updated: function() {
+					updated = true
+				}
+			})
+			assert.deepEqual(doubled.valueOf(), [6, 10, 14])
+			assert.strictEqual(sum.valueOf(), 30)
+			assert.strictEqual(mapOperations, 3)
+			arrayVariable.push(9)
+			assert.isTrue(updated)
+			assert.deepEqual(doubled.valueOf(), [6, 10, 14, 18])
+			assert.strictEqual(sum.valueOf(), 48)
+			assert.strictEqual(mapOperations, 4)
+			arrayVariable.splice(1, 1)
+			assert.deepEqual(doubled.valueOf(), [6, 14, 18])
+			assert.strictEqual(sum.valueOf(), 38)
+			assert.strictEqual(mapOperations, 4)
+			arrayVariable.push(1)
+			assert.deepEqual(doubled.valueOf(), [6, 14, 18, 2])
+			assert.strictEqual(sum.valueOf(), 40)
+			assert.strictEqual(mapOperations, 5)
+		},
+
+		someArray: function() {
+			var arrayVariable = new Variable([3, 5, 7])
+			var oneGreaterThanFour = arrayVariable.some(function(item) {
+				return item > 4
+			})
+			assert.isTrue(oneGreaterThanFour.valueOf())
+			arrayVariable.splice(1, 2)
+			assert.isFalse(oneGreaterThanFour.valueOf())
+		},
+
 		contextualClassProperty: function() {
 			var TestVariable = Variable()
 			var TestSubject = Variable()

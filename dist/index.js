@@ -1332,6 +1332,8 @@ return /******/ (function(modules) { // webpackBootstrap
 					subject = defaultContext
 				}
 				return contextMap.get(subject)
+			} else {
+				return variable
 			}
 		}
 		function when(value, callback) {
@@ -1427,7 +1429,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				if (previousNotifyingValue) {
 					if (value === previousNotifyingValue) {
 						// nothing changed, immediately return valueOf
-						var resolvedValue = value.valueOf()
+						var resolvedValue = value.valueOf(context)
 						if (resolvedValue !== this.listeningToObject) {
 							if (this.listeningToObject) {
 								deregisterListener(this)
@@ -1817,24 +1819,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					}
 				})
 			},
-			each: function(callback) {
-				// returns a new mapped variable
-				// TODO: support events on array (using dstore api)
-				return this.map(function(array) {
-					return array.map(callback)
-				})
-			},
 
-			map: function (operator) {
-				// TODO: eventually make this act on the array items instead
-				var stack = new Error().stack
-				return this.to(function(value) {
-					if (value && value.forEach) {
-						console.warn('Variable `map()` usage with arrays is deprecated, should use `to()` instead at ', stack)
-					}
-					return operator(value)
-				})
-			},
 			to: function (transformFunction) {
 				// TODO: create a more efficient map, we don't really need a full variable here
 				if (!transformFunction) {
@@ -2250,9 +2235,12 @@ return /******/ (function(modules) { // webpackBootstrap
 					}
 					// try to use own method, but if not available, use Array's methods
 					var result = array[name] ? array[name].apply(array, args) : Array.prototype[name].apply(array, args)
+					variable.updateVersion()
 					if (sendUpdates) {
 						sendUpdates.call(variable, args, result, array)
 					}
+					variable.cachedVersion = variable.version // update the cached version so it doesn't need to be recomputed
+					variable.cachedValue = array
 					return result
 				})
 			}
@@ -2313,8 +2301,12 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 
 		iterateMethod('filter')
-		//iterateMethod('map')
-
+		iterateMethod('map')
+		iterateMethod('reduce')
+		iterateMethod('reduceRight')
+		iterateMethod('some')
+		iterateMethod('every')
+		
 		var IterativeMethod = lang.compose(Composite, function(source, method, args) {
 			this.source = source
 			// source.interestWithin = true
@@ -2328,19 +2320,21 @@ return /******/ (function(modules) { // webpackBootstrap
 				return when(this.source.valueOf(context), function(array) {
 					if (array && array.forEach) {
 						if (variable.dependents) {
-							var map = variable.contextMap || (variable.contextMap = new WeakMap())
 							var contextualizedVariable
 							if (context) {
-								if (map.has(context.distinctSubject)) {
-									contextualizedVariable = map.get(context.distinctSubject)
+								var contextMap = variable.contextMap || (variable.contextMap = new WeakMap())
+								if (contextMap.has(context.distinctSubject)) {
+									contextualizedVariable = contextMap.get(context.distinctSubject)
 								} else {
-									map.set(context.distinctSubject, contextualizedVariable = new ContextualizedVariable(variable, context.distinctSubject))
+									contextMap.set(context.distinctSubject, contextualizedVariable = new ContextualizedVariable(variable, context.distinctSubject))
 								}
 							} else {
 								contextualizedVariable = variable
 							}
 							array.forEach(function(object) {
-								registerListener(object, contextualizedVariable)
+								if (object && typeof object === 'object') {
+									registerListener(object, contextualizedVariable)
+								}
 							})
 						}
 					} else {
@@ -2360,7 +2354,8 @@ return /******/ (function(modules) { // webpackBootstrap
 					return Composite.prototype.updated.call(this, event, by, context)
 				}
 				var propagatedEvent = event.type === 'refresh' ? event : // always propagate refreshes
-					this[this.method + 'Updated'](event, context)
+					this[this.method + 'Updated'] ? this[this.method + 'Updated'](event, context) : // if we have an updated handler, use it
+					Refresh // else recompute the array method
 				// TODO: make sure we normalize the event structure
 				if (this.dependents && event.oldValue && typeof event.value === 'object') {
 					deregisterListener(this)
@@ -2407,12 +2402,21 @@ return /******/ (function(modules) { // webpackBootstrap
 					return event
 				}
 			},
-			mapUpdated: function(event) {
-				return {
-					type: event.type,
-					value: [event.value].map(this.args[0])
+			mapUpdated: function(event, context) {
+				var contextualizedVariable = getDistinctContextualized(this, context)
+				if (event.type === 'delete') {
+					contextualizedVariable.splice(event.previousIndex, 1)
+				} else if (event.type === 'add') {
+					contextualizedVariable.push(this.args[0].call(this.args[1], event.value))
+				} else if (event.type === 'update') {
+					var index = contextualizedVariable.cachedValue.indexOf(event.object)
+					var matches = [event.object].filter(this.args[0]).length > 0
+					contextualizedVariable.splice(index, 1, this.args[0].call(this.args[1], event.value))
+				} else {
+					return event
 				}
 			},
+			// TODO: Create specialized updated handlers for faster recomputation of other array derivatives
 			forDependencies: function(callback) {
 				// depend on the args
 				Composite.prototype.forDependencies.call(this, callback)
