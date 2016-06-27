@@ -472,15 +472,21 @@ define([
 			assert.strictEqual(sum.valueOf(), 12)
 			array.push(8)
 			assert.strictEqual(sum.valueOf(), 20)
-			assert.deepEqual(lastUpdate, {type: 'add', index: 3, value: 8})
+			assert.strictEqual(lastUpdate.type, 'add')
+			assert.strictEqual(lastUpdate.index, 3)
+			assert.strictEqual(lastUpdate.value, 8)
 			array.pop()
-			assert.deepEqual(lastUpdate, {type: 'delete', previousIndex: 3})
+			assert.strictEqual(lastUpdate.type, 'delete')
+			assert.strictEqual(lastUpdate.previousIndex, 3)
+			assert.isUndefined(lastUpdate.value)
 			array.unshift(0)
-			assert.deepEqual(lastUpdate, {type: 'add', index: 0, value: 0})
+			assert.strictEqual(lastUpdate.type, 'add')
+			assert.strictEqual(lastUpdate.index, 0)
+			assert.strictEqual(lastUpdate.value, 0)
 			array.shift()
-			assert.deepEqual(lastUpdate, {type: 'delete', previousIndex: 0})
-
-
+			assert.strictEqual(lastUpdate.type, 'delete')
+			assert.strictEqual(lastUpdate.previousIndex, 0)
+			assert.isUndefined(lastUpdate.value)
 		},
 
 		nestedVariableProperty: function() {

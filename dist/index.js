@@ -2250,14 +2250,16 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.updated({
 					type: 'delete',
 					previousIndex: args[0],
-					oldValue: result[i]
+					oldValue: result[i],
+					modifier: this
 				}, this)
 			}
 			for (i = 2, l = args.length; i < l; i++) {
 				this.updated({
 					type: 'add',
 					value: args[i],
-					index: args[0] + i - 2
+					index: args[0] + i - 2,
+					modifier: this
 				}, this)
 			}
 		})
@@ -2267,7 +2269,8 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.updated({
 					type: 'add',
 					index: result - i - 1,
-					value: arg
+					value: arg,
+					modifier: this
 				}, this)
 			}
 		})
@@ -2277,20 +2280,23 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.updated({
 					type: 'add',
 					index: i,
-					value: arg
+					value: arg,
+					modifier: this
 				}, this)
 			}
 		})
 		arrayMethod('shift', function(args, results) {
 			this.updated({
 				type: 'delete',
-				previousIndex: 0
+				previousIndex: 0,
+				modifier: this
 			}, this)
 		})
 		arrayMethod('pop', function(args, results, array) {
 			this.updated({
 				type: 'delete',
-				previousIndex: array.length
+				previousIndex: array.length,
+				modifier: this
 			}, this)
 		})
 
@@ -2306,6 +2312,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		iterateMethod('reduceRight')
 		iterateMethod('some')
 		iterateMethod('every')
+		iterateMethod('slice')
 		
 		var IterativeMethod = lang.compose(Composite, function(source, method, args) {
 			this.source = source
@@ -2350,7 +2357,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				})
 			},
 			updated: function(event, by, context) {
-				if (by === this || by && by.constructor === this) {
+				if (event.modifier === this || event.modifier && event.modifier.constructor === this) {
 					return Composite.prototype.updated.call(this, event, by, context)
 				}
 				var propagatedEvent = event.type === 'refresh' ? event : // always propagate refreshes
@@ -3704,3 +3711,4 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ ])
 });
 ;
+//# sourceMappingURL=index.js.map
