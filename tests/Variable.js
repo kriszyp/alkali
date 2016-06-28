@@ -349,6 +349,32 @@ define([
 			assert.isTrue(parentNotified)
 			assert.isFalse(siblingNotified)
 		},
+
+		relisten: function() {
+			var v = new Variable({foo: 1})
+			var ref = new Variable(v)
+			var ref2 = new Variable(v)
+			var foo = v.property('foo')
+			var fooRef = ref.property('foo')
+			var fooRef2 = ref2.property('foo')
+			var fooTransformed = fooRef.to(function(foo) { return foo })
+
+			var updated = false
+			var updater = {
+				updated: function() {
+					updated = true
+				}
+			}
+
+			fooTransformed.notifies(updater)
+			fooTransformed.valueOf()
+			fooTransformed.stopNotifies(updater)
+			fooTransformed.notifies(updater)
+			fooTransformed.valueOf()
+			fooRef2.put(2)
+			assert.isTrue(updated)
+		},
+
 		array: function () {
 			var array = [1, 2]
 			var variable = new Variable(array)
