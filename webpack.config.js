@@ -5,5 +5,6 @@ module.exports = {
         filename: 'index.js',
         library: 'alkali',
         libraryTarget: 'umd'
-    }
+    },
+    devtool: 'cheap-source-map'
 };
