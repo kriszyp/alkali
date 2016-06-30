@@ -92,7 +92,7 @@ define([
 				b: 10
 			}
 			var variable = new Variable(object)
-			Variable.observe(object)
+			variable.observeObject()
 			var invalidated
 			var aProperty = variable.property('a')
 			aProperty.notifies({

@@ -1045,7 +1045,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 				// when we create the instance, immediately observe it
 				// TODO: we might want to do this in init instead
 				var instance = new ThisElementVariable(element)
-				Variable.observe(element)
+				instance.observeObject()
 				return instance
 			})
 		}
