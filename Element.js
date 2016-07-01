@@ -243,6 +243,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 	var propertyHandlers = {
 		content: noop, // content and children have special handling in create
 		children: noop,
+		tagName: noop,
 		each: noop, // just used by content, doesn't need to be recorded on the element
 		classes: function(element, classes) {
 			if (!(classes.length > -1)) {
@@ -604,6 +605,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 	function withProperties(selector, properties) {
 		var Element = makeElementConstructor()
 		Element.superConstructor = this
+		Element.tagName = this.tagName
 		if (this.children) {
 			// just copy this property
 			Element.children = this.children
@@ -676,7 +678,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 				applyOnCreate = getApplySet(this)
 			}
 		}*/
-		var element = doc.createElement(applyOnCreate.tagName)
+		var element = doc.createElement(this.tagName)
 		if (selector && selector.parent) {
 			parent = selector.parent
 		}
@@ -777,7 +779,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 	}
 
 	function registerTag(tagName) {
-		getApplySet(this).tagName = tagName
+		this.tagName = tagName
 		if (document.registerElement && this.prototype.constructor === this) {
 			document.registerElement(tagName, this)
 		}
@@ -905,7 +907,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 	}
 
 	function setTag(Element, tagName) {
-		Element._applyOnCreate.tagName = tagName
+		Element.tagName = tagName
 		return Element
 	}
 	function generate(elements) {
@@ -1140,6 +1142,11 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 					return true
 				}
 			} else if (node.__alkaliAttached__) {
+				if (document.contains(node)) {
+					// detached event, but it is actually still attached (will get attached in a later mutation record)
+					// so don't get through the detached/attached lifecycle
+					return false
+				}
 				node.__alkaliAttached__ = false
 				state.action(node)
 			}
