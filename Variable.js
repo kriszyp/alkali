@@ -179,6 +179,11 @@ define(['./util/lang'], function (lang) {
 				}
 				variable.notifyingValue = value
 				value = value.valueOf(context)
+				if (variable.ownObject) {
+					if (getPrototypeOf(variable.ownObject) !== value) {
+						setPrototypeOf(variable.ownObject, value)
+					}
+				}
 			}
 			if (value === undefined) {
 				value = variable.default
@@ -467,16 +472,16 @@ define(['./util/lang'], function (lang) {
 		},
 		put: function(value, context) {
 			var variable = this
-			
+			if (this.ownObject) {
+				this.ownObject = false
+			}			
 			return when(this.getValue(context), function(oldValue) {
 				if (oldValue === value) {
 					return noChange
 				}
 				if (variable.fixed &&
 						// if it is set to fixed, we see we can put in the current variable
-						oldValue && oldValue.put && // if we currently have a variable
-						// and it is always fixed, or not a new variable
-						(variable.fixed == 'always' || !(value && value.notifies))) {
+						oldValue && oldValue.put) {
 					return oldValue.put(value)
 				}
 				return when(variable.setValue(value, context), function(value) {
@@ -501,7 +506,13 @@ define(['./util/lang'], function (lang) {
 		undefine: function(key, context) {
 			this.set(key, undefined, context)
 		},
-
+		proxy: function(proxiedVariable) {
+			var thisVariable = this
+			this.fixed = true
+			return when(this.setValue(proxiedVariable, context), function(value) {
+				thisVariable.updated(new RefreshEvent(), thisVariable, context)
+			})
+		},
 		next: function(value) {
 			// for ES7 observable compatibility
 			this.put(value)
@@ -544,7 +555,7 @@ define(['./util/lang'], function (lang) {
 				this.forEach(function(item) {
 					var itemVariable = new callbackOrItemClass(item)
 					itemVariable.collection = collectionVariable
-					callbackOrContext.call(this, )
+					callbackOrContext.call(this, itemVariable)
 				}, context)
 			}
 			return when(this.valueOf(callbackOrContext), function(value) {
@@ -647,6 +658,19 @@ define(['./util/lang'], function (lang) {
 					}
 				}
 			})
+		},
+		_willModify: function(context) {
+			if (this.fixed) {
+				return this.notifyingValue._willModify(context)
+			}
+			if (!this.ownObject && this.notifyingValue) {
+				var variable = this
+				return when(this.valueOf(context), function(value) {
+					if (value && typeof value === 'object') {
+						variable.ownObject = Object.create(value)
+					}
+				})
+			}
 		}
 	}	
 
@@ -759,6 +783,7 @@ define(['./util/lang'], function (lang) {
 			var key = this.key
 			var parent = this.parent
 			var variable = this
+			parent._willModify(context)
 			return when(parent.valueOf(context), function(object) {
 				if (object == null) {
 					// nothing there yet, create an object to hold the new property
@@ -934,7 +959,9 @@ define(['./util/lang'], function (lang) {
 						if (functionValue.reverse) {
 							functionValue.reverse.call(call, value, call.args, context)
 							return Variable.prototype.put.call(call, value, context)
-						}else{
+						} else if (originalValue && originalValue.put) {
+							return originalValue.put(value)
+						} else {
 							return deny
 						}
 					}, call.args, context)
