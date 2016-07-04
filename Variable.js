@@ -32,7 +32,7 @@ define(['./util/lang'], function (lang) {
 		return context
 	}
 
-	function getDistinctContextualized(variable, context) {
+	function getMaterializedContextualInstance(variable, context) {
 		var subject = context && (context.distinctSubject || context.subject)
 		if (typeof variable === 'function') {
 			return variable.for(subject)
@@ -46,8 +46,6 @@ define(['./util/lang'], function (lang) {
 				subject = defaultContext
 			}
 			return contextMap.get(subject)
-		} else {
-			return variable
 		}
 	}
 	function when(value, callback) {
@@ -110,9 +108,10 @@ define(['./util/lang'], function (lang) {
 	}
 	RefreshEvent.prototype.type = 'refresh'
 
-	function PropertyChangeEvent(key, childEvent) {
+	function PropertyChangeEvent(key, childEvent, parent) {
 		this.key = key
 		this.childEvent = childEvent
+		this.parent = parent
 		this.visited = childEvent.visited
 	}
 	PropertyChangeEvent.prototype.type = 'update'
@@ -240,7 +239,7 @@ define(['./util/lang'], function (lang) {
 			if (this.onPropertyChange) {
 				this.onPropertyChange(propertyName, object, context)
 			}
-			this.updated(new PropertyChangeEvent(propertyName, new RefreshEvent()), null, context)
+			this.updated(new PropertyChangeEvent(propertyName, new RefreshEvent(), this), null, context)
 		},
 		eachKey: function(callback) {
 			for (var i in this._properties) {
@@ -333,13 +332,17 @@ define(['./util/lang'], function (lang) {
 			if (this.subject) {
 				if (by === this.constructor) {
 					// if we receive an update from the constructor, filter it
-					if (!(!context || context.subject === this.subject || (context.subject.contains && this.subject.nodeType && context.subject.contains(this.subject)))) {
+					if (!(!context || (context.distinctSubject || context.subject) === this.subject || (context.subject.contains && this.subject.nodeType && context.subject.contains(this.subject)))) {
 						return
 					}
 				} else {
 					// if we receive an outside update, send it to the constructor
 					return this.constructor.updated(updateEvent, this, new Context(this.subject))
 				}
+			}
+			var contextualInstance = getMaterializedContextualInstance(this, context)
+			if (contextualInstance) {
+				contextualInstance.updated(updateEvent, this, context)
 			}
 			if (this.lastUpdate) {
 				var nextUpdateMap = this.nextUpdateMap
@@ -373,8 +376,13 @@ define(['./util/lang'], function (lang) {
 					}
 				}
 			}
-			if (this.notifyingValue && (updateEvent instanceof PropertyChangeEvent)) {
-				this.notifyingValue.updated(updateEvent, this, context)
+			if (updateEvent instanceof PropertyChangeEvent) {
+				if (this.notifyingValue) {
+					this.notifyingValue.updated(updateEvent, this, context)
+				}
+				if (this.collection) {
+					this.collection.updated(updateEvent, this, context)
+				}
 			}
 			return updateEvent
 		},
@@ -529,14 +537,22 @@ define(['./util/lang'], function (lang) {
 				})
 			})
 		},
-		forEach: function(callback, context) {
+		forEach: function(callbackOrItemClass, callbackOrContext, context) {
 			// iterate through current value of variable
-			return when(this.valueOf(), function(value) {
+			if (callbackOrItemClass.notifies) {
+				var collectionVariable = this
+				this.forEach(function(item) {
+					var itemVariable = new callbackOrItemClass(item)
+					itemVariable.collection = collectionVariable
+					callbackOrContext.call(this, )
+				}, context)
+			}
+			return when(this.valueOf(callbackOrContext), function(value) {
 				if (value && value.forEach) {
-					value.forEach(callback)
+					value.forEach(callbackOrItemClass)
 				}else{
 					for (var i in value) {
-						callback(value[i], i)
+						callbackOrItemClass.call(value, value[i], i)
 					}
 				}
 			})
@@ -653,7 +669,7 @@ define(['./util/lang'], function (lang) {
 			// first check to see if we have the variable already computed
 			if (this.cachedVersion === this.getVersion()) {
 				if (this.contextMap) {
-					var contextualizedVariable = getDistinctContextualized(this, context)
+					var contextualizedVariable = getMaterializedContextualInstance(this, context)
 					if (contextualizedVariable) {
 						return contextualizedVariable.cachedValue
 					}
@@ -736,7 +752,7 @@ define(['./util/lang'], function (lang) {
 		},
 		updated: function(updateEvent, by, context) {
 			if (updateEvent = Variable.prototype.updated.call(this, updateEvent, by, context)) {
-				this.parent.updated(new PropertyChangeEvent(this.key, updateEvent), this, context)
+				this.parent.updated(new PropertyChangeEvent(this.key, updateEvent, this.parent), this, context)
 			}
 		},
 		_changeValue: function(context, type, newValue) {
@@ -799,8 +815,9 @@ define(['./util/lang'], function (lang) {
 	})
 	Variable.Property = Property
 
-	var Item = Variable.Item = lang.compose(Variable, function Item(value) {
+	var Item = Variable.Item = lang.compose(Variable, function Item(value, content) {
 		this.value = value
+		this.collection = content
 	}, {})
 
 	var Composite = Variable.Composite = lang.compose(Caching, function Composite(args) {
@@ -1126,7 +1143,7 @@ define(['./util/lang'], function (lang) {
 			}
 		},
 		filterUpdated: function(event, context) {
-			var contextualizedVariable = getDistinctContextualized(this, context)
+			var contextualizedVariable = getMaterializedContextualInstance(this, context) || this
 			if (event.type === 'delete') {
 				var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
 				if (index > -1) {
@@ -1137,13 +1154,14 @@ define(['./util/lang'], function (lang) {
 					contextualizedVariable.push(event.value)
 				}
 			} else if (event.type === 'update') {
-				var index = contextualizedVariable.cachedValue.indexOf(event.object)
-				var matches = [event.object].filter(this.args[0]).length > 0
+				var object = event.parent.valueOf(context)
+				var index = contextualizedVariable.cachedValue.indexOf(object)
+				var matches = [object].filter(this.args[0]).length > 0
 				if (index > -1) {
 					if (matches) {
 						return {
 							type: 'updated',
-							object: event.object,
+							object: object,
 							index: index
 						}
 					} else {
@@ -1151,7 +1169,7 @@ define(['./util/lang'], function (lang) {
 					}
 				}	else {
 					if (matches) {
-						contextualizedVariable.push(event.object)
+						contextualizedVariable.push(object)
 					}
 					// else nothing mactches
 				}
@@ -1161,14 +1179,15 @@ define(['./util/lang'], function (lang) {
 			}
 		},
 		mapUpdated: function(event, context) {
-			var contextualizedVariable = getDistinctContextualized(this, context)
+			var contextualizedVariable = getMaterializedContextualInstance(this, context) || this
 			if (event.type === 'delete') {
 				contextualizedVariable.splice(event.previousIndex, 1)
 			} else if (event.type === 'add') {
 				contextualizedVariable.push(this.args[0].call(this.args[1], event.value))
 			} else if (event.type === 'update') {
-				var index = contextualizedVariable.cachedValue.indexOf(event.object)
-				var matches = [event.object].filter(this.args[0]).length > 0
+				var object = event.parent.valueOf(context)
+				var index = contextualizedVariable.cachedValue.indexOf(object)
+				var matches = [object].filter(this.args[0]).length > 0
 				contextualizedVariable.splice(index, 1, this.args[0].call(this.args[1], event.value))
 			} else {
 				return event
