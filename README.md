@@ -675,12 +675,12 @@ If your variables use promises, alkali will wait for the promise to resolve befo
 
 ## Data Objects
 
-Data objects are plain JS objects: Variables can be used on their own, or the Variable interface is designed to provide an enhanced interface to objects without requiring any special properties or prototypes on the data objects themselves. Objects can be used in conjunction with property variables to receive notification of object changes using the consistent variable interface. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observe` the object. For example:
+Data objects are plain JS objects: Variables can be used on their own, or the Variable interface is designed to provide an enhanced interface to objects without requiring any special properties or prototypes on the data objects themselves. Objects can be used in conjunction with property variables to receive notification of object changes using the consistent variable interface. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observeObject` method on a variable. For example:
 
 	var myObject = {name: 'simple property'};
 	var myVariable = new Variable(myObject);
 	// actively observe this object
-	Variable.observe(myObject);
+	myVariable.observeObject();
 	var nameProperty = myVariable.property('name');
 
 	nameProperty.subscribe(function (event) {
