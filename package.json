@@ -23,7 +23,7 @@
     "test.sauce": "intern-runner config=tests/intern",
     "test.proxy": "intern-runner config=tests/intern --proxyOnly"
   },
-  "main": "./dist/index.js",
+  "main": "./index.js",
   "dependencies": {
   },
   "dojoBuild": "package.js",

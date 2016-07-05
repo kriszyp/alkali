@@ -9,6 +9,7 @@ define(['../util/lang', '../Variable'], function(lang, Variable){
 				// if it an object that can deliver notifications through `on` events, we listen for that (like dstore collections)
 				var variable = this
 				var handle = value.on(['add','update','delete'], function(event) {
+					event.visited = new Set()
 					variable.updated(event)
 				})
 				this.notifyingValue = {

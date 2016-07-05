@@ -92,7 +92,7 @@ define([
 				b: 10
 			}
 			var variable = new Variable(object)
-			Variable.observe(object)
+			variable.observeObject()
 			var invalidated
 			var aProperty = variable.property('a')
 			aProperty.notifies({
@@ -114,6 +114,55 @@ define([
 				assert.isTrue(invalidated)
 			})
 		},
+
+		'no upstream side effects': function() {
+			var v = new Variable({a: 1})
+			var v2 = new Variable()
+			v2.put(v)
+			var updated = false
+			v.notifies({
+				updated: function(){
+					updated = true
+				}
+			})
+			v2.set('a', 2)
+			assert.strictEqual(v2.get('a'), 2)
+			assert.strictEqual(v2.valueOf().a, 2)
+			assert.strictEqual(v.get('a'), 1)
+			assert.strictEqual(v.valueOf().a, 1)
+			assert.isFalse(updated)
+			v2.put({a: 3})
+			assert.strictEqual(v2.get('a'), 3)
+			assert.strictEqual(v2.valueOf().a, 3)
+			assert.strictEqual(v.get('a'), 1)
+			assert.strictEqual(v.valueOf().a, 1)
+			assert.isFalse(updated)
+		},
+
+		'upstream proxy of mutations': function() {
+			var v = new Variable({a: 1})
+			var v2 = new Variable()
+			v2.proxy(v)
+			var updated = false
+			v.notifies({
+				updated: function(){
+					updated = true
+				}
+			})
+			v2.set('a', 2)
+			assert.strictEqual(v2.get('a'), 2)
+			assert.strictEqual(v2.valueOf().a, 2)
+			assert.strictEqual(v.get('a'), 2)
+			assert.strictEqual(v.valueOf().a, 2)
+			assert.isTrue(updated)
+			v2.put({a: 3})
+			assert.strictEqual(v2.get('a'), 3)
+			assert.strictEqual(v2.valueOf().a, 3)
+			assert.strictEqual(v.get('a'), 3)
+			assert.strictEqual(v.valueOf().a, 3)
+		},
+
+
 		'function call': function () {
 			var add = new Variable(function (a, b) {
 				return a + b
@@ -326,7 +375,7 @@ define([
 				}
 			})
 			var parentReference = new Variable()
-			parentReference.put(parent)
+			parentReference.proxy(parent)
 			var parentNotified
 			var b = parent.property('a').property('b')
 			b.notifies({
@@ -353,7 +402,8 @@ define([
 		relisten: function() {
 			var v = new Variable({foo: 1})
 			var ref = new Variable(v)
-			var ref2 = new Variable(v)
+			var ref2 = new Variable()
+			ref2.proxy(v)
 			var foo = v.property('foo')
 			var fooRef = ref.property('foo')
 			var fooRef2 = ref2.property('foo')

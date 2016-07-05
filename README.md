@@ -122,21 +122,26 @@ This is a property that provides a variable representing the schema for the vari
 
 This is a property that provides a variable representing the validation of this variable. Alkali provides very basic validation, but generally you will want to implement your own `validate` method, which can use the `schema` to validate variable values. See the validation section below for more information.
 
-### subscribe(listener)
+### `subscribe(listener)`
 
 This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables to Elements and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
 
-### Variable.all(array)
+### `Variable.for(subject)`
+
+This static method will return a variable instance mapped to the target object. This will return a stable reference to a variable instance, the first call for a given target object will create a new instance, and subsequently calls with return the same variable. This can be very useful if independent code will access the same object(s) and make changes to the object and ensure that the changes are communicated through the same variable.
+
+### `all(array)`
 
 This function allows you to compose a new variable from an array of input variables, where the resulting variable will update in response to changes from any of the input variables. The return variable will hold an array of values that represent the value of each of the input variable's values (in the same order as the variables were provided). This is intended to mirror the `Promise.all()` API. For example:
 
 ```
+import { all, Variable } from 'alkali'
 let a = Variable(1);
 let b = Variable(2);
 let sum = Variable.all(a, b).to(([a, b]) => a + b);
 ```
 
-`Variable.all` will also work with a set of arguments, instead of an array. It was will also work with an object, in which case each property value will be resolved, and the result will resolved to an object with the resolved values.
+`all` will also work with a set of arguments, instead of an array. It was will also work with an object, in which case each property value will be resolved, and the result will resolved to an object with the resolved values.
 
 ## Variables as Arrays
 
@@ -674,12 +679,12 @@ If your variables use promises, alkali will wait for the promise to resolve befo
 
 ## Data Objects
 
-Data objects are plain JS objects: Variables can be used on their own, or the Variable interface is designed to provide an enhanced interface to objects without requiring any special properties or prototypes on the data objects themselves. Objects can be used in conjunction with property variables to receive notification of object changes using the consistent variable interface. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observe` the object. For example:
+Data objects are plain JS objects: Variables can be used on their own, or the Variable interface is designed to provide an enhanced interface to objects without requiring any special properties or prototypes on the data objects themselves. Objects can be used in conjunction with property variables to receive notification of object changes using the consistent variable interface. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observeObject` method on a variable. For example:
 
 	var myObject = {name: 'simple property'};
 	var myVariable = new Variable(myObject);
 	// actively observe this object
-	Variable.observe(myObject);
+	myVariable.observeObject();
 	var nameProperty = myVariable.property('name');
 
 	nameProperty.subscribe(function (event) {
@@ -710,6 +715,29 @@ aNumber.valueOf() // -> returns 10
 ## Contextualization
 
 The computations (and invalidations) can be all be executed with an optional context, which effectively allows variables to be parameterized. This means that a given variable does not have to be used to only represent a single value, but the variable may be used to represent set of different variables depending on their context. This also facilitates the construction of very powerful caching mechanisms that can intelligently cache based on determining which parameters may lead to different results.
+
+
+## Variable Proxying
+
+Alkali variables can be assigned a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. A new copied object will be created if necessary to contain the changes of a downstream variable. For example:
+```
+let sourceVariable = new Variable({foo: 1})
+let containingVariable = new Variable(sourceVariable)
+sourceVariable.set('foo', 2) // this will propagate down to containingVariable
+containingVariable.set('foo', 3) // this will not affect the sourceVariable
+containingVariable.get('foo') -> 3
+sourceVariable.get('foo') -> 2
+```
+However, there may be situations where you want to explicitly define a variable as a proxy, such that changes propagate to the source, as well as to the proxying variable. This can be done by using the `proxy` method to assign the variable:
+```
+let sourceVariable = new Variable({foo: 1})
+let containingVariable = new Variable()
+containingVariable.proxy(sourceVariable)
+containingVariable.set('foo', 3) // this *will* affect the sourceVariable
+sourceVariable.get('foo') -> 3
+containingVariable.put({foo: 4}) // this will also affect the sourceVariable
+sourceVariable.get('foo') -> 4
+```
 
 ## Variable Copies
 
@@ -758,10 +786,9 @@ This stops the notifications to the dependent variable, undoing the action of `n
 
 This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables are updated, than the returned variable will update. The function can be re-executed with the changed values on the next call to valueOf.
 
-### fixed
+### proxy(sourceVariable)
 
-This property can be set to true, when a variable holds another variable (acting as proxy), so that subsequent `put()` will not replace the contained variable, but will replace the value in the target variable.
-
+This will cause the variable to act as a proxy for the source variable, and changes to this variable will be directed to the source variable, and vice versa.
 
 
 ## Which Listener To Use?
