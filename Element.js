@@ -415,7 +415,9 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 			if (each.create) {
 				var ItemClass = element.itemAs || Item
 				hasOwn(each, ItemClass, function (element) {
-					return new ItemClass(element._item, content)
+					var itemVariable = ItemClass.for(element._item)
+					itemVariable.collection = content
+					return itemVariable
 				})
 			}
 			if (content.notifies) {

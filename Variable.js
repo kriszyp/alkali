@@ -216,9 +216,25 @@ define(['./util/lang'], function (lang) {
 			if (typeof this === 'function') {
 				// this is a class, the subject should hopefully have an entry
 				if (subject) {
-					var instance = subject.constructor.getForClass(subject, this)
-					if (instance && !instance.subject) {
-						instance.subject = subject
+					var instance
+					if (subject.constructor.getForClass) {
+						// if the subject has it is own means of retrieving an instance
+						instance = subject.constructor.getForClass(subject, this)
+						if (instance && !instance.subject) {
+							instance.subject = subject
+						}
+					} else {
+						if (subject && typeof subject === 'object') {
+							// a plain object, we use our own map to retrieve the instance (or create one)
+							var instanceMap = this.instanceMap || (this.instanceMap = new WeakMap())
+							instance = instanceMap.get(subject)
+							if (!instance) {
+								instanceMap.set(subject, instance = new this(subject))
+							}
+						} else {
+							// a primitive, just unconditionally create a new variable for it
+							instance = new this(subject)
+						}
 					}
 					// TODO: Do we have a global context that we set on defaultInstance?
 					return instance || this.defaultInstance
@@ -553,7 +569,7 @@ define(['./util/lang'], function (lang) {
 			if (callbackOrItemClass.notifies) {
 				var collectionVariable = this
 				this.forEach(function(item) {
-					var itemVariable = new callbackOrItemClass(item)
+					var itemVariable = callbackOrItemClass.for(item)
 					itemVariable.collection = collectionVariable
 					callbackOrContext.call(this, itemVariable)
 				}, context)
