@@ -162,8 +162,8 @@ define(['./util/lang'], function (lang) {
 			}
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
-					// nothing changed, immediately return valueOf
-					return value.valueOf(context)
+					// nothing changed, immediately return valueOf (or ownObject if we have it)
+					return variable.ownObject || value.valueOf(context)
 				}
 				// if there was a another value that we were dependent on before, stop listening to it
 				// TODO: we may want to consider doing cleanup after the next rendering turn
@@ -183,6 +183,7 @@ define(['./util/lang'], function (lang) {
 					if (getPrototypeOf(variable.ownObject) !== value) {
 						setPrototypeOf(variable.ownObject, value)
 					}
+					value = variable.ownObject
 				}
 			}
 			if (value === undefined) {
@@ -398,7 +399,7 @@ define(['./util/lang'], function (lang) {
 				}
 			}
 			if (updateEvent instanceof PropertyChangeEvent) {
-				if (this.notifyingValue) {
+				if (this.notifyingValue && this.fixed) {
 					this.notifyingValue.updated(updateEvent, this, context)
 				}
 				if (this.collection) {
@@ -525,8 +526,8 @@ define(['./util/lang'], function (lang) {
 		proxy: function(proxiedVariable) {
 			var thisVariable = this
 			this.fixed = true
-			return when(this.setValue(proxiedVariable, context), function(value) {
-				thisVariable.updated(new RefreshEvent(), thisVariable, context)
+			return when(this.setValue(proxiedVariable), function(value) {
+				thisVariable.updated(new RefreshEvent(), thisVariable)
 			})
 		},
 		next: function(value) {
@@ -676,10 +677,14 @@ define(['./util/lang'], function (lang) {
 			})
 		},
 		_willModify: function(context) {
+			// an intent to modify, so we need to make sure we have our own copy
+			// of an object when necessary
 			if (this.fixed) {
-				return this.notifyingValue._willModify(context)
+				if (this.value && this.value._willModify) {
+					return this.value._willModify(context)
+				}
 			}
-			if (!this.ownObject && this.notifyingValue) {
+			if (!this.ownObject && this.value && this.value.notifies) {
 				var variable = this
 				return when(this.valueOf(context), function(value) {
 					if (value && typeof value === 'object') {
@@ -838,6 +843,10 @@ define(['./util/lang'], function (lang) {
 				}
 			})
 		},
+		_willModify: function() {
+			this.parent._willModify()
+			return Variable.prototype._willModify.call(this)
+		},
 		validate: function(target, schema) {
 			return this.parent.validate(target.valueOf(), schema)
 		}
@@ -929,6 +938,7 @@ define(['./util/lang'], function (lang) {
 		this.functionVariable = functionVariable
 		this.args = args
 	}, {
+		fixed: true,
 		forDependencies: function(callback) {
 			// depend on the args
 			Composite.prototype.forDependencies.call(this, callback)
