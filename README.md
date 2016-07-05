@@ -719,7 +719,7 @@ The computations (and invalidations) can be all be executed with an optional con
 
 ## Variable Proxying
 
-Alkali variables can be assigned a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. A new copied object will be created if necessary to contain the changes of a downstream variable. For example:
+Alkali variables can be assigned (with `put`) a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. A new copied object will be created if necessary to contain the changes of a downstream variable. For example:
 ```
 let sourceVariable = new Variable({foo: 1})
 let containingVariable = new Variable(sourceVariable)
@@ -738,6 +738,7 @@ sourceVariable.get('foo') -> 3
 containingVariable.put({foo: 4}) // this will also affect the sourceVariable
 sourceVariable.get('foo') -> 4
 ```
+Note that when returning a variable from `to` variable transform, the resulting transform variable will use proxying behavior, by default, if there is no reverse transform that was defined.
 
 ## Variable Copies
 
