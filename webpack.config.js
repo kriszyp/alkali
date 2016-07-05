@@ -1,3 +1,4 @@
+var webpack = require('webpack')
 module.exports = {
     entry:  './index.js',
     output: {
@@ -6,5 +7,8 @@ module.exports = {
         library: 'alkali',
         libraryTarget: 'umd'
     },
-    devtool: 'cheap-source-map'
+    plugins: [
+      new webpack.optimize.UglifyJsPlugin()
+    ],
+    devtool: 'source-map'
 };
