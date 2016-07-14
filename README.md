@@ -93,6 +93,7 @@ let sum = a.to((aValue) => {
 })
 // sum will reactively update to changes in either a or b
 ```
+The `to` function will also wait for any promise values to resolve before executing as well.
 
 ### `get(propertyName)`
 
@@ -277,7 +278,7 @@ You can also simply provide a string (or any primitive, including numbers or boo
 new Div('Some text to put in the div');
 ```
 
-Note that if you are using a string as the first argument, if it starts with a '.' or '#', it will be interpreted as a selector. Only the first argument can be selector, so a string-as-text can be safely used with any starting character for subsequent arguments. You can safely output variable or user-provided strings by starting with an empty selector string (`Div('', someString)`), or as explicit content (`Div({content: someString})`)
+Note that if you are using a string as the first argument, if it starts with a '.' or '#', it will be interpreted as a selector. Only the first argument can be selector, so a string-as-text can be safely used with any starting character for subsequent arguments. You can safely output variable or user-provided strings by starting with an empty selector string (`Div('', someString)`), as explicit content (`Div({content: someString})`), or as an explicit child (`Div([someString])`).
 
 ### Event Handlers
 The properties argument may also define event handlers. These event handlers are simply functions defined with the same event handler names as used by event attributes (however, these are not implemented using "DOM0" event registration, Alkali uses modern event registration to setup these handlers). For example, we could create a span that listens for clicks:
