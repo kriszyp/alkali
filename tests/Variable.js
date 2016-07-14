@@ -138,6 +138,22 @@ define([
 			assert.strictEqual(v.valueOf().a, 1)
 			assert.isFalse(updated)
 		},
+		'downstream array copy': function() {
+			var v = new Variable(['a'])
+			var v2 = new Variable()
+			v2.put(v)
+			var updated = false
+			v.notifies({
+				updated: function(){
+					updated = true
+				}
+			})
+			v2.push('b')
+			assert.strictEqual(v2.get(0), 'a')
+			assert.strictEqual(v2.get(1), 'b')
+			assert.strictEqual(v.get(0), 'a')
+			assert.strictEqual(v.get(1), undefined)
+		},
 
 		'upstream proxy of mutations': function() {
 			var v = new Variable({a: 1})
@@ -162,6 +178,13 @@ define([
 			assert.strictEqual(v.valueOf().a, 3)
 		},
 
+		'transform with mutations': function() {
+			var v = new Variable({a: 1})
+			var v2 = new Variable(['a'])
+			var transformed = v.to(function(v) { return v2 })
+			transformed.push('b')
+			assert.strictEqual(v2.get(1), 'b')
+		},
 
 		'function call': function () {
 			var add = new Variable(function (a, b) {
@@ -438,6 +461,24 @@ define([
 			assert.deepEqual(results, [2, 4])
 		},
 
+		'array positions': function () {
+			var v = new Variable(['a', 'b'])
+			var a = v.property(0)
+			var b = v.property(1)
+			assert.strictEqual(a.valueOf(), 'a')
+			assert.strictEqual(b.valueOf(), 'b')
+			v.splice(1, 0, 'ab')
+			assert.strictEqual(a.valueOf(), 'a')
+			assert.strictEqual(b.valueOf(), 'b')
+			assert.strictEqual(v.get(1), 'ab')
+			v.push('c')
+			assert.strictEqual(a.valueOf(), 'a')
+			assert.strictEqual(b.valueOf(), 'b')
+			v.unshift('0')
+			assert.strictEqual(a.valueOf(), 'a')
+			assert.strictEqual(b.valueOf(), 'b')
+		},
+
 		promise: function () {
 			var resolvePromise
 			var promise = new Promise(function(resolve){
@@ -484,9 +525,9 @@ define([
 			assert.isUndefined(result)
 												resolvePromise('promise')
 			return finished.then(function() {
-					assert.equal(outerCallbackInvoked, 1, 'outer map not invoked exactly once: ' + outerCallbackInvoked)
-					assert.equal(innerCallbackInvoked, 1, 'inner map not invoked exactly once: ' + innerCallbackInvoked)
-														assert.deepEqual(result, ['promise','a'])
+				assert.equal(outerCallbackInvoked, 1, 'outer map not invoked exactly once: ' + outerCallbackInvoked)
+				assert.equal(innerCallbackInvoked, 1, 'inner map not invoked exactly once: ' + innerCallbackInvoked)
+				assert.deepEqual(result, ['promise','a'])
 			})
 		},
 

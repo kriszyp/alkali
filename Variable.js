@@ -586,10 +586,18 @@ define(['./util/lang'], function (lang) {
 			})
 		},
 
-		to: function (transformFunction) {
-			// TODO: create a more efficient map, we don't really need a full variable here
-			if (!transformFunction) {
+		to: function (transformFunction, reverse) {
+			if (typeof transformFunction !== 'function') {
+				if (typeof transformFunction === 'object') {
+					this.to(transformFunction.forward, transformFunction.reverse)
+				}
 				throw new Error('No function provided to transform')
+			}
+			if (reverse) {
+				transformFunction.reverse = function(value, args, context) {
+					// for direct to, we can just use the first argument
+					reverse.call(this, args[0], context)
+				}
 			}
 			return new Call(transformFunction, [this])
 		},
@@ -688,12 +696,111 @@ define(['./util/lang'], function (lang) {
 				var variable = this
 				return when(this.valueOf(context), function(value) {
 					if (value && typeof value === 'object') {
-						variable.ownObject = Object.create(value)
+						if (value instanceof Array) {
+							variable.ownObject = value.slice(0)
+						} else {
+							variable.ownObject = Object.create(value)
+						}
 					}
 				})
 			}
+		},
+		splice: function(startingIndex, removalCount) {
+			var array = arrayToModify(this)
+			var results = array.splice.apply(array, arguments)
+			removedAt(this, results, startingIndex, removalCount, array.length)
+			insertedAt(this, [].slice.call(arguments, 2), startingIndex, array.length)
+			return results
+		},
+		push: function() {
+			var array = arrayToModify(this)
+			var results = array.push.apply(array, arguments)
+			insertedAt(this, arguments, array.length - arguments.length, array.length)
+			return results
+		},
+		unshift: function() {
+			var array = arrayToModify(this)
+			var results = array.unshift.apply(array, arguments)
+			insertedAt(this, arguments, 0, array.length)
+			return results
+		},
+		pop: function() {
+			var array = arrayToModify(this)
+			var results = array.pop()
+			removedAt(this, [results], array.length, 1)
+			return results
+		},
+		shift: function() {
+			var array = arrayToModify(this)
+			var results = array.shift()
+			removedAt(this, [results], 0, 1, array.length)
+			return results
 		}
-	}	
+	}
+
+	function arrayToModify(variable) {
+		variable._willModify()
+		var array = variable.cachedValue || variable.valueOf()
+		if (!array) {
+			variable.put(array = [])
+		}
+		variable.updateVersion()
+		return array
+	}
+
+	function insertedAt(variable, added, startingIndex, arrayLength) {
+		var addedCount = added.length
+		// adjust the key positions of any index properties after splice
+		if (addedCount > 0) {
+			if (variable._properties) {
+				var arrayPosition
+				for (var i = arrayLength - addedCount; i > startingIndex;) {
+					var arrayPosition = variable._properties[--i]
+					if (arrayPosition) {
+						variable._properties[i] = undefined
+						arrayPosition.key += addedCount
+						variable._properties[arrayPosition.key] = arrayPosition
+					}
+				}
+			}
+			// send out updates
+			for (var i = 0, l = added.length; i < l; i++) {
+				variable.updated(new AddEvent({
+					value: added[i],
+					index: i + startingIndex,
+					modifier: variable
+				}), variable)
+			}
+			variable.cachedVersion = variable.version // update the cached version so it doesn't need to be recomputed
+		}
+	}
+
+	function removedAt(variable, removed, startingIndex, removalCount, arrayLength) {
+		// adjust the properties
+		var i = startingIndex + removalCount
+		var arrayPosition
+		if (removalCount > 0) {
+			if (variable._properties) {
+				for (var i = startingIndex + removalCount; i < arrayLength + removalCount; i++) {
+					var arrayPosition = variable._properties[i]
+					if (arrayPosition) {
+						variable._properties[i] = undefined
+						arrayPosition.key -= removalCount
+						variable._properties[arrayPosition.key] = arrayPosition
+					}
+				}
+			}
+			// send out updates
+			for (var i = 0; i < removalCount; i++) {
+				variable.updated(new DeleteEvent({
+					previousIndex: startingIndex,
+					oldValue: removed[i],
+					modifier: variable
+				}), variable)
+			}
+			variable.cachedVersion = variable.version // update the cached version so it doesn't need to be recomputed
+		}
+	}
 
 	if (typeof Symbol !== 'undefined') {
 		Variable.prototype[Symbol.iterator] = function() {
@@ -1062,75 +1169,6 @@ define(['./util/lang'], function (lang) {
 		}
 	})
 
-
-	function arrayMethod(name, sendUpdates) {
-		Variable.prototype[name] = function() {
-			var args = arguments
-			var variable = this
-			return when(this.cachedValue || this.valueOf(), function(array) {
-				if (!array) {
-					variable.put(array = [])
-				}
-				// try to use own method, but if not available, use Array's methods
-				var result = array[name] ? array[name].apply(array, args) : Array.prototype[name].apply(array, args)
-				variable.updateVersion()
-				if (sendUpdates) {
-					sendUpdates.call(variable, args, result, array)
-				}
-				variable.cachedVersion = variable.version // update the cached version so it doesn't need to be recomputed
-				variable.cachedValue = array
-				return result
-			})
-		}
-	}
-	arrayMethod('splice', function(args, result) {
-		for (var i = 0; i < args[1]; i++) {
-			this.updated(new DeleteEvent({
-				previousIndex: args[0],
-				oldValue: result[i],
-				modifier: this
-			}), this)
-		}
-		for (i = 2, l = args.length; i < l; i++) {
-			this.updated(new AddEvent({
-				value: args[i],
-				index: args[0] + i - 2,
-				modifier: this
-			}), this)
-		}
-	})
-	arrayMethod('push', function(args, result) {
-		for (var i = 0, l = args.length; i < l; i++) {
-			var arg = args[i]
-			this.updated(new AddEvent({
-				index: result - i - 1,
-				value: arg,
-				modifier: this
-			}), this)
-		}
-	})
-	arrayMethod('unshift', function(args, result) {
-		for (var i = 0, l = args.length; i < l; i++) {
-			var arg = args[i]
-			this.updated(new AddEvent({
-				index: i,
-				value: arg,
-				modifier: this
-			}), this)
-		}
-	})
-	arrayMethod('shift', function(args, results) {
-		this.updated(new DeleteEvent({
-			previousIndex: 0,
-			modifier: this
-		}), this)
-	})
-	arrayMethod('pop', function(args, results, array) {
-		this.updated(new DeleteEvent({
-			previousIndex: array.length,
-			modifier: this
-		}), this)
-	})
 
 	function iterateMethod(method) {
 		Variable.prototype[method] = function() {
