@@ -180,10 +180,10 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 					layoutChildren(childNode.contentNode || childNode, child, container)
 				} else if (child.notifies) {
 					// a variable
-					fragment.appendChild(variableAsText(parent, child))
+					fragment.appendChild(childNode = variableAsText(parent, child))
 				} else if (child.nodeType) {
 					// an element itself
-					fragment.appendChild(child)
+					fragment.appendChild(childNode = child)
 				} else {
 					// TODO: apply properties to last child, but with binding to the parent (for events)
 					throw new Error('Unknown child type ' + child)
