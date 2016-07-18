@@ -1,4 +1,4 @@
-define(['./Element', './Variable', './react', './Updater', './operators', './Copy'], function(Element, Variable, react, Updater, operators, Copy) {
+define(['./Element', './Variable', './react', './Renderer', './operators', './Copy'], function(Element, Variable, react, Renderer, operators, Copy) {
 	var main = Object.create(Element)
 	main.Copy = Copy
 	main.Element = Element
@@ -8,8 +8,8 @@ define(['./Element', './Variable', './react', './Updater', './operators', './Cop
 	main.spawn = function(func) {
 		return react(func).valueOf()
 	}
-	main.Updater = Updater
-	Object.assign(main, Updater)
+	main.Renderer = Renderer
+	Object.assign(main, Renderer)
 	Object.assign(main, operators)
 	return main
 })

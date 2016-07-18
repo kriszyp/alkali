@@ -10,7 +10,7 @@ define(['./util/lang'], function (lang, Variable) {
 		this.subject = subject
 	}
 
-	function Updater(options) {
+	function Renderer(options) {
 		var variable = options.variable
 
 		this.variable = variable
@@ -48,36 +48,36 @@ define(['./util/lang'], function (lang, Variable) {
 			variable.notifies(this)
 		} else {
 			// baconjs-esqe API
-			var updater = this
+			var renderer = this
 			variable.subscribe(function (event) {
 				// replace the variable with an object
 				// that returns the value from the event
-				updater.variable = {
+				renderer.variable = {
 					valueOf: function () {
 						return event.value()
 					}
 				}
-				updater.updated()
+				renderer.updated()
 			})
 		}
 		if(options && options.updateOnStart !== false){
 			this.updateRendering(true)
 		}
 	}
-	Updater.prototype = {
-		constructor: Updater,
+	Renderer.prototype = {
+		constructor: Renderer,
 		updateRendering: function () {
-			throw new Error ('updateRendering must be implemented by sub class of Updater')
+			throw new Error ('updateRendering must be implemented by sub class of Renderer')
 		},
 		updated: function (updateEvent, by, context) {
 			if (!this.invalidated) {
 				if (!context || this.contextMatches(context)) {
 					// do this only once, until we render again
 					this.invalidated = true
-					var updater = this
+					var renderer = this
 					requestAnimationFrame(function(){
 						invalidatedElements = null
-						updater.updateRendering(updater.alwaysUpdate)
+						renderer.updateRendering(renderer.alwaysUpdate)
 					})
 				}
 			}
@@ -110,10 +110,10 @@ define(['./util/lang'], function (lang, Variable) {
 				lang.queueTask(processQueue)
 				queued = true
 			}
-			var updater = this
+			var renderer = this
 			toRender.push(function(){
-				updater.invalidated = false
-				updater.updateElement(element)
+				renderer.invalidated = false
+				renderer.updateElement(element)
 			})
 		},
 		getId: function(){
@@ -125,23 +125,23 @@ define(['./util/lang'], function (lang, Variable) {
 
 	}
 
-	function ElementUpdater(options) {
-		Updater.call(this, options)
+	function ElementRenderer(options) {
+		Renderer.call(this, options)
 	}
-	ElementUpdater.prototype = Object.create(Updater.prototype)
-	ElementUpdater.prototype.shouldRender = function (element) {
+	ElementRenderer.prototype = Object.create(Renderer.prototype)
+	ElementRenderer.prototype.shouldRender = function (element) {
 		return document.body.contains(element)
 	}
-	ElementUpdater.prototype.getSubject = function () {
+	ElementRenderer.prototype.getSubject = function () {
 		return this.element || this.elements[0]
 	}
-	ElementUpdater.prototype.updateRendering = function (always, element) {
+	ElementRenderer.prototype.updateRendering = function (always, element) {
 		var elements = this.elements || (element && [element]) || []
 		if(!elements.length){
 			if(this.selector){
 				elements = document.querySelectorAll(this.selector)
 			}else{
-				throw new Error('No element or selector was provided to the Updater')
+				throw new Error('No element or selector was provided to the Renderer')
 			}
 			return
 		}
@@ -151,27 +151,27 @@ define(['./util/lang'], function (lang, Variable) {
 				this.updateElement(elements[i])
 			}else{
 				var id = this.getId()
-				var updaters = elements[i].updatersOnShow
-				if(!updaters){
-					updaters = elements[i].updatersOnShow = []
+				var renderers = elements[i].renderersOnShow
+				if(!renderers){
+					renderers = elements[i].renderersOnShow = []
 					elements[i].className += ' needs-rerendering'
 				}
-				if (!updaters[id]) {
-					updaters[id] = this
+				if (!renderers[id]) {
+					renderers[id] = this
 				}
 			}
 		}
 	}
-	ElementUpdater.prototype.addElement = function (element) {
+	ElementRenderer.prototype.addElement = function (element) {
 		if (this.selector) {
-			element.updatersOnShow = [this]
+			element.renderersOnShow = [this]
 		} else {
 			this.elements.push(element)
 		}
 		// and immediately do an update
 		this.updateElement(element)
 	}
-	ElementUpdater.prototype.updateElement = function(element) {
+	ElementRenderer.prototype.updateElement = function(element) {
 		this.invalidated = false
 		try {
 			// TODO: might make something cheaper than for(element) for setting context?
@@ -185,107 +185,107 @@ define(['./util/lang'], function (lang, Variable) {
 				if(this.renderLoading){
 					this.renderLoading(value, element)
 				}
-				var updater = this
+				var renderer = this
 				value.then(function (value) {
-					updater.renderUpdate(value, element)
+					renderer.renderUpdate(value, element)
 				})
 			}else{
 				this.renderUpdate(value, element)
 			}
 		}
 	}
-	ElementUpdater.prototype.renderUpdate = function (newValue, element) {
+	ElementRenderer.prototype.renderUpdate = function (newValue, element) {
 		throw new Error('renderUpdate(newValue) must be implemented')
 	}
-	Updater.Updater = Updater
-	Updater.ElementUpdater = ElementUpdater
+	Renderer.Renderer = Renderer
+	Renderer.ElementRenderer = ElementRenderer
 
-	function AttributeUpdater(options) {
+	function AttributeRenderer(options) {
 		if(options.name){
 			this.name = options.name
 		}
-		ElementUpdater.apply(this, arguments)
+		ElementRenderer.apply(this, arguments)
 	}
-	AttributeUpdater.prototype = Object.create(ElementUpdater.prototype)
-	AttributeUpdater.prototype.type = 'AttributeUpdater'
-	AttributeUpdater.prototype.renderUpdate = function (newValue, element) {
+	AttributeRenderer.prototype = Object.create(ElementRenderer.prototype)
+	AttributeRenderer.prototype.type = 'AttributeRenderer'
+	AttributeRenderer.prototype.renderUpdate = function (newValue, element) {
 		element.setAttribute(this.name, newValue)
 	}
-	Updater.AttributeUpdater = AttributeUpdater
+	Renderer.AttributeRenderer = AttributeRenderer
 
-	function PropertyUpdater(options) {
+	function PropertyRenderer(options) {
 		if(options.name){
 			this.name = options.name
 		}
-		ElementUpdater.apply(this, arguments)
+		ElementRenderer.apply(this, arguments)
 	}
-	PropertyUpdater.prototype = Object.create(ElementUpdater.prototype)
-	PropertyUpdater.prototype.type = 'PropertyUpdater'
-	PropertyUpdater.prototype.renderUpdate = function (newValue, element) {
+	PropertyRenderer.prototype = Object.create(ElementRenderer.prototype)
+	PropertyRenderer.prototype.type = 'PropertyRenderer'
+	PropertyRenderer.prototype.renderUpdate = function (newValue, element) {
 		element[this.name] = newValue
 	}
-	Updater.PropertyUpdater = PropertyUpdater
+	Renderer.PropertyRenderer = PropertyRenderer
 
-	function StyleUpdater(options) {
+	function StyleRenderer(options) {
 		if(options.name){
 			this.name = options.name
 		}
-		ElementUpdater.apply(this, arguments)
+		ElementRenderer.apply(this, arguments)
 	}
-	StyleUpdater.prototype = Object.create(ElementUpdater.prototype)
-	StyleUpdater.prototype.type = 'StyleUpdater'
-	StyleUpdater.prototype.renderUpdate = function (newValue, element) {
+	StyleRenderer.prototype = Object.create(ElementRenderer.prototype)
+	StyleRenderer.prototype.type = 'StyleRenderer'
+	StyleRenderer.prototype.renderUpdate = function (newValue, element) {
 		element.style[this.name] = newValue
 	}
-	Updater.StyleUpdater = StyleUpdater
+	Renderer.StyleRenderer = StyleRenderer
 
-	function ContentUpdater(options) {
-		ElementUpdater.apply(this, arguments)
+	function ContentRenderer(options) {
+		ElementRenderer.apply(this, arguments)
 	}
-	ContentUpdater.prototype = Object.create(ElementUpdater.prototype)
-	ContentUpdater.prototype.type = 'ContentUpdater'
-	ContentUpdater.prototype.renderUpdate = function (newValue, element) {
+	ContentRenderer.prototype = Object.create(ElementRenderer.prototype)
+	ContentRenderer.prototype.type = 'ContentRenderer'
+	ContentRenderer.prototype.renderUpdate = function (newValue, element) {
 		element.innerHTML = ''
 		if (newValue === undefined){
 			newValue = ''
 		}
 		element.appendChild(document.createTextNode(newValue))
 	}
-	Updater.ContentUpdater = ContentUpdater
+	Renderer.ContentRenderer = ContentRenderer
 
-	function TextUpdater(options) {
+	function TextRenderer(options) {
 		this.position = options.position
 		this.textNode = options.textNode
-		ElementUpdater.apply(this, arguments)
+		ElementRenderer.apply(this, arguments)
 	}
-	TextUpdater.prototype = Object.create(ElementUpdater.prototype)
-	TextUpdater.prototype.type = 'TextUpdater'
-	TextUpdater.prototype.renderUpdate = function (newValue, element) {
+	TextRenderer.prototype = Object.create(ElementRenderer.prototype)
+	TextRenderer.prototype.type = 'TextRenderer'
+	TextRenderer.prototype.renderUpdate = function (newValue, element) {
 		if (newValue === undefined){
 			newValue = ''
 		}
 		(this.textNode || element.childNodes[this.position]).nodeValue = newValue
 	}
-	Updater.TextUpdater = TextUpdater
+	Renderer.TextRenderer = TextRenderer
 
-	function ListUpdater(options) {
+	function ListRenderer(options) {
 		if (options.each) {
 			this.each = options.each
 		}
-		ElementUpdater.apply(this, arguments)
+		ElementRenderer.apply(this, arguments)
 	}
-	ListUpdater.prototype = Object.create(ElementUpdater.prototype)
-	ListUpdater.prototype.updated = function (updateEvent, context) {
+	ListRenderer.prototype = Object.create(ElementRenderer.prototype)
+	ListRenderer.prototype.updated = function (updateEvent, context) {
 		(this.updates || (this.updates = [])).push(updateEvent)
-		ElementUpdater.prototype.updated.call(this, updateEvent, context)
+		ElementRenderer.prototype.updated.call(this, updateEvent, context)
 	}
-	ListUpdater.prototype.type = 'ListUpdater'
-	ListUpdater.prototype.omitValueOf = true
-	ListUpdater.prototype.renderUpdate = function (newValue, element) {
+	ListRenderer.prototype.type = 'ListRenderer'
+	ListRenderer.prototype.omitValueOf = true
+	ListRenderer.prototype.renderUpdate = function (newValue, element) {
 		var container
 		var each = this.each
 		var thisElement = this.elements[0]
-		var updater = this
+		var renderer = this
 		if (!this.builtList) {
 			this.builtList = true
 			container = document.createDocumentFragment()
@@ -300,11 +300,11 @@ define(['./util/lang'], function (lang, Variable) {
 			container = this.element
 			updates.forEach(function(update) {
 				if (update.type === 'refresh') {
-					updater.builtList = false
+					renderer.builtList = false
 					for (var i = 0, l = childElements.length; i < l; i++) {
 						thisElement.removeChild(childElements[i])
 					}
-					updater.renderUpdate()
+					renderer.renderUpdate()
 				} else {
 					if (update.previousIndex > -1) {
 						thisElement.removeChild(childElements[update.previousIndex])
@@ -334,9 +334,9 @@ define(['./util/lang'], function (lang, Variable) {
 			}
 		}
 	}
-	Updater.ListUpdater = ListUpdater
+	Renderer.ListRenderer = ListRenderer
 
-	Updater.onShowElement = function(shownElement){
+	Renderer.onShowElement = function(shownElement){
 		requestAnimationFrame(function(){
 			invalidatedElements = null
 			var elements = [].slice.call(shownElement.getElementsByClassName('needs-rerendering'))
@@ -347,14 +347,14 @@ define(['./util/lang'], function (lang, Variable) {
 			}
 			for (var i = 0, l = elements.length; i < l; i++){
 				var element = elements[i]
-				var updaters = element.updatersOnShow
-				if(updaters){
-					element.updatersOnShow = null
+				var renderers = element.renderersOnShow
+				if(renderers){
+					element.renderersOnShow = null
 					// remove needs-rerendering class
 					element.className = element.className.replace(/\s?needs\-rerendering\s?/g, '')
-					for (var id in updaters) {
-						var updater = updaters[id]
-						updater.updateElement(element)
+					for (var id in renderers) {
+						var renderer = renderers[id]
+						renderer.updateElement(element)
 					}
 				}
 			}
@@ -371,7 +371,7 @@ define(['./util/lang'], function (lang, Variable) {
 			}
 		}
 	}
-	Updater.onElementRemoval = function(element, onlyChildren){
+	Renderer.onElementRemoval = function(element, onlyChildren){
 		if(!onlyChildren){
 			onElementRemoval(element)
 		}
@@ -383,5 +383,5 @@ define(['./util/lang'], function (lang, Variable) {
 			}
 		}
 	}
-	return Updater
+	return Renderer
 })

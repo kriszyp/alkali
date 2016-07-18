@@ -11,10 +11,10 @@
 		<script src="../../dojo/dojo.js" data-dojo-config="async:true"></script>
 
 		<script>
-			require(['alkali/Variable', 'alkali/Updater', 'alkali/explorer'], function (Variable, Updater) {
+			require(['alkali/Variable', 'alkali/Renderer', 'alkali/explorer'], function (Variable, Renderer) {
 				var rootVariable = new Variable(window. root = {});
 				var name = rootVariable.property('name');
-				new Updater.ContentUpdater({
+				new Renderer.ContentRenderer({
 					variable: name,
 					element: document.getElementById('test')
 				});

@@ -1,4 +1,4 @@
-define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, lang) {
+define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer, lang) {
 	var knownElementProperties = {};
 	['textContent', 'innerHTML', 'title', 'href', 'value', 'valueAsNumber', 'role', 'render'].forEach(function(property) {
 		knownElementProperties[property] = true
@@ -15,10 +15,10 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 		this.subject = subject
 	}
 
-	var PropertyUpdater = Updater.PropertyUpdater
-	var AttributeUpdater = Updater.AttributeUpdater
-	var StyleUpdater = lang.compose(Updater.StyleUpdater, function StyleUpdater() {
-		Updater.StyleUpdater.apply(this, arguments)
+	var PropertyRenderer = Renderer.PropertyRenderer
+	var AttributeRenderer = Renderer.AttributeRenderer
+	var StyleRenderer = lang.compose(Renderer.StyleRenderer, function StyleRenderer() {
+		Renderer.StyleRenderer.apply(this, arguments)
 	}, {
 		renderUpdate: function(newValue, element) {
 			var definition = styleDefinitions[this.name]
@@ -30,9 +30,9 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 		}
 	})
 
-	var ClassNameUpdater = lang.compose(Updater.ElementUpdater, function ClassNameUpdater(options) {
+	var ClassNameRenderer = lang.compose(Renderer.ElementRenderer, function ClassNameRenderer(options) {
 		this.className = options.className
-		Updater.apply(this, arguments)
+		Renderer.apply(this, arguments)
 	}, {
 		renderUpdate: function(newValue, element) {
 			var currentClassName = element.className
@@ -55,8 +55,8 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 	})
 
 	// TODO: check for renderContent with text updater
-	var TextUpdater = Updater.TextUpdater
-	var ListUpdater = Updater.ListUpdater
+	var TextRenderer = Renderer.TextRenderer
+	var ListRenderer = Renderer.ListRenderer
 	
 	var toAddToElementPrototypes = []
 	var createdBaseElements = []
@@ -215,7 +215,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 		}
 		var textNode = doc.createTextNode(text)
 		if (content.notifies) {
-			enterUpdater(TextUpdater, {
+			enterRenderer(TextRenderer, {
 				element: parent,
 				textNode: textNode,
 				variable: content
@@ -226,7 +226,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 
 	function bidirectionalHandler(element, value, key) {
 		if (value && value.notifies) {
-			enterUpdater(PropertyUpdater, {
+			enterRenderer(PropertyRenderer, {
 				name: key,
 				variable: value,
 				element: element
@@ -263,7 +263,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 				var flag = classes[className]
 				if (flag && flag.notifies) {
 					// if it is a variable, we react to it
-					enterUpdater(ClassNameUpdater, {
+					enterRenderer(ClassNameRenderer, {
 						element: element,
 						className: className,
 						variable: flag
@@ -280,7 +280,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 			// TODO: This doesn't need to be a property updater
 			// we should also verify it is a generator
 			// and maybe, at some point, find an optimization to eliminate the bind()
-			enterUpdater(PropertyUpdater, {
+			enterRenderer(PropertyRenderer, {
 				name: key,
 				variable: new Variable.GeneratorVariable(value.bind(element)),
 				element: element
@@ -300,7 +300,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 			if (typeof value === 'string') {
 				element.setAttribute('style', value)
 			} else if (value && value.notifies) {
-				enterUpdater(AttributeUpdater, {
+				enterRenderer(AttributeRenderer, {
 					name: 'style',
 					variable: value,
 					elment: element
@@ -312,7 +312,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 	}
 	function applyAttribute(element, value, key) {
 		if (value && value.notifies) {
-			enterUpdater(AttributeUpdater, {
+			enterRenderer(AttributeRenderer, {
 				name: key,
 				variable: value,
 				element: element
@@ -327,8 +327,8 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 	})
 
 	function applySubProperties(renderer) {
-		var SubPropertyUpdater = lang.compose(PropertyUpdater, function SubPropertyUpdater(options) {
-			PropertyUpdater.apply(this, arguments)
+		var SubPropertyRenderer = lang.compose(PropertyRenderer, function SubPropertyRenderer(options) {
+			PropertyRenderer.apply(this, arguments)
 		}, {
 			renderUpdate: renderer
 		})	
@@ -337,7 +337,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 			for (var subKey in value) {
 				var subValue = value[subKey]
 				if (subValue && subValue.notifies) {
-					enterUpdater(SubPropertyUpdater, {
+					enterRenderer(SubPropertyRenderer, {
 						name: subKey,
 						variable: subValue,
 						element: element
@@ -357,7 +357,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 				propertyHandlers[key](element, value, key, properties)
 			} else if ((styleDefinition = styleDefinitions[key]) && element[key] === undefined) {
 				if (value && value.notifies) {
-					enterUpdater(StyleUpdater, {
+					enterRenderer(StyleRenderer, {
 						name: key,
 						variable: value,
 						element: element
@@ -366,7 +366,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 					styleDefinition(element, value, key)
 				}
 			} else if (value && value.notifies) {
-				enterUpdater(PropertyUpdater, {
+				enterRenderer(PropertyRenderer, {
 					name: key,
 					variable: value,
 					element: element
@@ -421,7 +421,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 				})
 			}
 			if (content.notifies) {
-				enterUpdater(ListUpdater, {
+				enterRenderer(ListRenderer, {
 					each: each,
 					variable: content,
 					element: element
@@ -494,7 +494,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 
 		if (content && content.notifies) {
 			// a variable, respond to changes
-			enterUpdater(PropertyUpdater, {
+			enterRenderer(PropertyRenderer, {
 				variable: content,
 				name: inputProperty,
 				element: element
@@ -970,7 +970,7 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 
 	Element.append = append
 	Element.prepend = prepend
-	Element.refresh = Updater.refresh
+	Element.refresh = Renderer.refresh
 	var options = Element.options = {
 		moveLiveElementsEnabled: true,
 	}
@@ -1059,15 +1059,15 @@ define(['./Variable', './Updater', './util/lang'], function (Variable, Updater, 
 
 	var Item = Element.Item = Variable.Item
 
-	function enterUpdater(Updater, options/*, target*/) {
+	function enterRenderer(Renderer, options/*, target*/) {
 		// this will be used for optimized class-level variables
 		/*if (target.started) { // TODO: Might want to pass in started as a parameter
 			// this means that the updater has already been created, so we just need to add this instance
-			Updater.prototype.renderUpdate.call(options, element)
+			Renderer.prototype.renderUpdate.call(options, element)
 		} else {*/
 		var target = options.element
 		var updaters = target.updaters || (target.updaters = [])
-		updaters.push(new Updater(options))
+		updaters.push(new Renderer(options))
 		//}
 	}
 

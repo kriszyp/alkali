@@ -706,46 +706,58 @@ define(['./util/lang'], function (lang) {
 			}
 		},
 		splice: function(startingIndex, removalCount) {
-			var array = arrayToModify(this)
-			var results = array.splice.apply(array, arguments)
-			removedAt(this, results, startingIndex, removalCount, array.length)
-			insertedAt(this, [].slice.call(arguments, 2), startingIndex, array.length)
-			return results
+			var args = arguments
+			return arrayToModify(this, function(array) {
+				var results = array.splice.apply(array, args)
+				removedAt(this, results, startingIndex, removalCount, array.length)
+				insertedAt(this, [].slice.call(args, 2), startingIndex, array.length)
+				return results
+			})
 		},
 		push: function() {
-			var array = arrayToModify(this)
-			var results = array.push.apply(array, arguments)
-			insertedAt(this, arguments, array.length - arguments.length, array.length)
-			return results
+			var args = arguments
+			return arrayToModify(this, function(array) {
+				var results = array.push.apply(array, args)
+				insertedAt(this, args, array.length - args.length, array.length)
+				return results
+			})
 		},
 		unshift: function() {
-			var array = arrayToModify(this)
-			var results = array.unshift.apply(array, arguments)
-			insertedAt(this, arguments, 0, array.length)
-			return results
+			var args = arguments
+			return arrayToModify(this, function(array) {
+				var results = array.unshift.apply(array, args)
+				insertedAt(this, args, 0, array.length)
+				return results
+			})
 		},
 		pop: function() {
-			var array = arrayToModify(this)
-			var results = array.pop()
-			removedAt(this, [results], array.length, 1)
-			return results
+			return arrayToModify(this, function(array) {
+				var results = array.pop()
+				removedAt(this, [results], array.length, 1)
+				return results
+			})
 		},
 		shift: function() {
-			var array = arrayToModify(this)
-			var results = array.shift()
-			removedAt(this, [results], 0, 1, array.length)
-			return results
+			return arrayToModify(this, function(array) {
+				var results = array.shift()
+				removedAt(this, [results], 0, 1, array.length)
+				return results
+			})
 		}
 	}
 
-	function arrayToModify(variable) {
+	function arrayToModify(variable, callback) {
 		variable._willModify()
-		var array = variable.cachedValue || variable.valueOf()
-		if (!array) {
-			variable.put(array = [])
-		}
-		variable.updateVersion()
-		return array
+		// TODO: switch this to allow promises
+		when(variable.cachedValue || variable.valueOf(), function(array) {
+			if (!array) {
+				variable.put(array = [])
+			}
+			variable.updateVersion()
+			var results = callback.call(variable, array)
+			variable.cachedVersion = variable.version // update the cached version so it doesn't need to be recomputed
+			return results
+		})
 	}
 
 	function insertedAt(variable, added, startingIndex, arrayLength) {
@@ -771,7 +783,6 @@ define(['./util/lang'], function (lang) {
 					modifier: variable
 				}), variable)
 			}
-			variable.cachedVersion = variable.version // update the cached version so it doesn't need to be recomputed
 		}
 	}
 

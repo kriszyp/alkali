@@ -125,7 +125,7 @@ This is a property that provides a variable representing the validation of this 
 
 ### `subscribe(listener)`
 
-This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables to Elements and Updaters, as they provide more efficient resource management and avoid unnecessary computations.
+This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables to Elements and Renderers, as they provide more efficient resource management and avoid unnecessary computations.
 
 ### `Variable.for(subject)`
 
@@ -630,15 +630,15 @@ HTMLElement.prototype.prepend = prepend
 Alkali also exports an options object. It has the following properties:
 `options.moveLiveElementsEnabled` - This indicates whether or not alkali supports elements with variables, restarting the variables when an element is reattached. This is enabled (`true`) by default, but it requires expensive mutation observation, and it is recommended that you disable it, and avoid reattaching alkali constructed elements (that should be created, attached, removed and left to be collected).
 
-## Updaters
+## Renderers
 
-Updaters are an additional mechanism for making UI components react to data changes. Updaters allow us to add reactive capabilities to existing components with minimal change. Updaters are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an updater's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. The `Updater` module includes several specific updaters, for updating attributes and the text of an element. The following Updaters are available from `alkali/Updater`:
+Renderers are an additional mechanism for making UI components react to data changes. Renderers allow us to add reactive capabilities to existing components with minimal change. Renderers are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an updater's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. The `Renderer` module includes several specific updaters, for updating attributes and the text of an element. The following Renderers are available from `alkali/Renderer`:
 
-Updater - This should be constructed with an options object that defines the source `variable`, the associated DOM `element`, and an `renderUpdate` method that will perform the rerender with the latest value from the variable.
+Renderer - This should be constructed with an options object that defines the source `variable`, the associated DOM `element`, and an `renderUpdate` method that will perform the rerender with the latest value from the variable.
 
-Updater.AttributeUpdater - This perform updates on an element's attribute. This should be constructed with an options object that defines the source `variable`, the associated DOM `element`, and the `name` of the attribute to be updated when the variable changes.
+Renderer.AttributeRenderer - This perform updates on an element's attribute. This should be constructed with an options object that defines the source `variable`, the associated DOM `element`, and the `name` of the attribute to be updated when the variable changes.
 
-Updater.ContentUpdater - This perform updates on an element's text content. This should be constructed with an options object that defines the source `variable` and the associated DOM `element` to be updated when the variable changes.
+Renderer.ContentRenderer - This perform updates on an element's text content. This should be constructed with an options object that defines the source `variable` and the associated DOM `element` to be updated when the variable changes.
 
  For example, we could create a simple variable:
 
@@ -648,8 +648,8 @@ Updater.ContentUpdater - This perform updates on an element's text content. This
 
 And then define an updater:
 
-	var AttributeUpdater = require('alkali/Updater').AttributeUpdater;
-	new AttributeUpdater({
+	var AttributeRenderer = require('alkali/Renderer').AttributeRenderer;
+	new AttributeRenderer({
 			variable: myNumber,
 			element: someElement,
 			name: 'title' // update the title attribute with the variable value
@@ -664,7 +664,7 @@ This will schedule an update to the title. However, we change the variable again
 We can also create custom updaters:
 
 	var greeting = new Variable('Hi');
-	new Updater({
+	new Renderer({
 			variable: myNumber,
 			element: someElement,
 			renderUpdate: function (newValue) {
@@ -672,9 +672,9 @@ We can also create custom updaters:
 			}
 		})
 
-An Updater will only update an element if it is visible, and will mark it as needing rerendering. If a hidden element is made visible again, you can trigger the rerendering by calling `Updater.onShowElement(element)` on a parent element. You can also provide a custom definition for what constitutes a visible element that should be immediately rendered by defining a `shouldRender(element)` method, which should return true or false indicating if the element needs to be rendered.
+An Renderer will only update an element if it is visible, and will mark it as needing rerendering. If a hidden element is made visible again, you can trigger the rerendering by calling `Renderer.onShowElement(element)` on a parent element. You can also provide a custom definition for what constitutes a visible element that should be immediately rendered by defining a `shouldRender(element)` method, which should return true or false indicating if the element needs to be rendered.
 
-Alternately, you may set `alwaysUpdate` to true on the Updater options to force the Updater to always render in response to changes.
+Alternately, you may set `alwaysUpdate` to true on the Renderer options to force the Renderer to always render in response to changes.
 
 If your variables use promises, alkali will wait for the promise to resolve before calling `renderUpdate` (and it will be called with the resolution of the promise). You may define a `renderLoading` to render something while a promise is waiting to be resolved.
 
@@ -797,10 +797,10 @@ This will cause the variable to act as a proxy for the source variable, and chan
 
 There are several ways to listen for variable updates with Alkali, and which are designed and optimized for different situations. Here are a list of the main ways to listen for changes, and which is preferred (starting with the most preferred):
 * `to`, (and `map` and `filter`) - These are passive listeners or transforms, that are only called lazily when needed. These are used to transform the value or values of one variable into an other variable. When a variable changes, these transform functions are only called when a downstream subscriber actually needs the value to be computed. As a passive, or lazy callback function, the function will not be executed by merely calling `to(callback)`, but as needed. Ideally with Alkali, an application should consist of variables, which then are transformed to other downstream variables, which are eventually used directly by elements without any other imperative listeners (the elements handle listening themselves). This is the preferred mechanism for defining functions that response to variables, but, of course there are always other needs, so we have other mechanisms.
-* `Updater` - The Updaters are designed as a reactive listening endpoint to a variable, and is optimized for rendering variable changes into DOM elements. An Updater will respond to changes in variables, but will debounce updates, waiting for the next rendering frame, to ensure that unnecessary variable access (through the lazy transform functions) is avoided. Updaters will also avoid accessing variables to update elements, when an element is detached from the DOM.
+* `Renderer` - The Renderers are designed as a reactive listening endpoint to a variable, and is optimized for rendering variable changes into DOM elements. An Renderer will respond to changes in variables, but will debounce updates, waiting for the next rendering frame, to ensure that unnecessary variable access (through the lazy transform functions) is avoided. Renderers will also avoid accessing variables to update elements, when an element is detached from the DOM.
 * `subscribe(callback)` - This is an active listener to updates from variables. This will be called for each update made to a variable (or any upstream variable). This is not lazy, and does not need to wait for a downstream listener to request a value, it will be called immediately after any update. However, while the callback function will be called immediately, this does not necessarily immediately trigger upstream transform functions, until you call `event.value()`. Once you call `event.value()`, you will trigger the upstream transform functions. If you call this to retrieve the value, for every update event, without any debouncing, you can potentially incur a lot of thrashing if you have multiple updates taking place in immediate sequence. However, if you have a function that you really want to be directly notified of variable changes, this is the most direct and reliable way to be notified.
 
-One other difference is that if a variable is given a value that is a promise, both `to` and `Updater` will resolve any promise first, and then call the callback functions with the resolved value. `subscribe`, on the otherhand, calls the listener immediately in response to update events, so the value returned from `event.value()` may be a yet-to-be-resolved promise.
+One other difference is that if a variable is given a value that is a promise, both `to` and `Renderer` will resolve any promise first, and then call the callback functions with the resolved value. `subscribe`, on the otherhand, calls the listener immediately in response to update events, so the value returned from `event.value()` may be a yet-to-be-resolved promise.
 
 # Design Philosophy
 

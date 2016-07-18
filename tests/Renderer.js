@@ -1,17 +1,17 @@
 define([
-	'../Updater',
+	'../Renderer',
 	'../Variable',
 	'intern!object',
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Updater, Variable, registerSuite, assert, Promise) {
+], function (Renderer, Variable, registerSuite, assert, Promise) {
 	var div = document.createElement('div');
 	registerSuite({
-		name: 'Updater',
-		PropertyUpdater: function () {
+		name: 'Renderer',
+		PropertyRenderer: function () {
 			document.body.appendChild(div);
 			var variable = new Variable('start');
-			var updater = new Updater.PropertyUpdater({
+			var renderer = new Renderer.PropertyRenderer({
 				variable: variable,
 				element: div,
 				name: 'title'
@@ -26,17 +26,17 @@ define([
 				return new Promise(requestAnimationFrame).then(function(){
 					assert.equal(div.title, 'second');
 					document.body.appendChild(div);
-					Updater.onShowElement(div); // now it should be shown and updated
+					Renderer.onShowElement(div); // now it should be shown and updated
 					return new Promise(requestAnimationFrame).then(function(){
 						assert.equal(div.title, 'third');
 					});
 				});
 			});
 		},
-		ContentUpdater: function () {
+		ContentRenderer: function () {
 			document.body.appendChild(div);
 			var variable = new Variable('start');
-			var updater = new Updater.ContentUpdater({
+			var renderer = new Renderer.ContentRenderer({
 				variable: variable,
 				element: div
 			});
@@ -52,7 +52,7 @@ define([
 				resolvePromise = resolve;
 			});
 			var variable = new Variable(promise);
-			var updater = new Updater.PropertyUpdater({
+			var renderer = new Renderer.PropertyRenderer({
 				variable: variable,
 				element: div,
 				renderUpdate: function(value){
@@ -69,7 +69,7 @@ define([
 		getPropertyWithVariable: function() {
 			var foo = new Variable('foo')
 			var bar = new Variable({ foo: foo })
-			var updater = new Updater.PropertyUpdater({
+			var renderer = new Renderer.PropertyRenderer({
 				variable: bar.property('foo'),
 				element: div,
 				name: 'foo'
@@ -78,7 +78,7 @@ define([
 				assert.equal(div.foo, 'foo')
 			})
 		},
-		UpdaterInvalidation: function() {
+		RendererInvalidation: function() {
 			document.body.appendChild(div);
 			var outer = new Variable(false);
 			var signal = new Variable();
@@ -91,7 +91,7 @@ define([
 				});
 			});
 			var valuesSeen = [];
-			var updater = new Updater.ElementUpdater({
+			var renderer = new Renderer.ElementRenderer({
 				variable: derived,
 				element: div,
 				renderUpdate: function (value) {
@@ -101,7 +101,7 @@ define([
 
 			var INTERMEDIATE_ANIMATION_FRAME = false;
 			var resolver = function(r){r();}; // resolve asynchronously without an animation frame
-			// we expect the updater to observe the inner array mutation regardless of the outer end state
+			// we expect the renderer to observe the inner array mutation regardless of the outer end state
 			var firstResult = [false, [2,4,6]];
 			var lastResult = [false, [8,10,12]];
 			var expected = [firstResult,lastResult];
