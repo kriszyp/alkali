@@ -216,7 +216,7 @@ define(['./util/lang'], function (lang) {
 			}
 			if (typeof this === 'function') {
 				// this is a class, the subject should hopefully have an entry
-				if (subject) {
+				if (subject !== undefined) {
 					var instance
 					if (subject.constructor.getForClass) {
 						// if the subject has it is own means of retrieving an instance
