@@ -214,8 +214,12 @@ define(['./util/lang'], function (lang, Variable) {
 	Renderer.AttributeRenderer = AttributeRenderer
 
 	function PropertyRenderer(options) {
-		if(options.name){
+		if (options.name) {
 			this.name = options.name
+		}
+		if (options.element && options.element.tagName === 'SELECT' && this.name === 'value') {
+			// use the deferred value assignment for <select>
+			this.renderUpdate = this.renderSelectValueUpdate
 		}
 		ElementRenderer.apply(this, arguments)
 	}
@@ -223,6 +227,21 @@ define(['./util/lang'], function (lang, Variable) {
 	PropertyRenderer.prototype.type = 'PropertyRenderer'
 	PropertyRenderer.prototype.renderUpdate = function (newValue, element) {
 		element[this.name] = newValue
+	}
+	PropertyRenderer.prototype.renderSelectValueUpdate = function (newValue, element) {
+		element.value = newValue
+		if (element.value != newValue && !element.value) {
+			// if we didn't successfully set the value of a <select>, we may need to wait until the children are constructed
+			element.eventualValue = newValue
+			lang.nextTurn(function() {
+				if (element.eventualValue) {
+					element.value = element.eventualValue
+					element.eventualValue = undefined
+				}
+			})
+		} else {
+			element.eventualValue = undefined
+		}
 	}
 	Renderer.PropertyRenderer = PropertyRenderer
 

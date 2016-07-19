@@ -235,7 +235,12 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				bindChanges(element, value, key)
 			}
 		} else {
-			element[key] = value
+			if (element.tagName === 'SELECT' && key === 'value') {
+				// use the deferred <select> value assignment
+				PropertyRenderer.prototype.renderSelectValueUpdate(value, element)
+			} else {
+				element[key] = value
+			}
 		}
 	}
 
