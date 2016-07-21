@@ -130,7 +130,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			var styleSheetElement = doc.createElement("style")
 			styleSheetElement.setAttribute("type", "text/css")
 //			styleSheet.appendChild(doc.createTextNode(css))
-			document.head.insertBefore(styleSheetElement, document.head.firstChild)
+			doc.head.insertBefore(styleSheetElement, doc.head.firstChild)
 			styleSheet = styleSheetElement.sheet
 		}
 		var cssRules = styleSheet.cssRules || styleSheet.rules
@@ -475,7 +475,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	doc.addEventListener('click', function(event) {
 		var target = event.target
 		if (target.type === 'radio') {
-			var radios = document.querySelectorAll('input[type=radio]')
+			var radios = doc.querySelectorAll('input[type=radio]')
 			for (var i = 0, l = radios.length; i < l; i++) {
 				var radio = radios[i]
 				if (radio.name === target.name && radio !== target) {
@@ -788,8 +788,8 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 	function registerTag(tagName) {
 		this.tagName = tagName
-		if (document.registerElement && this.prototype.constructor === this) {
-			document.registerElement(tagName, this)
+		if (doc.registerElement && this.prototype.constructor === this) {
+			doc.registerElement(tagName, this)
 		}
 	}
 
@@ -1131,6 +1131,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		//}
 	}
 	if (typeof MutationObserver === 'function') {
+		var docBody = doc.body
 		var lifeStates = [{
 			name: 'detached',
 			nodes: 'removedNodes',
@@ -1150,7 +1151,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					return true
 				}
 			} else if (node.__alkaliAttached__) {
-				if (document.contains(node)) {
+				if (docBody.contains(node)) {
 					// detached event, but it is actually still attached (will get attached in a later mutation record)
 					// so don't get through the detached/attached lifecycle
 					return false
@@ -1207,7 +1208,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				}
 			}
 		})
-		observer.observe(document.body, {
+		observer.observe(docBody, {
 			childList: true,
 			subtree: true
 		})
