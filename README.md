@@ -427,9 +427,9 @@ If you are developing in an ES6 compatible environment (Babel or restricted set 
 
 ```
 class MyLink extends Anchor {
-	*render() {
+	*render(properties) {
 		this.href = baseUrl + yield someVariable;
-		this.textContent = yield someOtherVariable;
+		this.textContent = yield properties.someProperty;
 	}
 }
 ```

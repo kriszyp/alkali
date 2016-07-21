@@ -16,6 +16,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	}
 
 	var PropertyRenderer = Renderer.PropertyRenderer
+	var InputPropertyRenderer = Renderer.InputPropertyRenderer
 	var AttributeRenderer = Renderer.AttributeRenderer
 	var StyleRenderer = lang.compose(Renderer.StyleRenderer, function StyleRenderer() {
 		Renderer.StyleRenderer.apply(this, arguments)
@@ -226,7 +227,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 	function bidirectionalHandler(element, value, key) {
 		if (value && value.notifies) {
-			enterRenderer(PropertyRenderer, {
+			enterRenderer(InputPropertyRenderer, {
 				name: key,
 				variable: value,
 				element: element
@@ -237,9 +238,9 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		} else {
 			if (element.tagName === 'SELECT' && key === 'value') {
 				// use the deferred <select> value assignment
-				PropertyRenderer.prototype.renderSelectValueUpdate(value, element)
+				InputPropertyRenderer.prototype.renderSelectValueUpdate(value, element)
 			} else {
-				element[key] = value
+				InputPropertyRenderer.prototype.renderUpdate(value, element)
 			}
 		}
 	}
@@ -281,13 +282,13 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		class: applyAttribute,
 		for: applyAttribute,
 		role: applyAttribute,
-		render: function(element, value, key) {
+		render: function(element, value, key, properties) {
 			// TODO: This doesn't need to be a property updater
 			// we should also verify it is a generator
 			// and maybe, at some point, find an optimization to eliminate the bind()
 			enterRenderer(PropertyRenderer, {
 				name: key,
-				variable: new Variable.GeneratorVariable(value.bind(element)),
+				variable: new Variable.GeneratorVariable(value.bind(element, properties)),
 				element: element
 			})
 		},
@@ -499,7 +500,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 		if (content && content.notifies) {
 			// a variable, respond to changes
-			enterRenderer(PropertyRenderer, {
+			enterRenderer(InputPropertyRenderer, {
 				variable: content,
 				name: inputProperty,
 				element: element

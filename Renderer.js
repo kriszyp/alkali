@@ -217,10 +217,6 @@ define(['./util/lang'], function (lang, Variable) {
 		if (options.name) {
 			this.name = options.name
 		}
-		if (options.element && options.element.tagName === 'SELECT' && this.name === 'value') {
-			// use the deferred value assignment for <select>
-			this.renderUpdate = this.renderSelectValueUpdate
-		}
 		ElementRenderer.apply(this, arguments)
 	}
 	PropertyRenderer.prototype = Object.create(ElementRenderer.prototype)
@@ -228,7 +224,26 @@ define(['./util/lang'], function (lang, Variable) {
 	PropertyRenderer.prototype.renderUpdate = function (newValue, element) {
 		element[this.name] = newValue
 	}
-	PropertyRenderer.prototype.renderSelectValueUpdate = function (newValue, element) {
+	Renderer.PropertyRenderer = PropertyRenderer
+
+	function InputPropertyRenderer(options) {
+		if (options.element && options.element.tagName === 'SELECT' && options.name === 'value') {
+			// use the deferred value assignment for <select>
+			this.renderUpdate = this.renderSelectValueUpdate
+		}
+		PropertyRenderer.apply(this, arguments)
+	}
+	InputPropertyRenderer.prototype = Object.create(PropertyRenderer.prototype)
+	InputPropertyRenderer.prototype.type = 'InputPropertyRenderer'
+	InputPropertyRenderer.prototype.renderUpdate = function(newValue, element) {
+		if (element.type === 'number') {
+			if (isNaN(newValue)) {
+				newValue = ''
+			}
+		}
+		element[this.name] = newValue
+	}
+	InputPropertyRenderer.prototype.renderSelectValueUpdate = function (newValue, element) {
 		element.value = newValue
 		if (element.value != newValue && !element.value) {
 			// if we didn't successfully set the value of a <select>, we may need to wait until the children are constructed
@@ -243,7 +258,7 @@ define(['./util/lang'], function (lang, Variable) {
 			element.eventualValue = undefined
 		}
 	}
-	Renderer.PropertyRenderer = PropertyRenderer
+	Renderer.InputPropertyRenderer = InputPropertyRenderer
 
 	function StyleRenderer(options) {
 		if(options.name){
