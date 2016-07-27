@@ -796,6 +796,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	var Element = withProperties.call(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
 
 	Element.registerTag = registerTag
+	Element.applyProperties = applyProperties
 
 	Element.within = function(element){
 		// find closest child
