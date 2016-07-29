@@ -1,3 +1,4 @@
+/// <reference path="./typing.d.ts" />
 define(['./Element', './Variable', './react', './Renderer', './operators', './Copy'], function(Element, Variable, react, Renderer, operators, Copy) {
 	var main = Object.create(Element)
 	main.Copy = Copy

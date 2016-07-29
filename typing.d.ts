@@ -1,13 +1,13 @@
-declare module alkali {
+declare module 'alkali' {
   type KeyType = string|number
   interface Promise<T> {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
   }
   export class Variable<T> {
-    constructor(value: T | Array<T> | Promise<U>)
+    constructor(value?: T | Array<T> | Promise<T>)
     valueOf(): T
     property(key: KeyType): Variable<any>
-    put(value: T | Variable<T> | Array<T> | Promise<U>)
+    put(value: T | Variable<T> | Array<T> | Promise<T>)
     get(key: KeyType): any
     set(key: KeyType, value: any)
     undefine(key: KeyType)
@@ -38,6 +38,12 @@ declare module alkali {
   export function react<T>(reactiveFunction: () => T): Variable<T>
   export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>
   export function spawn<T>(yieldingFunction: () => T): Promise<T>
+
+  export function not(variable: Variable<any>): Variable<boolean>
+  export function add(a: Variable<number>, b: Variable<number>): Variable<number>
+  export function subtract(a: Variable<number>, b: Variable<number>): Variable<number>
+  export function multiply(a: Variable<number>, b: Variable<number>): Variable<number>
+  export function divide(a: Variable<number>, b: Variable<number>): Variable<number>
 
   interface RendererProperties<T> {
     variable: Variable<T>
@@ -223,146 +229,142 @@ declare module alkali {
     create(properties: ElementProperties, content?: ElementChild): Element
     create(selector: string, content: ElementChild): Element
     create(selector: string, properties: ElementProperties, content?: ElementChild): Element
-    with(selector?: string): ElementClass<Element>
     with(content: ElementChild): ElementClass<Element>
     with(properties: ElementProperties, content?: ElementChild): ElementClass<Element>
-    with(selector: string, content: ElementChild): ElementClass<Element>
-    with(selector: string, properties: ElementProperties, content?: ElementChild): ElementClass<Element>
     property(key): Variable<any>
     children: Array<ElementChild>
   }
   declare var Element: ElementClass<HTMLElement>
 
-  export type Video = ElementClass<HTMLVideoElement>
-  export type Source = ElementClass<HTMLSourceElement>
-  export type Media = ElementClass<HTMLMediaElement>
-  export type Audio = ElementClass<HTMLAudioElement>
-  export type UL = ElementClass<HTMLUListElement>
-  export type Track = ElementClass<HTMLTrackElement>
-  export type Title = ElementClass<HTMLTitleElement>
-  export type TextArea = ElementClass<HTMLTextAreaElement>
-  export type Template = ElementClass<HTMLTemplateElement>
-  export type TBody = ElementClass<HTMLTableSectionElement>
-  export type THead = ElementClass<HTMLTableSectionElement>
-  export type TFoot = ElementClass<HTMLTableSectionElement>
-  export type TR = ElementClass<HTMLTableRowElement>
-  export type Table = ElementClass<HTMLTableElement>
-  export type Col = ElementClass<HTMLTableColElement>
-  export type ColGroup = ElementClass<HTMLTableColElement>
-  export type TH = ElementClass<HTMLTableHeaderCellElement>
-  export type TD = ElementClass<HTMLTableDataCellElement>
-  export type Caption = ElementClass<HTMLElement>
-  export type Style = ElementClass<HTMLStyleElement>
-  export type Span = ElementClass<HTMLSpanElement>
-  export type Shadow = ElementClass<HTMLElement>
-  export type Select = ElementClass<HTMLSelectElement>
-  export type Script = ElementClass<HTMLScriptElement>
-  export type Quote = ElementClass<HTMLQuoteElement>
-  export type Progress = ElementClass<HTMLProgressElement>
-  export type Pre = ElementClass<HTMLPreElement>
-  export type Picture = ElementClass<HTMLPictureElement>
-  export type Param = ElementClass<HTMLParamElement>
-  export type P = ElementClass<HTMLParagraphElement>
-  export type Output = ElementClass<HTMLElement>
-  export type Option = ElementClass<HTMLOptionElement>
-  export type OptGroup = ElementClass<HTMLOptGroupElement>
-  export type Object = ElementClass<HTMLObjectElement>
-  export type OL = ElementClass<HTMLOListElement>
-  export type Ins = ElementClass<HTMLElement>
-  export type Del = ElementClass<HTMLElement>
-  export type Meter = ElementClass<HTMLElement>
-  export type Meta = ElementClass<HTMLMetaElement>
-  export type Menu = ElementClass<HTMLMenuElement>
-  export type Map = ElementClass<HTMLMapElement>
-  export type Link = ElementClass<HTMLLinkElement>
-  export type Legend = ElementClass<HTMLLegendElement>
-  export type Label = ElementClass<HTMLLabelElement>
-  export type LI = ElementClass<HTMLLIElement>
-  export type KeyGen = ElementClass<HTMLElement>
-  export type Image = ElementClass<HTMLImageElement>
-  export type IFrame = ElementClass<HTMLIFrameElement>
-  export type H1 = ElementClass<HTMLHeadingElement>
-  export type H2 = ElementClass<HTMLHeadingElement>
-  export type H3 = ElementClass<HTMLHeadingElement>
-  export type H4 = ElementClass<HTMLHeadingElement>
-  export type H5 = ElementClass<HTMLHeadingElement>
-  export type H6 = ElementClass<HTMLHeadingElement>
-  export type Hr = ElementClass<HTMLHeadingElement>
-  export type FrameSet = ElementClass<HTMLFrameSetElement>
-  export type Frame = ElementClass<HTMLFrameElement>
-  export type Form = ElementClass<HTMLFormElement>
-  export type Font = ElementClass<HTMLFontElement>
-  export type Embed = ElementClass<HTMLEmbedElement>
-  export type Article = ElementClass<HTMLElement>
-  export type Aside = ElementClass<HTMLElement>
-  export type Figure = ElementClass<HTMLElement>
-  export type FigCaption = ElementClass<HTMLElement>
-  export type Header = ElementClass<HTMLHeadingElement>
-  export type Main = ElementClass<HTMLElement>
-  export type Mark = ElementClass<HTMLElement>
-  export type MenuItem = ElementClass<HTMLMenuElement>
-  export type Nav = ElementClass<HTMLElement>
-  export type Section = ElementClass<HTMLElement>
-  export type Summary = ElementClass<HTMLElement>
-  export type WBr = ElementClass<HTMLElement>
-  export type Div = ElementClass<HTMLDivElement>
-  export type Dialog = ElementClass<HTMLElement>
-  export type Details = ElementClass<HTMLElement>
-  export type DataList = ElementClass<HTMLDataListElement>
-  export type DL = ElementClass<HTMLElement>
-  export type Canvas = ElementClass<HTMLCanvasElement>
-  export type Button = ElementClass<HTMLButtonElement>
-  export type Base = ElementClass<HTMLBaseElement>
-  export type Br = ElementClass<HTMLElement>
-  export type Area = ElementClass<HTMLAreaElement>
-  export type A = ElementClass<HTMLElement>
+  declare var Video: ElementClass<HTMLVideoElement>
+  declare var Source: ElementClass<HTMLSourceElement>
+  declare var Media: ElementClass<HTMLMediaElement>
+  declare var Audio: ElementClass<HTMLAudioElement>
+  declare var UL: ElementClass<HTMLUListElement>
+  declare var Track: ElementClass<HTMLTrackElement>
+  declare var Title: ElementClass<HTMLTitleElement>
+  declare var TextArea: ElementClass<HTMLTextAreaElement>
+  declare var Template: ElementClass<HTMLTemplateElement>
+  declare var TBody: ElementClass<HTMLTableSectionElement>
+  declare var THead: ElementClass<HTMLTableSectionElement>
+  declare var TFoot: ElementClass<HTMLTableSectionElement>
+  declare var TR: ElementClass<HTMLTableRowElement>
+  declare var Table: ElementClass<HTMLTableElement>
+  declare var Col: ElementClass<HTMLTableColElement>
+  declare var ColGroup: ElementClass<HTMLTableColElement>
+  declare var TH: ElementClass<HTMLTableHeaderCellElement>
+  declare var TD: ElementClass<HTMLTableDataCellElement>
+  declare var Caption: ElementClass<HTMLElement>
+  declare var Style: ElementClass<HTMLStyleElement>
+  declare var Span: ElementClass<HTMLSpanElement>
+  declare var Shadow: ElementClass<HTMLElement>
+  declare var Select: ElementClass<HTMLSelectElement>
+  declare var Script: ElementClass<HTMLScriptElement>
+  declare var Quote: ElementClass<HTMLQuoteElement>
+  declare var Progress: ElementClass<HTMLProgressElement>
+  declare var Pre: ElementClass<HTMLPreElement>
+  declare var Picture: ElementClass<HTMLPictureElement>
+  declare var Param: ElementClass<HTMLParamElement>
+  declare var P: ElementClass<HTMLParagraphElement>
+  declare var Output: ElementClass<HTMLElement>
+  declare var Option: ElementClass<HTMLOptionElement>
+  declare var OptGroup: ElementClass<HTMLOptGroupElement>
+  declare var Object: ElementClass<HTMLObjectElement>
+  declare var OL: ElementClass<HTMLOListElement>
+  declare var Ins: ElementClass<HTMLElement>
+  declare var Del: ElementClass<HTMLElement>
+  declare var Meter: ElementClass<HTMLElement>
+  declare var Meta: ElementClass<HTMLMetaElement>
+  declare var Menu: ElementClass<HTMLMenuElement>
+  declare var Map: ElementClass<HTMLMapElement>
+  declare var Link: ElementClass<HTMLLinkElement>
+  declare var Legend: ElementClass<HTMLLegendElement>
+  declare var Label: ElementClass<HTMLLabelElement>
+  declare var LI: ElementClass<HTMLLIElement>
+  declare var KeyGen: ElementClass<HTMLElement>
+  declare var Image: ElementClass<HTMLImageElement>
+  declare var IFrame: ElementClass<HTMLIFrameElement>
+  declare var H1: ElementClass<HTMLHeadingElement>
+  declare var H2: ElementClass<HTMLHeadingElement>
+  declare var H3: ElementClass<HTMLHeadingElement>
+  declare var H4: ElementClass<HTMLHeadingElement>
+  declare var H5: ElementClass<HTMLHeadingElement>
+  declare var H6: ElementClass<HTMLHeadingElement>
+  declare var Hr: ElementClass<HTMLHeadingElement>
+  declare var FrameSet: ElementClass<HTMLFrameSetElement>
+  declare var Frame: ElementClass<HTMLFrameElement>
+  declare var Form: ElementClass<HTMLFormElement>
+  declare var Font: ElementClass<HTMLFontElement>
+  declare var Embed: ElementClass<HTMLEmbedElement>
+  declare var Article: ElementClass<HTMLElement>
+  declare var Aside: ElementClass<HTMLElement>
+  declare var Figure: ElementClass<HTMLElement>
+  declare var FigCaption: ElementClass<HTMLElement>
+  declare var Header: ElementClass<HTMLHeadingElement>
+  declare var Main: ElementClass<HTMLElement>
+  declare var Mark: ElementClass<HTMLElement>
+  declare var MenuItem: ElementClass<HTMLMenuElement>
+  declare var Nav: ElementClass<HTMLElement>
+  declare var Section: ElementClass<HTMLElement>
+  declare var Summary: ElementClass<HTMLElement>
+  declare var WBr: ElementClass<HTMLElement>
+  declare var Div: ElementClass<HTMLDivElement>
+  declare var Dialog: ElementClass<HTMLElement>
+  declare var Details: ElementClass<HTMLElement>
+  declare var DataList: ElementClass<HTMLDataListElement>
+  declare var DL: ElementClass<HTMLElement>
+  declare var Canvas: ElementClass<HTMLCanvasElement>
+  declare var Button: ElementClass<HTMLButtonElement>
+  declare var Base: ElementClass<HTMLBaseElement>
+  declare var Br: ElementClass<HTMLElement>
+  declare var Area: ElementClass<HTMLAreaElement>
+  declare var A: ElementClass<HTMLElement>
 
-  export type Anchor = ElementClass<HTMLAnchorElement>
-  export type Paragraph = ElementClass<HTMLParagraphElement>
-  export type DList = ElementClass<HTMLDListElement>
-  export type UList = ElementClass<HTMLUListElement>
-  export type OList = ElementClass<HTMLOListElement>
-  export type ListItem = ElementClass<HTMLLIElement>
-  export type Input = ElementClass<HTMLInputElement>
-  export type TableRow = ElementClass<HTMLTableRowElement>
-  export type TableCell = ElementClass<HTMLTableCellElement>
-  export type TableHeaderCell = ElementClass<HTMLTableHeaderCellElement>
-  export type TableHeader = ElementClass<HTMLTableSectionElement>
-  export type TableBody = ElementClass<HTMLTableSectionElement>
+  declare var Anchor: ElementClass<HTMLAnchorElement>
+  declare var Paragraph: ElementClass<HTMLParagraphElement>
+  declare var DList: ElementClass<HTMLDListElement>
+  declare var UList: ElementClass<HTMLUListElement>
+  declare var OList: ElementClass<HTMLOListElement>
+  declare var ListItem: ElementClass<HTMLLIElement>
+  declare var Input: ElementClass<HTMLInputElement>
+  declare var TableRow: ElementClass<HTMLTableRowElement>
+  declare var TableCell: ElementClass<HTMLTableCellElement>
+  declare var TableHeaderCell: ElementClass<HTMLTableHeaderCellElement>
+  declare var TableHeader: ElementClass<HTMLTableSectionElement>
+  declare var TableBody: ElementClass<HTMLTableSectionElement>
 
-  export type Checkbox = ElementClass<HTMLInputElement>
-  export type CheckboxInput = ElementClass<HTMLInputElement>
-  export type Password = ElementClass<HTMLInputElement>
-  export type PasswordInput = ElementClass<HTMLInputElement>
-  export type Text = ElementClass<HTMLInputElement>
-  export type TextInput = ElementClass<HTMLInputElement>
-  export type Submit = ElementClass<HTMLInputElement>
-  export type SubmitInput = ElementClass<HTMLInputElement>
-  export type Radio = ElementClass<HTMLInputElement>
-  export type RadioInput = ElementClass<HTMLInputElement>
-  export type Color = ElementClass<HTMLInputElement>
-  export type ColorInput = ElementClass<HTMLInputElement>
-  export type Date = ElementClass<HTMLInputElement>
-  export type DateInput = ElementClass<HTMLInputElement>
-  export type DateTime = ElementClass<HTMLInputElement>
-  export type DateTimeInput = ElementClass<HTMLInputElement>
-  export type Email = ElementClass<HTMLInputElement>
-  export type EmailInput = ElementClass<HTMLInputElement>
-  export type Month = ElementClass<HTMLInputElement>
-  export type MonthInput = ElementClass<HTMLInputElement>
-  export type Number = ElementClass<HTMLInputElement>
-  export type NumberInput = ElementClass<HTMLInputElement>
-  export type Range = ElementClass<HTMLInputElement>
-  export type RangeInput = ElementClass<HTMLInputElement>
-  export type Search = ElementClass<HTMLInputElement>
-  export type SearchInput = ElementClass<HTMLInputElement>
-  export type Tel = ElementClass<HTMLInputElement>
-  export type TelInput = ElementClass<HTMLInputElement>
-  export type Time = ElementClass<HTMLInputElement>
-  export type TimeInput = ElementClass<HTMLInputElement>
-  export type Url = ElementClass<HTMLInputElement>
-  export type UrlInput = ElementClass<HTMLInputElement>
-  export type Week = ElementClass<HTMLInputElement>
-  export type WeekInput = ElementClass<HTMLInputElement>
-
+  declare var Checkbox: ElementClass<HTMLInputElement>
+  declare var CheckboxInput: ElementClass<HTMLInputElement>
+  declare var Password: ElementClass<HTMLInputElement>
+  declare var PasswordInput: ElementClass<HTMLInputElement>
+  declare var Text: ElementClass<HTMLInputElement>
+  declare var TextInput: ElementClass<HTMLInputElement>
+  declare var Submit: ElementClass<HTMLInputElement>
+  declare var SubmitInput: ElementClass<HTMLInputElement>
+  declare var Radio: ElementClass<HTMLInputElement>
+  declare var RadioInput: ElementClass<HTMLInputElement>
+  declare var Color: ElementClass<HTMLInputElement>
+  declare var ColorInput: ElementClass<HTMLInputElement>
+  declare var Date: ElementClass<HTMLInputElement>
+  declare var DateInput: ElementClass<HTMLInputElement>
+  declare var DateTime: ElementClass<HTMLInputElement>
+  declare var DateTimeInput: ElementClass<HTMLInputElement>
+  declare var Email: ElementClass<HTMLInputElement>
+  declare var EmailInput: ElementClass<HTMLInputElement>
+  declare var Month: ElementClass<HTMLInputElement>
+  declare var MonthInput: ElementClass<HTMLInputElement>
+  declare var Number: ElementClass<HTMLInputElement>
+  declare var NumberInput: ElementClass<HTMLInputElement>
+  declare var Range: ElementClass<HTMLInputElement>
+  declare var RangeInput: ElementClass<HTMLInputElement>
+  declare var Search: ElementClass<HTMLInputElement>
+  declare var SearchInput: ElementClass<HTMLInputElement>
+  declare var Tel: ElementClass<HTMLInputElement>
+  declare var TelInput: ElementClass<HTMLInputElement>
+  declare var Time: ElementClass<HTMLInputElement>
+  declare var TimeInput: ElementClass<HTMLInputElement>
+  declare var Url: ElementClass<HTMLInputElement>
+  declare var UrlInput: ElementClass<HTMLInputElement>
+  declare var Week: ElementClass<HTMLInputElement>
+  declare var WeekInput: ElementClass<HTMLInputElement>
 }
