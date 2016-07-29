@@ -30,8 +30,8 @@ declare module 'alkali' {
   type VariableClass = typeof Variable
 
   export class VArray<T> extends Variable<Array<T>> {
-    map<U>(transform: (T) => U): Variable<Array<U>>
-    filter(filterFunction: (T) => any): Variable<Array<T>>
+    map<U>(transform: (T) => U): VArray<Array<U>>
+    filter(filterFunction: (T) => any): VArray<Array<T>>
     reduce<U>(reducer: (T, U) => U): Variable<U>
     reduceRight<U>(reducer: (T, U) => U): Variable<U>
     some(filter: (T) => any): Variable<boolean>

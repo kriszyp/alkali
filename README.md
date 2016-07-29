@@ -147,13 +147,13 @@ let sum = Variable.all(a, b).to(([a, b]) => a + b);
 
 `all` will also work with a set of arguments, instead of an array. It was will also work with an object, in which case each property value will be resolved, and the result will resolved to an object with the resolved values.
 
-## Variables as Arrays
+## Variables as Arrays (`VArray`)
 
-Variables provide most of the array methods for when the value of a variable is an array. Methods including `push`, `splice`, `pop`, `filter`, and `forEach` are all available on variables, and will act on the underlying array, and send out the proper update notifications for modifications. When arrays are modified through variables, the update notifications are incremental, and can be much more efficient for downstream listeners that support them (including alkali element lists).
+Variables provide most of the array methods for when the value of a variable is an array, by using the `VArray` constructor. Methods including `push`, `splice`, `pop`, `filter`, and `forEach` are all available on these variables, and will act on the underlying array, and send out the proper update notifications for modifications. When arrays are modified through variables, the update notifications are incremental, and can be much more efficient for downstream listeners that support them (including alkali element lists).
 
 Also, variables with arrays can be used as iterables in for-of loops. For example:
 ```
-var letters = new Variable(['a', 'b', 'c']);
+var letters = new VArray(['a', 'b', 'c']);
 arrayVariable.push('d');
 let lettersAfterB = letters.filter(letter => letter > 'b');
 for (let letter of lettersAfterB) {
