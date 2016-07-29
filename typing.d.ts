@@ -5,7 +5,7 @@ declare module 'alkali' {
   }
   export class Variable<T> {
     constructor(value?: T | Array<T> | Promise<T>)
-    valueOf(): T
+    valueOf(): T | Promise<T>
     property(key: KeyType): Variable<any>
     put(value: T | Variable<T> | Array<T> | Promise<T>)
     get(key: KeyType): any
@@ -17,6 +17,19 @@ declare module 'alkali' {
     updated()
     subscribe(listener: (event) => any)
 
+    schema: Variable<{}>
+    validation: Variable<{}>
+    static extend({}): typeof Variable
+    static hasOwn(Target: () => any)
+
+    static for(subject: any): Variable<any>
+    static to<U>(transform: (T) => U | Variable<U> | Promise<U>): VariableClass
+    static property(key: KeyType): VariableClass
+  }
+
+  type VariableClass = typeof Variable
+
+  export class VArray<T> extends Variable<Array<T>> {
     map<U>(transform: (T) => U): Variable<Array<U>>
     filter(filterFunction: (T) => any): Variable<Array<T>>
     reduce<U>(reducer: (T, U) => U): Variable<U>
@@ -29,21 +42,26 @@ declare module 'alkali' {
     pop(): T
     shift(): T
     splice(start: number, end: number, ...items: T[])
-
-    schema: Variable<{}>
-    validation: Variable<{}>
-    static extend({}): typeof Variable
-    static hasOwn(Target: typeof {})
   }
   export function react<T>(reactiveFunction: () => T): Variable<T>
   export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>
   export function spawn<T>(yieldingFunction: () => T): Promise<T>
 
-  export function not(variable: Variable<any>): Variable<boolean>
-  export function add(a: Variable<number>, b: Variable<number>): Variable<number>
-  export function subtract(a: Variable<number>, b: Variable<number>): Variable<number>
-  export function multiply(a: Variable<number>, b: Variable<number>): Variable<number>
-  export function divide(a: Variable<number>, b: Variable<number>): Variable<number>
+  // operators
+  export function not(variable: Variable<any> | any): Variable<boolean>
+  export function add(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
+  export function subtract(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
+  export function multiply(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
+  export function divide(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
+  export function remainder(a: Variable<number> | number): Variable<number>
+  export function greater(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
+  export function greaterOrEqual(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
+  export function less(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
+  export function lessOrEqual(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
+  export function equal(a: Variable<any> | any, b: Variable<any> | any): Variable<boolean>
+  export function and(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
+  export function or(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
+  export function round(a: Variable<number> | number): Variable<number>
 
   interface RendererProperties<T> {
     variable: Variable<T>
@@ -122,7 +140,7 @@ declare module 'alkali' {
 
     accessKey?: string
     contentEditable?: string
-    dataset?: DOMStringMap
+    dataset?: {}
     dir?: string
     draggable?: boolean
     hidden?: boolean
@@ -198,7 +216,7 @@ declare module 'alkali' {
     outerHTML?: string
     outerText?: string
     spellcheck?: boolean
-    style?: CSSStyleDeclaration
+    style?: {}
     tabIndex?: number
     title?: string
 
@@ -209,9 +227,9 @@ declare module 'alkali' {
     [name: string]: any
   }
 
-  type ElementChild = string | Variable<any> | ElementClass<HTMLElement> | Array<ElementChild2> | HTMLElement | number
-  type ElementChild2 = string | Variable<any> | ElementClass<HTMLElement> | Array<ElementChild3> | HTMLElement | number
-  type ElementChild3 = string | Variable<any> | ElementClass<HTMLElement> | Array<any> | HTMLElement | number
+  type ElementChild = string | Variable<any> | ElementClass<HTMLElement> | VariableClass | Array<ElementChild2> | HTMLElement | number
+  type ElementChild2 = string | Variable<any> | ElementClass<HTMLElement> | VariableClass | Array<ElementChild3> | HTMLElement | number
+  type ElementChild3 = string | Variable<any> | ElementClass<HTMLElement> | VariableClass | Array<any> | HTMLElement | number
 
   interface ElementClass<Element> {
     new (selector?: string): Element
@@ -231,140 +249,140 @@ declare module 'alkali' {
     create(selector: string, properties: ElementProperties, content?: ElementChild): Element
     with(content: ElementChild): ElementClass<Element>
     with(properties: ElementProperties, content?: ElementChild): ElementClass<Element>
-    property(key): Variable<any>
+    property(key): VariableClass
     children: Array<ElementChild>
   }
-  declare var Element: ElementClass<HTMLElement>
+  export var Element: ElementClass<HTMLElement>
 
-  declare var Video: ElementClass<HTMLVideoElement>
-  declare var Source: ElementClass<HTMLSourceElement>
-  declare var Media: ElementClass<HTMLMediaElement>
-  declare var Audio: ElementClass<HTMLAudioElement>
-  declare var UL: ElementClass<HTMLUListElement>
-  declare var Track: ElementClass<HTMLTrackElement>
-  declare var Title: ElementClass<HTMLTitleElement>
-  declare var TextArea: ElementClass<HTMLTextAreaElement>
-  declare var Template: ElementClass<HTMLTemplateElement>
-  declare var TBody: ElementClass<HTMLTableSectionElement>
-  declare var THead: ElementClass<HTMLTableSectionElement>
-  declare var TFoot: ElementClass<HTMLTableSectionElement>
-  declare var TR: ElementClass<HTMLTableRowElement>
-  declare var Table: ElementClass<HTMLTableElement>
-  declare var Col: ElementClass<HTMLTableColElement>
-  declare var ColGroup: ElementClass<HTMLTableColElement>
-  declare var TH: ElementClass<HTMLTableHeaderCellElement>
-  declare var TD: ElementClass<HTMLTableDataCellElement>
-  declare var Caption: ElementClass<HTMLElement>
-  declare var Style: ElementClass<HTMLStyleElement>
-  declare var Span: ElementClass<HTMLSpanElement>
-  declare var Shadow: ElementClass<HTMLElement>
-  declare var Select: ElementClass<HTMLSelectElement>
-  declare var Script: ElementClass<HTMLScriptElement>
-  declare var Quote: ElementClass<HTMLQuoteElement>
-  declare var Progress: ElementClass<HTMLProgressElement>
-  declare var Pre: ElementClass<HTMLPreElement>
-  declare var Picture: ElementClass<HTMLPictureElement>
-  declare var Param: ElementClass<HTMLParamElement>
-  declare var P: ElementClass<HTMLParagraphElement>
-  declare var Output: ElementClass<HTMLElement>
-  declare var Option: ElementClass<HTMLOptionElement>
-  declare var OptGroup: ElementClass<HTMLOptGroupElement>
-  declare var Object: ElementClass<HTMLObjectElement>
-  declare var OL: ElementClass<HTMLOListElement>
-  declare var Ins: ElementClass<HTMLElement>
-  declare var Del: ElementClass<HTMLElement>
-  declare var Meter: ElementClass<HTMLElement>
-  declare var Meta: ElementClass<HTMLMetaElement>
-  declare var Menu: ElementClass<HTMLMenuElement>
-  declare var Map: ElementClass<HTMLMapElement>
-  declare var Link: ElementClass<HTMLLinkElement>
-  declare var Legend: ElementClass<HTMLLegendElement>
-  declare var Label: ElementClass<HTMLLabelElement>
-  declare var LI: ElementClass<HTMLLIElement>
-  declare var KeyGen: ElementClass<HTMLElement>
-  declare var Image: ElementClass<HTMLImageElement>
-  declare var IFrame: ElementClass<HTMLIFrameElement>
-  declare var H1: ElementClass<HTMLHeadingElement>
-  declare var H2: ElementClass<HTMLHeadingElement>
-  declare var H3: ElementClass<HTMLHeadingElement>
-  declare var H4: ElementClass<HTMLHeadingElement>
-  declare var H5: ElementClass<HTMLHeadingElement>
-  declare var H6: ElementClass<HTMLHeadingElement>
-  declare var Hr: ElementClass<HTMLHeadingElement>
-  declare var FrameSet: ElementClass<HTMLFrameSetElement>
-  declare var Frame: ElementClass<HTMLFrameElement>
-  declare var Form: ElementClass<HTMLFormElement>
-  declare var Font: ElementClass<HTMLFontElement>
-  declare var Embed: ElementClass<HTMLEmbedElement>
-  declare var Article: ElementClass<HTMLElement>
-  declare var Aside: ElementClass<HTMLElement>
-  declare var Figure: ElementClass<HTMLElement>
-  declare var FigCaption: ElementClass<HTMLElement>
-  declare var Header: ElementClass<HTMLHeadingElement>
-  declare var Main: ElementClass<HTMLElement>
-  declare var Mark: ElementClass<HTMLElement>
-  declare var MenuItem: ElementClass<HTMLMenuElement>
-  declare var Nav: ElementClass<HTMLElement>
-  declare var Section: ElementClass<HTMLElement>
-  declare var Summary: ElementClass<HTMLElement>
-  declare var WBr: ElementClass<HTMLElement>
-  declare var Div: ElementClass<HTMLDivElement>
-  declare var Dialog: ElementClass<HTMLElement>
-  declare var Details: ElementClass<HTMLElement>
-  declare var DataList: ElementClass<HTMLDataListElement>
-  declare var DL: ElementClass<HTMLElement>
-  declare var Canvas: ElementClass<HTMLCanvasElement>
-  declare var Button: ElementClass<HTMLButtonElement>
-  declare var Base: ElementClass<HTMLBaseElement>
-  declare var Br: ElementClass<HTMLElement>
-  declare var Area: ElementClass<HTMLAreaElement>
-  declare var A: ElementClass<HTMLElement>
+  export var Video: ElementClass<HTMLVideoElement>
+  export var Source: ElementClass<HTMLSourceElement>
+  export var Media: ElementClass<HTMLMediaElement>
+  export var Audio: ElementClass<HTMLAudioElement>
+  export var UL: ElementClass<HTMLUListElement>
+  export var Track: ElementClass<HTMLTrackElement>
+  export var Title: ElementClass<HTMLTitleElement>
+  export var TextArea: ElementClass<HTMLTextAreaElement>
+  export var Template: ElementClass<HTMLTemplateElement>
+  export var TBody: ElementClass<HTMLTableSectionElement>
+  export var THead: ElementClass<HTMLTableSectionElement>
+  export var TFoot: ElementClass<HTMLTableSectionElement>
+  export var TR: ElementClass<HTMLTableRowElement>
+  export var Table: ElementClass<HTMLTableElement>
+  export var Col: ElementClass<HTMLTableColElement>
+  export var ColGroup: ElementClass<HTMLTableColElement>
+  export var TH: ElementClass<HTMLTableHeaderCellElement>
+  export var TD: ElementClass<HTMLTableDataCellElement>
+  export var Caption: ElementClass<HTMLElement>
+  export var Style: ElementClass<HTMLStyleElement>
+  export var Span: ElementClass<HTMLSpanElement>
+  export var Shadow: ElementClass<HTMLElement>
+  export var Select: ElementClass<HTMLSelectElement>
+  export var Script: ElementClass<HTMLScriptElement>
+  export var Quote: ElementClass<HTMLQuoteElement>
+  export var Progress: ElementClass<HTMLProgressElement>
+  export var Pre: ElementClass<HTMLPreElement>
+  export var Picture: ElementClass<HTMLPictureElement>
+  export var Param: ElementClass<HTMLParamElement>
+  export var P: ElementClass<HTMLParagraphElement>
+  export var Output: ElementClass<HTMLElement>
+  export var Option: ElementClass<HTMLOptionElement>
+  export var OptGroup: ElementClass<HTMLOptGroupElement>
+  export var Object: ElementClass<HTMLObjectElement>
+  export var OL: ElementClass<HTMLOListElement>
+  export var Ins: ElementClass<HTMLElement>
+  export var Del: ElementClass<HTMLElement>
+  export var Meter: ElementClass<HTMLElement>
+  export var Meta: ElementClass<HTMLMetaElement>
+  export var Menu: ElementClass<HTMLMenuElement>
+  export var Map: ElementClass<HTMLMapElement>
+  export var Link: ElementClass<HTMLLinkElement>
+  export var Legend: ElementClass<HTMLLegendElement>
+  export var Label: ElementClass<HTMLLabelElement>
+  export var LI: ElementClass<HTMLLIElement>
+  export var KeyGen: ElementClass<HTMLElement>
+  export var Image: ElementClass<HTMLImageElement>
+  export var IFrame: ElementClass<HTMLIFrameElement>
+  export var H1: ElementClass<HTMLHeadingElement>
+  export var H2: ElementClass<HTMLHeadingElement>
+  export var H3: ElementClass<HTMLHeadingElement>
+  export var H4: ElementClass<HTMLHeadingElement>
+  export var H5: ElementClass<HTMLHeadingElement>
+  export var H6: ElementClass<HTMLHeadingElement>
+  export var Hr: ElementClass<HTMLHeadingElement>
+  export var FrameSet: ElementClass<HTMLFrameSetElement>
+  export var Frame: ElementClass<HTMLFrameElement>
+  export var Form: ElementClass<HTMLFormElement>
+  export var Font: ElementClass<HTMLFontElement>
+  export var Embed: ElementClass<HTMLEmbedElement>
+  export var Article: ElementClass<HTMLElement>
+  export var Aside: ElementClass<HTMLElement>
+  export var Figure: ElementClass<HTMLElement>
+  export var FigCaption: ElementClass<HTMLElement>
+  export var Header: ElementClass<HTMLHeadingElement>
+  export var Main: ElementClass<HTMLElement>
+  export var Mark: ElementClass<HTMLElement>
+  export var MenuItem: ElementClass<HTMLMenuElement>
+  export var Nav: ElementClass<HTMLElement>
+  export var Section: ElementClass<HTMLElement>
+  export var Summary: ElementClass<HTMLElement>
+  export var WBr: ElementClass<HTMLElement>
+  export var Div: ElementClass<HTMLDivElement>
+  export var Dialog: ElementClass<HTMLElement>
+  export var Details: ElementClass<HTMLElement>
+  export var DataList: ElementClass<HTMLDataListElement>
+  export var DL: ElementClass<HTMLElement>
+  export var Canvas: ElementClass<HTMLCanvasElement>
+  export var Button: ElementClass<HTMLButtonElement>
+  export var Base: ElementClass<HTMLBaseElement>
+  export var Br: ElementClass<HTMLElement>
+  export var Area: ElementClass<HTMLAreaElement>
+  export var A: ElementClass<HTMLElement>
 
-  declare var Anchor: ElementClass<HTMLAnchorElement>
-  declare var Paragraph: ElementClass<HTMLParagraphElement>
-  declare var DList: ElementClass<HTMLDListElement>
-  declare var UList: ElementClass<HTMLUListElement>
-  declare var OList: ElementClass<HTMLOListElement>
-  declare var ListItem: ElementClass<HTMLLIElement>
-  declare var Input: ElementClass<HTMLInputElement>
-  declare var TableRow: ElementClass<HTMLTableRowElement>
-  declare var TableCell: ElementClass<HTMLTableCellElement>
-  declare var TableHeaderCell: ElementClass<HTMLTableHeaderCellElement>
-  declare var TableHeader: ElementClass<HTMLTableSectionElement>
-  declare var TableBody: ElementClass<HTMLTableSectionElement>
+  export var Anchor: ElementClass<HTMLAnchorElement>
+  export var Paragraph: ElementClass<HTMLParagraphElement>
+  export var DList: ElementClass<HTMLDListElement>
+  export var UList: ElementClass<HTMLUListElement>
+  export var OList: ElementClass<HTMLOListElement>
+  export var ListItem: ElementClass<HTMLLIElement>
+  export var Input: ElementClass<HTMLInputElement>
+  export var TableRow: ElementClass<HTMLTableRowElement>
+  export var TableCell: ElementClass<HTMLTableCellElement>
+  export var TableHeaderCell: ElementClass<HTMLTableHeaderCellElement>
+  export var TableHeader: ElementClass<HTMLTableSectionElement>
+  export var TableBody: ElementClass<HTMLTableSectionElement>
 
-  declare var Checkbox: ElementClass<HTMLInputElement>
-  declare var CheckboxInput: ElementClass<HTMLInputElement>
-  declare var Password: ElementClass<HTMLInputElement>
-  declare var PasswordInput: ElementClass<HTMLInputElement>
-  declare var Text: ElementClass<HTMLInputElement>
-  declare var TextInput: ElementClass<HTMLInputElement>
-  declare var Submit: ElementClass<HTMLInputElement>
-  declare var SubmitInput: ElementClass<HTMLInputElement>
-  declare var Radio: ElementClass<HTMLInputElement>
-  declare var RadioInput: ElementClass<HTMLInputElement>
-  declare var Color: ElementClass<HTMLInputElement>
-  declare var ColorInput: ElementClass<HTMLInputElement>
-  declare var Date: ElementClass<HTMLInputElement>
-  declare var DateInput: ElementClass<HTMLInputElement>
-  declare var DateTime: ElementClass<HTMLInputElement>
-  declare var DateTimeInput: ElementClass<HTMLInputElement>
-  declare var Email: ElementClass<HTMLInputElement>
-  declare var EmailInput: ElementClass<HTMLInputElement>
-  declare var Month: ElementClass<HTMLInputElement>
-  declare var MonthInput: ElementClass<HTMLInputElement>
-  declare var Number: ElementClass<HTMLInputElement>
-  declare var NumberInput: ElementClass<HTMLInputElement>
-  declare var Range: ElementClass<HTMLInputElement>
-  declare var RangeInput: ElementClass<HTMLInputElement>
-  declare var Search: ElementClass<HTMLInputElement>
-  declare var SearchInput: ElementClass<HTMLInputElement>
-  declare var Tel: ElementClass<HTMLInputElement>
-  declare var TelInput: ElementClass<HTMLInputElement>
-  declare var Time: ElementClass<HTMLInputElement>
-  declare var TimeInput: ElementClass<HTMLInputElement>
-  declare var Url: ElementClass<HTMLInputElement>
-  declare var UrlInput: ElementClass<HTMLInputElement>
-  declare var Week: ElementClass<HTMLInputElement>
-  declare var WeekInput: ElementClass<HTMLInputElement>
+  export var Checkbox: ElementClass<HTMLInputElement>
+  export var CheckboxInput: ElementClass<HTMLInputElement>
+  export var Password: ElementClass<HTMLInputElement>
+  export var PasswordInput: ElementClass<HTMLInputElement>
+  export var Text: ElementClass<HTMLInputElement>
+  export var TextInput: ElementClass<HTMLInputElement>
+  export var Submit: ElementClass<HTMLInputElement>
+  export var SubmitInput: ElementClass<HTMLInputElement>
+  export var Radio: ElementClass<HTMLInputElement>
+  export var RadioInput: ElementClass<HTMLInputElement>
+  export var Color: ElementClass<HTMLInputElement>
+  export var ColorInput: ElementClass<HTMLInputElement>
+  export var Date: ElementClass<HTMLInputElement>
+  export var DateInput: ElementClass<HTMLInputElement>
+  export var DateTime: ElementClass<HTMLInputElement>
+  export var DateTimeInput: ElementClass<HTMLInputElement>
+  export var Email: ElementClass<HTMLInputElement>
+  export var EmailInput: ElementClass<HTMLInputElement>
+  export var Month: ElementClass<HTMLInputElement>
+  export var MonthInput: ElementClass<HTMLInputElement>
+  export var Number: ElementClass<HTMLInputElement>
+  export var NumberInput: ElementClass<HTMLInputElement>
+  export var Range: ElementClass<HTMLInputElement>
+  export var RangeInput: ElementClass<HTMLInputElement>
+  export var Search: ElementClass<HTMLInputElement>
+  export var SearchInput: ElementClass<HTMLInputElement>
+  export var Tel: ElementClass<HTMLInputElement>
+  export var TelInput: ElementClass<HTMLInputElement>
+  export var Time: ElementClass<HTMLInputElement>
+  export var TimeInput: ElementClass<HTMLInputElement>
+  export var Url: ElementClass<HTMLInputElement>
+  export var UrlInput: ElementClass<HTMLInputElement>
+  export var Week: ElementClass<HTMLInputElement>
+  export var WeekInput: ElementClass<HTMLInputElement>
 }

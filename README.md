@@ -31,6 +31,9 @@ Alkali uses UMD format, so it can be consumed by CommonJS or AMD module systems 
 ## Todo Example
 [Alkali-Todo](https://github.com/kriszyp/alkali-todo) is a the TodoMVC application written with Alkali. This repository includes a walk-through for a good example-based approach to learning to use Alkali.
 
+## Typings
+Alkali includes typing.d.ts file to provide a TypeScript type interface.
+
 ## Variable API
 
 The Variable is main API for creating variables and their derivative.
@@ -238,7 +241,8 @@ An argument can be an array that defines a set of elements to use as the content
 * Element classes - These will generate new elements
 * Element instances - This is will be directly inserted
 * Variables or primitives - These will be converted to text nodes
-* Or nested arrays -  This will result in nested elements (within the last element before the array).
+* Or nested arrays -  This will result in nested elements (within the last element before the array). Sub-array elements will be added as children of the preceding element.
+
 For example, we could create a table:
 ```
 import { Table, TR, TD } from 'alkali/Element';

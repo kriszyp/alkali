@@ -1395,6 +1395,7 @@ define(['./util/lang'], function (lang) {
 		var schemaForObject = schema(target)
 		return new Validating(target, schemaForObject)
 	}
+	Variable.VArray = Variable
 	Variable.deny = deny
 	Variable.noChange = noChange
 	function addFlag(name) {
