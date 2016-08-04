@@ -1288,9 +1288,14 @@ define(['./util/lang'], function (lang) {
 				contextualizedVariable.push(this.args[0].call(this.args[1], event.value))
 			} else if (event.type === 'update') {
 				var object = event.parent.valueOf(context)
-				var index = contextualizedVariable.cachedValue.indexOf(object)
-				var matches = [object].filter(this.args[0]).length > 0
-				contextualizedVariable.splice(index, 1, this.args[0].call(this.args[1], event.value))
+				var array = contextualizedVariable.cachedValue
+				if (array && array.map) {
+					var index = array.indexOf(object)
+					var matches = [object].filter(this.args[0]).length > 0
+					contextualizedVariable.splice(index, 1, this.args[0].call(this.args[1], event.value))
+				} else {
+					return event
+				}
 			} else {
 				return event
 			}
