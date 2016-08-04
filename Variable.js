@@ -819,6 +819,22 @@ define(['./util/lang'], function (lang) {
 		}
 	}
 
+	Variable.VMap = lang.compose(Variable, function(value){
+		this.value = typeof value === 'undefined' ? this.default : value
+	}, {
+		// TODO: Move all the get and set functionality for maps out of Variable
+		property: function(key) {
+			var properties = this._properties || (this._properties = new Map())
+			var propertyVariable = properties.get(key)
+			if (!propertyVariable) {
+				// create the property variable
+				propertyVariable = new Property(this, key)
+				properties.set(key, propertyVariable)
+			}
+			return propertyVariable
+		}
+	})
+
 	var cacheNotFound = {}
 	var Caching = Variable.Caching = lang.compose(Variable, function(getValue, setValue) {
 		if (getValue) {

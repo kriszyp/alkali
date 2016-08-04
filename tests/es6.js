@@ -95,7 +95,7 @@ define([
 		Map: function() {
 			let map = new Map()
 			map.set('a', 2)
-			var v = new Variable(map)
+			var v = new Variable.VMap(map)
 			var updated
 			v.property('a').notifies({
 				updated: function(){
