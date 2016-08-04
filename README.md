@@ -353,6 +353,13 @@ And we can create a constructor from MyDiv with properties to be assigned to the
 MyDivWithClass = MyDiv.with('.a-class', {title: 'a different title'});
 ```
 
+Note that if you are using TypeScript, event handlers must be defined as class property (with a function value):
+```
+	onclick = function() {
+		this.doSomething();
+	}
+```
+
 #### Children
 You can also define a set of children for by setting the static children property of a class:
 ```
