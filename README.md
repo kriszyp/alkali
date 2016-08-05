@@ -807,6 +807,11 @@ This allows you to execute a function that is the value of a variable, with argu
 
 This will cause the variable to act as a proxy for the source variable, and changes to this variable will be directed to the source variable, and vice versa.
 
+## Variables with Maps
+JavaScript `Map` objects can be used as the value for a variable, with the `Map` properties mapped to the variable properties. This can be done using the `VMap` constructor. The `Map` can be provided as a standard value as the argument or through `put`:
+```
+new VMap(new Map())
+```
 
 ## Which Listener To Use?
 
