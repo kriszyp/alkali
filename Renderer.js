@@ -295,8 +295,17 @@ define(['./util/lang'], function (lang, Variable) {
 	TextRenderer.prototype = Object.create(ElementRenderer.prototype)
 	TextRenderer.prototype.type = 'TextRenderer'
 	TextRenderer.prototype.renderUpdate = function (newValue, element) {
-		if (newValue === undefined){
+		if (newValue == null){
 			newValue = ''
+		} else if (newValue.nodeType) {
+			if (this.textNode && this.textNode.parentNode == element) {
+				// text node is attached, we can replace it with the node
+				element.replaceChild(newValue, this.textNode)
+			} else {
+				element.appendChild(newValue)
+			}
+			this.textNode = newValue
+			return
 		}
 		(this.textNode || element.childNodes[this.position]).nodeValue = newValue
 	}
