@@ -747,15 +747,19 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			}
 			for (var l = arguments.length; i < l; i++) {
 				var argument = arguments[i]
-				if (argument instanceof Array || argument.notifies) {
-					applyOnCreate.content = argument
+				if (argument && typeof argument === 'object') {
+					if (argument instanceof Array || argument.notifies) {
+						applyOnCreate.content = argument
+					} else {
+						for (var key in argument) {
+							// TODO: do deep merging of styles and classes, but not variables
+							applyOnCreate[key] = argument[key]
+						}
+					}
 				} else if (typeof argument === 'function' && argument.for) {
 					applyOnCreate.content = argument.for(element)
 				} else {
-					for (var key in argument) {
-						// TODO: do deep merging of styles and classes, but not variables
-						applyOnCreate[key] = argument[key]
-					}
+					applyOnCreate.content = argument
 				}
 			}
 		}
