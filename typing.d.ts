@@ -1,5 +1,5 @@
 declare module 'alkali' {
-  type KeyType = string|number
+  type KeyType = string | number
   interface Promise<T> {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
   }
@@ -26,6 +26,7 @@ declare module 'alkali' {
     static to<U>(transform: (T) => U | Variable<U> | Promise<U>): VariableClass
     static property(key: KeyType): VariableClass
   }
+  export type Reacts<T> = T & Variable<T>
 
   type VariableClass = typeof Variable
 
@@ -44,6 +45,7 @@ declare module 'alkali' {
     splice(start: number, end: number, ...items: T[])
   }
   export function react<T>(reactiveFunction: () => T): Variable<T>
+  export function react<T>(value: T): Reacts<T>
   export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>
   export function spawn<T>(yieldingFunction: () => T): Promise<T>
 
@@ -94,22 +96,25 @@ declare module 'alkali' {
   export class ListRenderer<T> {
     constructor(properties: ListRendererProperties<T>)
   }
-
+  type Vstring = string | Variable<string>
+  type Vboolean = boolean | Variable<boolean>
+  type Vnumber = number | Variable<number>
+  type Vstyle = Vstring | Vnumber | Vboolean
 
   interface ElementProperties {
     content?: ElementChild
-    class?: string
-    for?: string
-    role?: string
+    class?: Vstring
+    for?: Vstring
+    role?: Vstring
     classes?: {}
     attributes?: {}
     render?: () => any
 
-    textContent?: string
+    textContent?: Vstring
 
-    msContentZoomFactor?: number
-    msRegionOverflow?: string
-    innerHTML?: string
+    msContentZoomFactor?: Vstring
+    msRegionOverflow?: Vstring
+    innerHTML?: Vstring
     onariarequest?: (ev: AriaRequestEvent) => any
     oncommand?: (ev: CommandEvent) => any
     ongotpointercapture?: (ev: PointerEvent) => any
@@ -138,15 +143,14 @@ declare module 'alkali' {
     onwebkitfullscreenchange?: (ev: Event) => any
     onwebkitfullscreenerror?: (ev: Event) => any
 
-    accessKey?: string
-    contentEditable?: string
+    accessKey?: Vstring
+    contentEditable?: Vstring
     dataset?: {}
-    dir?: string
-    draggable?: boolean
-    hidden?: boolean
-    hideFocus?: boolean
-    innerText?: string
-    lang?: string
+    dir?: Vstring
+    draggable?: Vboolean
+    hidden?: Vboolean
+    hideFocus?: Vboolean
+    lang?: Vstring
     onabort?: (ev: Event) => any
     onactivate?: (ev: UIEvent) => any
     onbeforeactivate?: (ev: UIEvent) => any
@@ -213,17 +217,243 @@ declare module 'alkali' {
     ontimeupdate?: (ev: Event) => any
     onvolumechange?: (ev: Event) => any
     onwaiting?: (ev: Event) => any
-    outerHTML?: string
-    outerText?: string
-    spellcheck?: boolean
+    spellcheck?: Vboolean
     style?: {}
-    tabIndex?: number
-    title?: string
+    tabIndex?: Vnumber
+    title?: Vstring
 
-    align?: string
-    noWrap?: boolean
-    disabled?: boolean
+    align?: Vstring
+    noWrap?: Vboolean
+    disabled?: Vboolean
+    href?: Vstring
+    src?: Vstring
 
+    alignContent?: Vstyle
+    alignItems?: Vstyle
+    alignSelf?: Vstyle
+    animation?: Vstyle
+    animationDelay?: Vstyle
+    animationDirection?: Vstyle
+    animationDuration?: Vstyle
+    animationFillMode?: Vstyle
+    animationIterationCount?: Vstyle
+    animationName?: Vstyle
+    animationPlayState?: Vstyle
+    animationTimingFunction?: Vstyle
+    backfaceVisibility?: Vstyle
+    background?: Vstyle
+    backgroundAttachment?: Vstyle
+    backgroundBlendMode?: Vstyle
+    backgroundClip?: Vstyle
+    backgroundColor?: Vstyle
+    backgroundImage?: Vstyle
+    backgroundOrigin?: Vstyle
+    backgroundPosition?: Vstyle
+    backgroundPositionX?: Vstyle
+    backgroundPositionY?: Vstyle
+    backgroundRepeat?: Vstyle
+    backgroundRepeatX?: Vstyle
+    backgroundRepeatY?: Vstyle
+    backgroundSize?: Vstyle
+    baselineShift?: Vstyle
+    border?: Vstyle
+    borderBottom?: Vstyle
+    borderBottomColor?: Vstyle
+    borderBottomLeftRadius?: Vstyle
+    borderBottomRightRadius?: Vstyle
+    borderBottomStyle?: Vstyle
+    borderBottomWidth?: Vstyle
+    borderCollapse?: Vstyle
+    borderColor?: Vstyle
+    borderImage?: Vstyle
+    borderImageOutset?: Vstyle
+    borderImageRepeat?: Vstyle
+    borderImageSlice?: Vstyle
+    borderImageSource?: Vstyle
+    borderImageWidth?: Vstyle
+    borderLeft?: Vstyle
+    borderLeftColor?: Vstyle
+    borderLeftStyle?: Vstyle
+    borderLeftWidth?: Vstyle
+    borderRadius?: Vstyle
+    borderRight?: Vstyle
+    borderRightColor?: Vstyle
+    borderRightStyle?: Vstyle
+    borderRightWidth?: Vstyle
+    borderSpacing?: Vstyle
+    borderStyle?: Vstyle
+    borderTop?: Vstyle
+    borderTopColor?: Vstyle
+    borderTopLeftRadius?: Vstyle
+    borderTopRightRadius?: Vstyle
+    borderTopStyle?: Vstyle
+    borderTopWidth?: Vstyle
+    borderWidth?: Vstyle
+    bottom?: Vstyle
+    boxShadow?: Vstyle
+    boxSizing?: Vstyle
+    bufferedRendering?: Vstyle
+    captionSide?: Vstyle
+    clear?: Vstyle
+    clip?: Vstyle
+    clipPath?: Vstyle
+    clipRule?: Vstyle
+    color?: Vstyle
+    colorInterpolation?: Vstyle
+    colorInterpolationFilters?: Vstyle
+    colorRendering?: Vstyle
+    counterIncrement?: Vstyle
+    counterReset?: Vstyle
+    cursor?: Vstyle
+    direction?: Vstyle
+    display?: Vstyle
+    emptyCells?: Vstyle
+    fill?: Vstyle
+    fillOpacity?: Vstyle
+    fillRule?: Vstyle
+    filter?: Vstyle
+    flex?: Vstyle
+    flexBasis?: Vstyle
+    flexDirection?: Vstyle
+    flexFlow?: Vstyle
+    flexGrow?: Vstyle
+    flexShrink?: Vstyle
+    flexWrap?: Vstyle
+    float?: Vstyle
+    floodColor?: Vstyle
+    floodOpacity?: Vstyle
+    font?: Vstyle
+    fontFamily?: Vstyle
+    fontFeatureSettings?: Vstyle
+    fontKerning?: Vstyle
+    fontSize?: Vstyle
+    fontStretch?: Vstyle
+    fontStyle?: Vstyle
+    fontVariant?: Vstyle
+    fontVariantLigatures?: Vstyle
+    fontWeight?: Vstyle
+    height?: Vstyle
+    imageRendering?: Vstyle
+    isolation?: Vstyle
+    justifyContent?: Vstyle
+    left?: Vstyle
+    letterSpacing?: Vstyle
+    lightingColor?: Vstyle
+    lineHeight?: Vstyle
+    listStyle?: Vstyle
+    listStyleImage?: Vstyle
+    listStylePosition?: Vstyle
+    listStyleType?: Vstyle
+    margin?: Vstyle
+    marginBottom?: Vstyle
+    marginLeft?: Vstyle
+    marginRight?: Vstyle
+    marginTop?: Vstyle
+    marker?: Vstyle
+    markerEnd?: Vstyle
+    markerMid?: Vstyle
+    markerStart?: Vstyle
+    mask?: Vstyle
+    maskType?: Vstyle
+    maxHeight?: Vstyle
+    maxWidth?: Vstyle
+    maxZoom?: Vstyle
+    minHeight?: Vstyle
+    minWidth?: Vstyle
+    minZoom?: Vstyle
+    mixBlendMode?: Vstyle
+    motion?: Vstyle
+    motionOffset?: Vstyle
+    motionPath?: Vstyle
+    motionRotation?: Vstyle
+    objectFit?: Vstyle
+    objectPosition?: Vstyle
+    opacity?: Vstyle
+    order?: Vstyle
+    orientation?: Vstyle
+    orphans?: Vstyle
+    outline?: Vstyle
+    outlineColor?: Vstyle
+    outlineOffset?: Vstyle
+    outlineStyle?: Vstyle
+    outlineWidth?: Vstyle
+    overflow?: Vstyle
+    overflowWrap?: Vstyle
+    overflowX?: Vstyle
+    overflowY?: Vstyle
+    padding?: Vstyle
+    paddingBottom?: Vstyle
+    paddingLeft?: Vstyle
+    paddingRight?: Vstyle
+    paddingTop?: Vstyle
+    page?: Vstyle
+    pageBreakAfter?: Vstyle
+    pageBreakBefore?: Vstyle
+    pageBreakInside?: Vstyle
+    paintOrder?: Vstyle
+    perspective?: Vstyle
+    perspectiveOrigin?: Vstyle
+    pointerEvents?: Vstyle
+    position?: Vstyle
+    quotes?: Vstyle
+    resize?: Vstyle
+    right?: Vstyle
+    shapeImageThreshold?: Vstyle
+    shapeMargin?: Vstyle
+    shapeOutside?: Vstyle
+    shapeRendering?: Vstyle
+    size?: Vstyle
+    speak?: Vstyle
+    src?: Vstyle
+    stopColor?: Vstyle
+    stopOpacity?: Vstyle
+    stroke?: Vstyle
+    strokeDasharray?: Vstyle
+    strokeDashoffset?: Vstyle
+    strokeLinecap?: Vstyle
+    strokeLinejoin?: Vstyle
+    strokeMiterlimit?: Vstyle
+    strokeOpacity?: Vstyle
+    strokeWidth?: Vstyle
+    tabSize?: Vstyle
+    tableLayout?: Vstyle
+    textAlign?: Vstyle
+    textAlignLast?: Vstyle
+    textAnchor?: Vstyle
+    textCombineUpright?: Vstyle
+    textDecoration?: Vstyle
+    textIndent?: Vstyle
+    textOrientation?: Vstyle
+    textOverflow?: Vstyle
+    textRendering?: Vstyle
+    textShadow?: Vstyle
+    textTransform?: Vstyle
+    top?: Vstyle
+    touchAction?: Vstyle
+    transform?: Vstyle
+    transformOrigin?: Vstyle
+    transformStyle?: Vstyle
+    transition?: Vstyle
+    transitionDelay?: Vstyle
+    transitionDuration?: Vstyle
+    transitionProperty?: Vstyle
+    transitionTimingFunction?: Vstyle
+    unicodeBidi?: Vstyle
+    unicodeRange?: Vstyle
+    userZoom?: Vstyle
+    vectorEffect?: Vstyle
+    verticalAlign?: Vstyle
+    visibility?: Vstyle
+    whiteSpace?: Vstyle
+    widows?: Vstyle
+    width?: Vstyle
+    willChange?: Vstyle
+    wordBreak?: Vstyle
+    wordSpacing?: Vstyle
+    wordWrap?: Vstyle
+    writingMode?: Vstyle
+    zIndex?: Vstyle
+    zoom?: Vstyle
     [name: string]: any
   }
 
@@ -385,4 +615,8 @@ declare module 'alkali' {
   export var UrlInput: ElementClass<HTMLInputElement>
   export var Week: ElementClass<HTMLInputElement>
   export var WeekInput: ElementClass<HTMLInputElement>
+
+  export function applyProperties(element: HTMLElement, properties: ElementProperties)
+  export function append(...args: Array<ElementChild>): HTMLElement
+  export function prepend(...args: Array<ElementChild>): HTMLElement
 }
