@@ -167,7 +167,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				// TODO: reenable this
 //				if (child.for) {
 					// a variable constructor that can be contextualized
-	//				fragment.appendChild(variableAsText(parent, child))
+	//				fragment.appendChild(variableAsContent(parent, child))
 		//		} else {
 					// an element constructor
 					childNode = new child()
@@ -181,7 +181,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					layoutChildren(childNode.contentNode || childNode, child, container)
 				} else if (child.notifies) {
 					// a variable
-					fragment.appendChild(childNode = variableAsText(parent, child))
+					fragment.appendChild(childNode = variableAsContent(parent, child))
 				} else if (child.nodeType) {
 					// an element itself
 					fragment.appendChild(childNode = child)
@@ -204,7 +204,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		}
 		return childNode
 	}
-	function variableAsText(parent, content) {
+	function variableAsContent(parent, content) {
 		if (content == null) {
 			return doc.createTextNode('')
 		}
@@ -397,23 +397,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		})
 	}
 
-	nextClassId = 1
-	uniqueSelectors = {}
-	function getUniqueSelector(element) {
-		var selector = element.hasOwnProperty('_uniqueSelector') ? element._uniqueSelector :
-			(element._tag + (element._class ? '.' + element._class.replace(/\s+/g, '.') : '') +
-			(element._id ? '#' + element._id : ''))
-		if (!selector.match(/[#\.-]/)) {
-			if (uniqueSelectors[selector]) {
-				element._class = '.x-' + nextClassId++
-				selector = getUniqueSelector(element)
-			} else {
-				uniqueSelectors[selector] = selector
-			}
-		}
-		return selector
-	}
-
 	function buildContent(element, content, key, properties) {
 		var each = element.each || properties.each
 		if (each && content) {
@@ -453,7 +436,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			layoutChildren(element, content, element)
 		} else {
 			// render as string
-			element.appendChild(variableAsText(element, content))
+			element.appendChild(variableAsContent(element, content))
 		}
 	}
 
@@ -763,7 +746,10 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				}
 			}
 		}
-		// TODO: inline this
+		if (element.setup) {
+			applyOnCreate = element.setup(applyOnCreate) || applyOnCreate
+		}
+		// TODO: inline this for better performance, possibly
 		applyProperties(element, applyOnCreate)
 		if (this.children) {
 			layoutChildren(element, this.children, element)

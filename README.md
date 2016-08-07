@@ -8,7 +8,7 @@ There are several key paradigms in alkali:
 
 # Variables
 
-The central entity in the data model system is a "Variable" (similar notion has variously been known by various names such as "reactive", "signal", "property", "stream", "observable", and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the value.
+The central entity in the data model system is a "Variable" (similar notion has variously been known by various names such as "reactive", "signal", "property", "stream", "observable", and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the type of the value.
 
 Notifications of data changes are delivered by update notifications. When a downstream subscriber is interested in the results of a variable change, it can request the latest value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. And Variables support bi-directional flow. They can be updated as well as monitored.
 
@@ -32,7 +32,10 @@ Alkali uses UMD format, so it can be consumed by CommonJS or AMD module systems 
 [Alkali-Todo](https://github.com/kriszyp/alkali-todo) is a the TodoMVC application written with Alkali. This repository includes a walk-through for a good example-based approach to learning to use Alkali.
 
 ## Typings
-Alkali includes typing.d.ts file to provide a TypeScript type interface.
+Alkali includes an index.d.ts file to provide a TypeScript type interface.
+
+## Babel Plugin for Reactive Expressions
+The [babel-plugin-transform-alkali](https://github.com/kriszyp/babel-plugin-transform-alkali) can optionally be used to write and transform reactive expressions that create alkali variables from expressions.
 
 ## Variable API
 
@@ -459,13 +462,17 @@ new Div({
 ### Construction Lifecycle Methods
 
 There are several methods that are called as part of the construction of an element that can be used to define additional behavior of an element. These include:
-* `created(properties)` (and `createdCallback`) - This is called for each new element instance, and is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
-* `attached()` (and `attachedCallback`) - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
+* `setup(properties)` - This is called for each new element instance prior to applying any properties or doing any rendering of the element or children. It is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). This method can modify the properties object, to apply different properties to the element during construction.
+* `created(properties)` (and `createdCallback()`) - This is called for each new element instance after the properties have been applied and rendering and construction of children have completed, and is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
+* `attached()` (and `attachedCallback()`) - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
 * `detached()` - This is called when an element is detached from the document tree. This can be a useful place to perform cleanup operations. However, elements may be reattached as well (and `attached` would be called again).
 
 For example:
 ```
 class MyComponent extends Div {
+	setup(properties) {
+		properties.title = 'Add new property'
+	}
 	created(properties) {
 		// we can interact with the element instance now
 		this.innerHTML = 'Hello, ';
