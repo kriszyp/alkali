@@ -65,7 +65,8 @@ define(['./Variable'], function (Variable) {
 	operator('>=', 'greaterOrEqual', 8, 'a>=b');
 	operator('<', 'less', 8, 'a<b');
 	operator('<=', 'lessOrEqual', 8, 'a<=b');
-	operator('==', 'equal', 9, 'a===b');
+	operator('===', 'looseEqual', 9, 'a===b');
+	operator('==', 'equal', 9, 'a==b');
 	operator('&', 'and', 8, 'a&&b');
 	operator('|', 'or', 8, 'a||b');
 	operator('round', 'round', 8, 'Math.round(a*Math.pow(10,b||1))/Math.pow(10,b||1)', 'a', 'a');
