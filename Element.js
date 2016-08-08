@@ -355,7 +355,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		}
 	}
 
-	function applyProperties(element, properties) {
+	function assignProperties(element, properties) {
 		for (var key in properties) {
 			var value = properties[key]
 			var styleDefinition = styleDefinitions[key]
@@ -750,7 +750,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			applyOnCreate = element.created(applyOnCreate) || applyOnCreate
 		}
 		// TODO: inline this for better performance, possibly
-		applyProperties(element, applyOnCreate)
+		assignProperties(element, applyOnCreate)
 		if (this.children) {
 			layoutChildren(element, this.children, element)
 		}
@@ -785,7 +785,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	var Element = withProperties.call(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
 
 	Element.registerTag = registerTag
-	Element.applyProperties = applyProperties
+	Element.assign = assignProperties
 
 	Element.within = function(element){
 		// find closest child
