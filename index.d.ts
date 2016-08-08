@@ -4,18 +4,20 @@ declare module 'alkali' {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
   }
   export class Variable<T> {
-    constructor(value?: T | Array<T> | Promise<T>)
-    valueOf(): T | Promise<T>
+    constructor(value?: T)
+    valueOf(): T
     property(key: KeyType): Variable<any>
-    put(value: T | Variable<T> | Array<T> | Promise<T>)
+    put(value: T | Variable<T>)
     get(key: KeyType): any
     set(key: KeyType, value: any)
     undefine(key: KeyType)
     proxy(variable: Variable<T>)
     for(subject: any): Variable<T>
-    to<U>(transform: (T) => U | Variable<U> | Promise<U>): Variable<U>
+    to<U>(transform: (T) => Variable<U> | U): Variable<U>
     updated()
-    subscribe(listener: (event) => any)
+    subscribe(listener: (event) => {
+      value: () => T
+    })
 
     schema: Variable<{}>
     validation: Variable<{}>
@@ -23,7 +25,7 @@ declare module 'alkali' {
     static hasOwn(Target: () => any)
 
     static for(subject: any): Variable<any>
-    static to<U>(transform: (T) => U | Variable<U> | Promise<U>): VariableClass
+    static to<U>(transform: (T) => U | Variable<U>): VariableClass
     static property(key: KeyType): VariableClass
   }
   export type Reacts<T> = T & Variable<T>
@@ -44,6 +46,12 @@ declare module 'alkali' {
     shift(): T
     splice(start: number, end: number, ...items: T[])
   }
+  export class VMap<T> extends Variable<T> {
+  }
+  export class VPromised<T> extends Variable<Promise<T>> {
+    to<U>(transform: (T) => VPromised<U> | Variable<U> | Promise<U> | U): VPromised<U>
+  }
+
   export function react<T>(reactiveFunction: () => T): Variable<T>
   export function react<T>(value: T): Reacts<T>
   export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>
