@@ -746,8 +746,8 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				}
 			}
 		}
-		if (element.setup) {
-			applyOnCreate = element.setup(applyOnCreate) || applyOnCreate
+		if (element.created) {
+			applyOnCreate = element.created(applyOnCreate) || applyOnCreate
 		}
 		// TODO: inline this for better performance, possibly
 		applyProperties(element, applyOnCreate)
@@ -758,8 +758,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		if (applyOnCreate.content) {
 			buildContent(element, applyOnCreate.content, 'content', applyOnCreate)
 		}
-		element.createdCallback && element.createdCallback()
-		element.created && element.created(applyOnCreate)
+		element.ready && element.ready(applyOnCreate)
 		return element
 	}
 

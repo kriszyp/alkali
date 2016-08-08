@@ -462,20 +462,22 @@ new Div({
 ### Construction Lifecycle Methods
 
 There are several methods that are called as part of the construction of an element that can be used to define additional behavior of an element. These include:
-* `setup(properties)` - This is called for each new element instance prior to applying any properties or doing any rendering of the element or children. It is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). This method can modify the properties object, to apply different properties to the element during construction.
-* `created(properties)` (and `createdCallback()`) - This is called for each new element instance after the properties have been applied and rendering and construction of children have completed, and is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
+* `created(properties)` - This is called for each new element instance prior to applying any properties or doing any rendering of the element or children, or attaching to the DOM. It is called with the properties that were provided to construct the element (merged arguments from construction, including original variables in the case of properties that contain variables). This method can modify the properties object, to apply different properties to the element during construction. This is the most common method for adding custom handling of elements.
+* `setup(properties)` - This is called for each new element instance after the properties have been applied and rendering and construction of children have completed, and is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
 * `attached()` (and `attachedCallback()`) - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
 * `detached()` - This is called when an element is detached from the document tree. This can be a useful place to perform cleanup operations. However, elements may be reattached as well (and `attached` would be called again).
 
 For example:
 ```
 class MyComponent extends Div {
-	setup(properties) {
-		properties.title = 'Add new property'
-	}
 	created(properties) {
-		// we can interact with the element instance now
-		this.innerHTML = 'Hello, ';
+		// we can interact with the properties that were passed in, and add to them
+		properties.content = [
+			H2('Hello, ' + properties.greeting)
+		];
+	}
+	ready(properties) {
+		// the properties have been set, do any additional manipulation
 		this.appendChild(new Span('World'));
 	}
 	attached() {
