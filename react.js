@@ -14,17 +14,22 @@ define(['./util/lang', './Variable', './operators'], function (lang, Variable, o
     if (value && value.notifies) {
       return value
     }
-    return new Variable(value)
+    return Variable.for(value)
   }
   react.prop = function(object, property) {
     if (object) {
-      var value = object[property]
-      if (value !== undefined || !object.property) {
-        return value
-      } else {
-        return object.property(property)
+      if (object.property) {
+        // it is a variable already
+        var directPropertyValue = object[property]
+        return directPropertyValue !== undefined ? directPropertyValue : object.property(property)
+      } else if (typeof object === 'object') {
+        // get the mapped variable for the object
+        return Variable.for(object).property(property)
       }
+      // not an object
+      return object[property]
     }
+    // not even truthy
     return object
   }
   react.cond = function(test, consequent, alternate) {
