@@ -117,6 +117,8 @@ declare module 'alkali' {
     classes?: {}
     attributes?: {}
     render?: () => any
+    created?: (properties: ElementProperties) => ElementProperties | void
+    ready?: (properties: ElementProperties) => any
 
     textContent?: Vstring
 
@@ -624,7 +626,7 @@ declare module 'alkali' {
   export var Week: ElementClass<HTMLInputElement>
   export var WeekInput: ElementClass<HTMLInputElement>
 
-  export function applyProperties(element: HTMLElement, properties: ElementProperties)
+  export function assign(element: HTMLElement, properties: ElementProperties)
   export function append(...args: Array<ElementChild>): HTMLElement
   export function prepend(...args: Array<ElementChild>): HTMLElement
 }
