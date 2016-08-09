@@ -4,6 +4,9 @@ define(['./Element', './Variable', './react', './Renderer', './operators', './Co
 	main.Copy = Copy
 	main.Element = Element
 	main.Variable = Variable
+	main.VMap = Variable.VMap
+	main.VArray = Variable.VArray
+	main.VPromised = Variable.VPromised
 	main.all = Variable.all
 	main.react = react
 	main.spawn = function(func) {
