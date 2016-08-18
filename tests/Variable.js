@@ -732,6 +732,16 @@ define([
 
 			assert.strictEqual(bar.get('foo'), 'foo')
 			assert.strictEqual(bar.property('foo').valueOf(), 'foo')
+		},
+		assign: function() {
+			var foo = new Variable('foo')
+			var barObj = {}
+			var bar = Variable.for(barObj)
+			bar.property('foo').put(foo)
+			var copy = Variable.assign({}, barObj)
+			assert.strictEqual(Variable.for(copy).get('foo'), 'foo')
+			foo.put('2')
+			assert.strictEqual(Variable.for(copy).get('foo'), '2')
 		}
 	})
 })

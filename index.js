@@ -8,6 +8,14 @@ define(['./Element', './Variable', './react', './Renderer', './operators', './Co
 	main.VArray = Variable.VArray
 	main.VPromised = Variable.VPromised
 	main.all = Variable.all
+	main.assign = function(target) {
+		// generic assign that decides based on target
+		if (target.nodeType && target instanceof HTMLElement) {
+			return Element.assign.apply(this, arguments)
+		} else {
+			return Variable.assign.apply(this, arguments)
+		}
+	}
 	main.react = react
 	main.spawn = function(func) {
 		return react(func).valueOf()

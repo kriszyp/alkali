@@ -7,6 +7,7 @@ define(['./util/lang'], function (lang) {
 	// update types
 	var ToParent = 2
 	var RequestChange = 3
+	var RequestSet = 4
 	
 	var ToChild = Object.freeze({
 		type: 'refresh'
@@ -518,7 +519,7 @@ define(['./util/lang'], function (lang) {
 		},
 		set: function(key, value) {
 			// TODO: create an optimized route when the property doesn't exist yet
-			this.property(key).put(value)
+			this.property(key)._changeValue(null, RequestSet, value)
 		},
 		undefine: function(key, context) {
 			this.set(key, undefined, context)
@@ -938,25 +939,41 @@ define(['./util/lang'], function (lang) {
 			var key = this.key
 			var parent = this.parent
 			var variable = this
+			if (this.value) {
+				if (type === RequestChange) {
+					// put() go into the existing variable, if it has one
+					this.value.put(newValue)
+					return
+				} else {
+					this.value = null
+				}
+			}
 			parent._willModify(context)
 			return when(parent.valueOf(context), function(object) {
 				if (object == null) {
 					// nothing there yet, create an object to hold the new property
 					var response = parent.put(object = typeof key == 'number' ? [] : {}, context)
-				}else if (typeof object != 'object') {
+				} else if (typeof object != 'object') {
 					// if the parent is not an object, we can't set anything (that will be retained)
 					return deny
 				}
-				if (type == RequestChange) {
-					var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-					if (oldValue === newValue) {
-						// no actual change to make
-						return noChange
-					}
-					if (typeof object.set === 'function') {
-						object.set(key, newValue)
+				if (newValue && newValue.put) {
+					this.value = newValue
+				}
+				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
+				/*if (oldValue === newValue) {
+					// no actual change to make
+					return noChange
+				}*/
+				if (typeof object.set === 'function') {
+					object.set(key, newValue)
+				} else {
+					if (type == RequestChange && oldValue && oldValue.put) {
+						// if a put and the property value is a variable, assign it to that.
+						oldValue.put(newValue)
 					} else {
-						object[key] = newValue
+						object[key] = newValue && newValue.valueOf(context)
+						// or set the setter/getter
 					}
 				}
 				variable.updated(null, variable, context)
@@ -1130,7 +1147,7 @@ define(['./util/lang'], function (lang) {
 		},
 		invoke: function(functionValue, args, context, observeArguments) {
 			var instance = this.functionVariable.parent
-			if (functionValue.handlesContext) {
+			if (functionValue.handlesVariables || functionValue.property) {
 				return functionValue.apply(instance, args, context)
 			}else{
 				var results = []
@@ -1592,9 +1609,35 @@ define(['./util/lang'], function (lang) {
 	Variable.hasOwn = hasOwn
 	Variable.all = all
 	Variable.objectUpdated = objectUpdated
-	Variable.observe = function() {
-		throw new Error('Use variable.observeObject() instead')
+	Variable.assign = function(target) {
+		// copy properties, using variable sources
+		for (var i = 1; i < arguments.length; i++) {
+			var source = arguments[i]
+			var sourceVariable
+			if (source && source.notifies) {
+				sourceVariable = source
+				source = null
+			} else {
+				sourceVariable = Variable.instanceMap && Variable.instanceMap.get(source)
+			}
+			if (sourceVariable && sourceVariable._properties) {
+				for (var key in sourceVariable) {
+					var property = sourceVariable._properties[key]
+					if (property && property.value) {
+						var targetVariable = targetVariable || Variable.from(target)
+						targetVariable.property(key).put(property[key])
+					}
+				}
+			}
+			for (var key in source) {
+				if (!(sourceVariable && sourceVariable._properties && sourceVariable._properties[key])) {
+					target[key] = source[key]
+				}
+			}
+		}
+		return target
 	}
+	Variable.assign.handlesVariables = true
 
 	return Variable
 })
