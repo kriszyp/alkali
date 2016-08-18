@@ -173,7 +173,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					childNode = new child()
 					fragment.appendChild(childNode)
 			//	}
-			} else if (typeof child == 'object') {
+			} else if (child && typeof child == 'object') {
 				if (child instanceof Array) {
 					// array of sub-children
 					container = container || parent
@@ -1042,10 +1042,20 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			ThisElementVariable = this._Variable = Variable()
 
 			hasOwn(this, ThisElementVariable, function(element) {
-				// when we create the instance, immediately observe it
 				// TODO: we might want to do this in init instead
 				var instance = new ThisElementVariable(element)
-				instance.observeObject()
+				// we are not observing, because you can't delegate getters and setters in safari
+				// instance.observeObject()
+				if (element.updaters) {
+					instance._properties = {}
+					// so find any variables and install them in the created instance
+					for (var i = 0; i < element.updaters.length; i++){
+						var updater = element.updaters[i]
+						if (updater.name) {
+							instance._properties[updater.name] = updater.variable
+						}
+					}
+				}
 				return instance
 			})
 		}
