@@ -331,8 +331,9 @@ define([
 					})
 				}))
 			]
+			var greeting = new Variable('Hello')
 			var myComponent = new MyComponent({
-				title: 'Hello',
+				title: greeting,
 				link: 'https://github.com/kriszyp/alkali',
 				body: 'World'
 			})
@@ -340,12 +341,10 @@ define([
 			assert.strictEqual(myComponent.firstChild.textContent, 'Hello')
 			assert.strictEqual(myComponent.firstChild.href, 'https://github.com/kriszyp/alkali')
 			assert.strictEqual(myComponent.lastChild.textContent, 'Hello, World')
-			myComponent.title = 'New Title'
-			myComponent.link = 'https://kriszyp.github.com/alkali'
+			greeting.put('New Title')
 			return new Promise(requestAnimationFrame).then(function(){
 				return new Promise(requestAnimationFrame).then(function(){
 					assert.strictEqual(myComponent.firstChild.textContent, 'New Title')
-					assert.strictEqual(myComponent.firstChild.href, 'https://kriszyp.github.com/alkali')
 					assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
 				})
 			})
