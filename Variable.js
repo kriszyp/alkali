@@ -508,6 +508,9 @@ define(['./util/lang'], function (lang) {
 			})
 		},
 		get: function(key) {
+			if (this._properties && this._properties[key]) {
+				return this.property(key).valueOf()
+			}
 			return when(this.valueOf(), function(object) {
 				var value = object && (typeof object.get === 'function' ? object.get(key) : object[key])
 				if (value && value.notifies) {
@@ -906,6 +909,9 @@ define(['./util/lang'], function (lang) {
 			callback(this.parent)
 		},
 		valueOf: function(context) {
+			if (this.value) {
+				return Variable.prototype.valueOf.call(this, context)
+			}
 			var key = this.key
 			var property = this
 			var object = this.parent.valueOf(context)
@@ -958,7 +964,7 @@ define(['./util/lang'], function (lang) {
 					return deny
 				}
 				if (newValue && newValue.put) {
-					this.value = newValue
+					variable.value = newValue
 				}
 				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
 				/*if (oldValue === newValue) {
@@ -1620,12 +1626,13 @@ define(['./util/lang'], function (lang) {
 			} else {
 				sourceVariable = Variable.instanceMap && Variable.instanceMap.get(source)
 			}
-			if (sourceVariable && sourceVariable._properties) {
-				for (var key in sourceVariable) {
-					var property = sourceVariable._properties[key]
+			var sourceProperties = sourceVariable && sourceVariable._properties
+			if (sourceProperties) {
+				for (var key in sourceProperties) {
+					var property = sourceProperties[key]
 					if (property && property.value) {
-						var targetVariable = targetVariable || Variable.from(target)
-						targetVariable.property(key).put(property[key])
+						var targetVariable = targetVariable || Variable.for(target)
+						targetVariable.property(key).put(property)
 					}
 				}
 			}
