@@ -240,7 +240,12 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				// use the deferred <select> value assignment
 				InputPropertyRenderer.prototype.renderSelectValueUpdate(value, element)
 			} else {
-				InputPropertyRenderer.prototype.renderUpdate(value, element)
+				if (element.type === 'number') {
+					if (isNaN(value)) {
+						value = ''
+					}
+				}
+				element[key] = value
 			}
 		}
 	}
@@ -1047,12 +1052,11 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				// we are not observing, because you can't delegate getters and setters in safari
 				// instance.observeObject()
 				if (element.updaters) {
-					instance._properties = {}
 					// so find any variables and install them in the created instance
 					for (var i = 0; i < element.updaters.length; i++){
 						var updater = element.updaters[i]
 						if (updater.name) {
-							instance._properties[updater.name] = updater.variable
+							instance.set(updater.name, updater.variable)
 						}
 					}
 				}
