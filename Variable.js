@@ -132,6 +132,21 @@ define(['./util/lang'], function (lang) {
 	}
 	DeleteEvent.prototype.type = 'delete'
 
+	function forPropertyNotifyingValues(properties, callback) {
+		for (var key in properties) {
+			var property = properties[key]
+			if (property.notifyingValue) {
+				callback(property.notifyingValue)
+			}
+			if (property.hasChildNotifiers) {
+				var subProperties = property._properties
+				if (subProperties) {
+					forPropertyNotifyingValues(subProperties, callback)
+				}
+			}
+		}
+	}
+
 
 	function Variable(value) {
 		if (this instanceof Variable) {
@@ -174,10 +189,15 @@ define(['./util/lang'], function (lang) {
 				variable.notifyingValue = null
 			}
 			if (value && value.notifies) {
-				if (variable.dependents) {
-						// the value is another variable, start receiving notifications
-					value.notifies(variable)
-				}
+				var parent = variable
+				do {
+					if (parent.dependents) {
+						// the value is another variable, start receiving notifications, if we, or any parent is live
+						value.notifies(variable)
+						break
+					}
+					parent.hasNotifyingChild = true
+				} while((parent = parent.parent))
 				variable.notifyingValue = value
 				value = value.valueOf(context)
 				if (variable.ownObject) {
@@ -278,6 +298,12 @@ define(['./util/lang'], function (lang) {
 		forDependencies: function(callback) {
 			if (this.notifyingValue) {
 				callback(this.notifyingValue)
+			}
+			if (this.hasNotifyingChild) {
+				var properties = this._properties
+				if (properties) {
+					forPropertyNotifyingValues(properties, callback)
+				}
 			}
 		},
 		init: function() {
@@ -1632,7 +1658,7 @@ define(['./util/lang'], function (lang) {
 					var property = sourceProperties[key]
 					if (property && property.value) {
 						var targetVariable = targetVariable || Variable.for(target)
-						targetVariable.property(key).put(property)
+						targetVariable.property(key).put(property.value)
 					}
 				}
 			}

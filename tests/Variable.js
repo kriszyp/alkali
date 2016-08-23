@@ -739,8 +739,22 @@ define([
 			var bar = Variable.for(barObj)
 			bar.property('foo').put(foo)
 			var copy = Variable.assign({}, barObj)
+			var updated = false
+			Variable.for(copy).notifies({
+				updated: function() {
+					updated = true
+				}
+			})
 			assert.strictEqual(Variable.for(copy).get('foo'), 'foo')
+			/*var updatedChild = false
+			Variable.for(copy).property('foo').notifies({
+				updated: function() {
+					updatedChild = true
+				}
+			})*/
 			foo.put('2')
+			assert.isTrue(updated)
+			//assert.isTrue(updatedChild)
 			assert.strictEqual(Variable.for(copy).get('foo'), '2')
 		}
 	})
