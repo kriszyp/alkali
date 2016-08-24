@@ -23,9 +23,11 @@ define(['./util/lang'], function (lang, Variable) {
 				this.elements = options.elements
 				this.element = this.elements[0]
 			}
-			if (options.element) {
+			else if (options.element) {
 				this.element = options.element
 				this.elements.push(options.element)
+			} else {
+				throw new Error('No element provided to Renderer')
 			}
 			for(var i = 0, l = this.elements.length; i < l; i++) {
 				(this.elements[i].alkaliRenderers || (this.elements[i].alkaliRenderers = [])).push(this)
