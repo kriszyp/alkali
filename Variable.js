@@ -993,10 +993,10 @@ define(['./util/lang'], function (lang) {
 					variable.value = newValue
 				}
 				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-				/*if (oldValue === newValue) {
+				if (oldValue === newValue) {
 					// no actual change to make
 					return noChange
-				}*/
+				}
 				if (typeof object.set === 'function') {
 					object.set(key, newValue)
 				} else {
