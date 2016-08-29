@@ -133,6 +133,8 @@ This is a property that provides a variable representing the validation of this 
 
 This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables to Elements and Renderers, as they provide more efficient resource management and avoid unnecessary computations.
 
+This method will return an object with an `unsubscribe` method, which you can call to stop a subscription.
+
 ### `Variable.for(subject)`
 
 This static method will return a variable instance mapped to the target object. This will return a stable reference to a variable instance, the first call for a given target object will create a new instance, and subsequently calls with return the same variable. This can be very useful if independent code will access the same object(s) and make changes to the object and ensure that the changes are communicated through the same variable.
