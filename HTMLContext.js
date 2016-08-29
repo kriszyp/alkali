@@ -10,22 +10,6 @@ function HTMLContext(element) {
 }
 HTMLContext.prototype = Object.create(Variable.Context.prototype)
 HTMLContext.prototype.constructor = HTMLContext
-HTMLContext.prototype.contextualize = function(variable, parentContext) {
-  // resolve the contextualized variable, and updates this context to be aware of what distintive aspect of the context has
-  // been used for resolution
-  var contextMap = variable._contextMap || (variable._contextMap = new WeakMap())
-  var contextualized
-  contextualized = contextMap.get(this.distinctSubject)
-  if (!contextualized) {
-    contextMap.set(this.distinctSubject, contextualized = variable.for(this.distinctSubject))
-  }
-  // do the merge
-  if (this.distinctSubject && parentContext && 
-      (!parentContext.distinctSubject || parentContext.distinctSubject.contains(this.distinctSubject))) {
-    parentContext.distinctSubject = this.distinctSubject
-  }
-  return contextualized
-}
 HTMLContext.prototype.merge = function(childContext) {
   if (!this.distinctSubject || this.distinctSubject.contains(childContext.distinctSubject)) {
     this.distinctSubject = childContext.distinctSubject

@@ -33,22 +33,6 @@ define(['./util/lang'], function (lang) {
 		return context
 	}
 
-	function getMaterializedContextualInstance(variable, context) {
-		var subject = context && (context.distinctSubject || context.subject)
-		if (typeof variable === 'function') {
-			return variable.for(subject)
-		}
-		var contextMap = variable.contextMap
-		if (context && contextMap) {
-			while(subject && !contextMap.has(subject)) {
-				subject = subject.parentNode
-			}
-			if (!subject) {
-				subject = defaultContext
-			}
-			return contextMap.get(subject)
-		}
-	}
 	function when(value, callback) {
 		if (value && value.then) {
 			return value.then(callback)
@@ -73,52 +57,58 @@ define(['./util/lang'], function (lang) {
 		},
 		newContext: function(variable) {
 			var newContext = new this.ChildContext(this.subject)
-			newContext.from = variable
 			this.inputs.push(newContext)
 			return newContext
 		},
 		contextualize: function(variable, parentContext) {
-	    // resolve the contextualized variable, and updates this context to be aware of what distintive aspect of the context has
-	    // been used for resolution
-	    var contextMap = variable._contextMap || (variable._contextMap = new WeakMap())
-	    var contextualized
-	    contextualized = contextMap.get(this.distinctSubject)
-	    if (!contextualized) {
-	      contextMap.set(this.distinctSubject, contextualized = variable.for(this.distinctSubject))
-	    }
-	    // do the merge
-	    if (this.distinctSubject && parentContext) {
-	    	parentContext.merge(this)
-	    }
-	  },
-	  merge: function(childContext) {
-	  	this.distinctSubject = childContext.distinctSubject
-	  },
-	  specify: function(Variable) {
-	    // specify a particular instance of a generic variable
-	    var subject = this.subject
-	    var subjectMap = classMaps.get(subject.constructor)
-	    if (!subjectMap) {
-	      subjectMap.set(subject.constructor, subjectMap = new WeakMap())
-	    }
-	    var specifiedInstance = subjectMap.get(Variable)
-	    // else if no specific context is found, return default instance
-	    return specifiedInstance || Variable.defaultInstance
-	  },
-	  getContextualized: function(variable) {
-	    // returns a variable that has already been contextualized
-	    var instance = variable._contextMap && variable._contextMap.get(variable).get(this.element)
-	    if (instance.context.matches(this)) {
-	      return instance
-	    }
-	  },
-	  addInput: function(inputVariable) {
-	    this.inputs.push(inputVariable)
-	  },
-	  matches: function(context) {
-	    // does another context match the resolution of this one?
-	  	return context.subject === this.subject
-	  }
+			// resolve the contextualized variable, and updates this context to be aware of what distinctive aspect of the context has
+			// been used for resolution
+			var contextualized
+			if (this.distinctSubject) {
+				var contextMap = variable._contextMap || (variable._contextMap = new WeakMap())
+				contextualized = contextMap.get(this.distinctSubject)
+				if (!contextualized) {
+					contextMap.set(this.distinctSubject, contextualized = variable.for(this.distinctSubject))
+				}
+				// do the merge
+				if (parentContext) {
+					parentContext.merge(this)
+				}
+				contextualized
+			} else {
+				contextualized = variable
+			}
+			this.contextualized = contextualized
+			return contextualized
+		},
+		merge: function(childContext) {
+			this.distinctSubject = childContext.distinctSubject
+		},
+		specify: function(Variable) {
+			// specify a particular instance of a generic variable
+			var subject = this.subject
+			var subjectMap = classMaps.get(subject.constructor)
+			if (!subjectMap) {
+				subjectMap.set(subject.constructor, subjectMap = new WeakMap())
+			}
+			var specifiedInstance = subjectMap.get(Variable)
+			// else if no specific context is found, return default instance
+			return specifiedInstance || Variable.defaultInstance
+		},
+		getContextualized: function(variable) {
+			// returns a variable that has already been contextualized
+			var instance = variable._contextMap && variable._contextMap.get(variable).get(this.element)
+			if (instance && instance.context.matches(this)) {
+				return instance
+			}
+		},
+		addInput: function(inputVariable) {
+			this.inputs.push(inputVariable)
+		},
+		matches: function(context) {
+			// does another context match the resolution of this one?
+			return context.subject === this.subject
+		}
 	}
 	function ChildContext(subject) {
 		this.subject = subject
@@ -289,12 +279,12 @@ define(['./util/lang'], function (lang) {
 					// mark it as initialized, since we have already recursively dependended on inputs
 					contextualized.dependents = []
 				}*/
+				if (!this.dependents) {
+					this.dependencts = []
+				}
 				if (context) {
 					context.contextualize(this, parentContext)
 				} else {
-					if (!this.dependents) {
-						this.dependencts = []
-					}
 					parentContext.inputs.push(this)
 				}				
 			}
@@ -955,7 +945,7 @@ define(['./util/lang'], function (lang) {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = this
 			if (context) {
-				contextualizedVariable = context.getContextualized(this)
+				contextualizedVariable = context.getContextualized(this) || this
 			}
 			if (contextualizedVariable.cachedVersion === contextualizedVariable.getVersion()) {
 				if (context) {
@@ -1653,9 +1643,10 @@ define(['./util/lang'], function (lang) {
 		if (!context) {
 			throw new TypeError('Accessing a generalized class without context to resolve to an instance, call for(context) (where context is an element or related variable instance) on your variable first')
 		}
-		var instance = context.subject.constructor.getForClass && context.subject.constructor.getForClass(context.subject, Class) || Class.defaultInstance
-		context.distinctSubject = mergeSubject(context.distinctSubject, instance.subject)
-		return instance
+		return context.specify(Class)
+//		var instance = context.subject.constructor.getForClass && context.subject.constructor.getForClass(context.subject, Class) || Class.defaultInstance
+//		context.distinctSubject = mergeSubject(context.distinctSubject, instance.subject)
+//		return instance
 	}
 	// a variable inheritance change goes through its own prototype, so classes/constructor
 	// can be used as variables as well
