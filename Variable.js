@@ -280,7 +280,7 @@ define(['./util/lang'], function (lang) {
 					contextualized.dependents = []
 				}*/
 				if (!this.dependents) {
-					this.dependencts = []
+					this.dependents = []
 				}
 				if (context) {
 					context.contextualize(this, parentContext)
@@ -948,7 +948,7 @@ define(['./util/lang'], function (lang) {
 				contextualizedVariable = context.getContextualized(this) || this
 			}
 			if (contextualizedVariable.cachedVersion === contextualizedVariable.getVersion()) {
-				if (context) {
+				if (context && contextualizedVariable.context) {
 					context.inputs.push(contextualizedVariable.context)
 				}
 				return contextualizedVariable.cachedValue
