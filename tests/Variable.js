@@ -4,18 +4,23 @@ define([
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
 ], function (Variable, registerSuite, assert, Promise) {
+	function valueOfAndNotify(variable, callback) {
+		var context = new Variable.Context()
+		var value = variable.valueOf(context)
+		context.notifies(typeof callback === 'object' ? callback : {
+			updated: callback
+		})
+		return value
+	}
 	registerSuite({
 		name: 'Variable',
 
 		'simple single value': function () {
 			var invalidated = false
 			var variable = new Variable(1)
-			variable.notifies({
-				updated: function(){
-					invalidated = true
-				}
-			})
-			assert.equal(variable.valueOf(), 1)
+			assert.equal(valueOfAndNotify(variable, function() {
+				invalidated = true
+			}), 1)
 			assert.isFalse(invalidated)
 			variable.put(2)
 			assert.equal(variable.valueOf(), 2)
@@ -30,12 +35,9 @@ define([
 			}, function (newValue) {
 				value = newValue
 			})
-			variable.notifies({
-				updated: function(){
-					invalidated = true
-				}
-			})
-			assert.equal(variable.valueOf(), 1)
+			assert.equal(valueOfAndNotify(variable, function(){
+				invalidated = true
+			}), 1)
 			assert.isFalse(invalidated)
 			variable.put(2)
 			assert.equal(variable.valueOf(), 2)
@@ -74,11 +76,11 @@ define([
 					invalidated = true
 				}
 			}
-			variable.notifies(target)
-			assert.equal(variable.valueOf(), 1)
+
+			assert.equal(valueOfAndNotify(variable, target), 1)
 			assert.isFalse(invalidated)
 			variable.put(2)
-			assert.equal(variable.valueOf(), 2)
+			assert.equal(valueOfAndNotify(variable, target), 2)
 			assert.equal(value, 2)
 			assert.isTrue(invalidated)
 			variable.stopNotifies(target)
@@ -95,12 +97,9 @@ define([
 			variable.observeObject()
 			var invalidated
 			var aProperty = variable.property('a')
-			aProperty.notifies({
-				updated: function(){
-					invalidated = true
-				}
-			})
-			assert.equal(aProperty.valueOf(), 1)
+			assert.equal(valueOfAndNotify(aProperty, function(){
+				invalidated = true
+			}), 1)
 			object.a = 2
 			return Promise.resolve().then(function(){
 			//Object.deliverChangeRecords && Object.deliverChangeRecords()
@@ -120,10 +119,8 @@ define([
 			var v2 = new Variable()
 			v2.put(v)
 			var updated = false
-			v.notifies({
-				updated: function(){
-					updated = true
-				}
+			valueOfAndNotify(v, function(){
+				updated = true
 			})
 			v2.set('a', 2)
 			assert.strictEqual(v2.get('a'), 2)
@@ -143,10 +140,8 @@ define([
 			var v2 = new Variable()
 			v2.put(v)
 			var updated = false
-			v.notifies({
-				updated: function(){
-					updated = true
-				}
+			valueOfAndNotify(v, function(){
+				updated = true
 			})
 			v2.push('b')
 			assert.strictEqual(v2.get(0), 'a')
@@ -160,10 +155,8 @@ define([
 			var v2 = new Variable()
 			v2.proxy(v)
 			var updated = false
-			v.notifies({
-				updated: function(){
-					updated = true
-				}
+			valueOfAndNotify(v, function(){
+				updated = true
 			})
 			v2.set('a', 2)
 			assert.strictEqual(v2.get('a'), 2)
@@ -196,12 +189,9 @@ define([
 			var b = new Variable(2)
 			var sum = add.apply(null, [a, b])
 			var invalidated
-			sum.notifies({
-				updated: function(){
-					invalidated = true
-				}
-			})
-			assert.equal(sum.valueOf(), 3)
+			assert.equal(valueOfAndNotify(sum, function(){
+				invalidated = true
+			}), 3)
 			a.put(3)
 			assert.isTrue(invalidated)
 			assert.equal(sum.valueOf(), 5)
@@ -219,19 +209,17 @@ define([
 				})
 			})
 			var invalidated = false
-			sum.notifies({
-				updated: function() {
-					invalidated = true
-				}
-			})
+			var sumUpdater = function() {
+				invalidated = true
+			}
+			valueOfAndNotify(sum, sumUpdater)
 			var target = new Variable()
 			target.put(sum)
 			var targetInvalidated = false
-			target.notifies({
-				updated: function() {
-					targetInvalidated = true
-				}
-			})
+			var targetUpdater = function() {
+				targetInvalidated = true
+			}
+			valueOfAndNotify(target, targetUpdater)
 			a.put(3)
 			// assert.isFalse(invalidated)
 			b.put(5)
@@ -242,7 +230,7 @@ define([
 			targetInvalidated = false
 			a.put(4)
 			assert.isTrue(invalidated)
-			assert.equal(sum.valueOf(), 9)
+			assert.equal(valueOfAndNotify(sum, sumUpdater), 9)
 			invalidated = false
 			assert.isTrue(targetInvalidated)
 			assert.equal(target.valueOf(), 9)
@@ -278,7 +266,7 @@ define([
 			var mult = sum.to(function(s) { return [s.valueOf()[0] * 2]; })
 			assert.deepEqual(mult.valueOf(), [10])
 			b.put([4])
-												assert.deepEqual(mult.valueOf(), [12])
+			assert.deepEqual(mult.valueOf(), [12])
 		},
 		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)
@@ -355,11 +343,9 @@ define([
 				a: 1
 			})
 			var parentNotified
-			parent.notifies({
-				updated: function(event){
-					parent.valueOf()
-					parentNotified = true
-				}
+			valueOfAndNotify(parent, function(event){
+				parent.valueOf()
+				parentNotified = true
 			})
 			parentNotified = false
 			parent.set('a', 2)
@@ -375,11 +361,9 @@ define([
 				}
 			})
 			var parentNotified
-			parent.notifies({
-				updated: function(event){
-					parent.valueOf()
-					parentNotified = true
-				}
+			valueOfAndNotify(parent, function(event){
+				parent.valueOf()
+				parentNotified = true
 			})
 			parentNotified = false
 			parent.property('a').set('b', 2)
@@ -401,20 +385,14 @@ define([
 			parentReference.proxy(parent)
 			var parentNotified
 			var b = parent.property('a').property('b')
-			b.notifies({
-				updated: function(event){
-					parentNotified = true
-				}
+			valueOfAndNotify(b, function(event){
+				parentNotified = true
 			})
-			b.valueOf()
 			var siblingNotified
 			var c = parent.property('a').property('c')
-			c.notifies({
-				updated: function(event) {
-					siblingNotified = true
-				}
+			valueOfAndNotify(c, function(event) {
+				siblingNotified = true
 			})
-			c.valueOf()
 			siblingNotified = false
 			parentNotified = false
 			parentReference.property('a').property('b').set('d', 6)
@@ -509,13 +487,11 @@ define([
 			outerCallbackInvoked = 0
 			innerCallbackInvoked = 0
 			var composed = promiseVar.to(function(promiseValue) {
-					outerCallbackInvoked++
-														console.log('outer invoked')
-					return inner.to(function(innerValue) {
-				innerCallbackInvoked++
-																console.log('inner invoked')
-				return [promiseValue, innerValue]
-					})
+				outerCallbackInvoked++
+				return inner.to(function(innerValue) {
+					innerCallbackInvoked++
+					return [promiseValue, innerValue]
+				})
 			})
 			var result
 			var finished = composed.valueOf().then(function(composedValue) {
@@ -523,7 +499,7 @@ define([
 					result = composedValue
 			})
 			assert.isUndefined(result)
-												resolvePromise('promise')
+			resolvePromise('promise')
 			return finished.then(function() {
 				assert.equal(outerCallbackInvoked, 1, 'outer map not invoked exactly once: ' + outerCallbackInvoked)
 				assert.equal(innerCallbackInvoked, 1, 'inner map not invoked exactly once: ' + innerCallbackInvoked)
@@ -563,10 +539,8 @@ define([
 			var composite = Variable.all([a, b, c])
 			var result = composite.valueOf()
 
-			composite.notifies({
-				updated: function(){
-					result = composite.valueOf()
-				}
+			valueOfAndNotify(composite, function(){
+				result = composite.valueOf()
 			})
 			assert.deepEqual(result, [1, 2, 3])
 			a.put(4)
@@ -581,10 +555,8 @@ define([
 				return array.reduce(function(a, b) {return a + b})
 			})
 			var lastUpdate
-			array.notifies({
-				updated: function(updateEvent) {
-					lastUpdate = updateEvent
-				}
+			valueOfAndNotify(array, function(updateEvent) {
+				lastUpdate = updateEvent
 			})
 			assert.strictEqual(sum.valueOf(), 12)
 			array.push(8)
@@ -640,10 +612,8 @@ define([
 				return a + b
 			}, 0)
 			var updated = false
-			sum.notifies({
-				updated: function() {
-					updated = true
-				}
+			valueOfAndNotify(sum, function() {
+				updated = true
 			})
 			assert.deepEqual(doubled.valueOf(), [6, 10, 14])
 			assert.strictEqual(sum.valueOf(), 30)
@@ -718,10 +688,8 @@ define([
 		emptyKey: function() {
 			var v = new Variable({})
 			var updated
-			v.property('').notifies({
-				updated: function(updateEvent) {
-					updated = true
-				}
+			valueOfAndNotify(v.property(''), function(updateEvent) {
+				updated = true
 			})
 			v.set('', 'test')
 			assert.strictEqual(updated, true)
@@ -731,31 +699,17 @@ define([
 			var bar = new Variable({ foo: foo })
 
 			assert.strictEqual(bar.get('foo'), 'foo')
-			assert.strictEqual(bar.property('foo').valueOf(), 'foo')
-		},
-		assign: function() {
-			var foo = new Variable('foo')
-			var barObj = {}
-			var bar = Variable.for(barObj)
-			bar.property('foo').put(foo)
-			var copy = Variable.assign({}, barObj)
 			var updated = false
-			Variable.for(copy).notifies({
-				updated: function() {
-					updated = true
-				}
-			})
-			assert.strictEqual(Variable.for(copy).get('foo'), 'foo')
-			/*var updatedChild = false
-			Variable.for(copy).property('foo').notifies({
-				updated: function() {
-					updatedChild = true
-				}
-			})*/
+			assert.strictEqual(valueOfAndNotify(bar.property('foo'), function(updateEvent) {
+				updated = true
+			}), 'foo')
 			foo.put('2')
 			assert.isTrue(updated)
-			//assert.isTrue(updatedChild)
-			assert.strictEqual(Variable.for(copy).get('foo'), '2')
+			assert.strictEqual(bar.property('foo').valueOf(), '2')
+		},
+		JSON: function() {
+			var obj = new Variable({foo: new Variable('bar')})
+			assert.strictEqual(JSON.stringify(obj), '{"foo":"bar"}')
 		}
 	})
 })

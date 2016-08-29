@@ -18,19 +18,15 @@ define(['./util/lang', './Variable', './operators'], function (lang, Variable, o
   }
   react.prop = function(object, property) {
     if (object) {
+      // TODO: Use a static set of public methods/properties that can be accessed
       if (object.property) {
-        // it is a variable already
+        // it is a variable already, but check to see if we are using a method/property directly on the variable
         var directPropertyValue = object[property]
         return directPropertyValue !== undefined ? directPropertyValue : object.property(property)
-      } else if (typeof object === 'object') {
-        // get the mapped variable for the object
-        return Variable.for(object).property(property)
       }
-      // not an object
       return object[property]
     }
-    // not even truthy
-    return object
+    // not even truthy, return undefined
   }
   react.cond = function(test, consequent, alternate) {
     return operators.if(test, operators.choose(consequent, alternate))

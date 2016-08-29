@@ -208,19 +208,16 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		if (content == null) {
 			return doc.createTextNode('')
 		}
-		var text
-		try {
-			text = content.valueOf(new Context(parent))
-		} catch (error) {
-			text = error.stack
-		}
-		var textNode = doc.createTextNode(text)
+		var textNode
 		if (content.notifies) {
+			textNode = doc.createTextNode('')
 			enterRenderer(TextRenderer, {
 				element: parent,
 				textNode: textNode,
 				variable: content
 			})
+		} else {
+			textNode = doc.createTextNode(content)
 		}
 		return textNode
 	}
@@ -1048,18 +1045,18 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 			hasOwn(this, ThisElementVariable, function(element) {
 				// TODO: we might want to do this in init instead
-				var instance = new ThisElementVariable(element)
-				// we are not observing, because you can't delegate getters and setters in safari
-				// instance.observeObject()
-				if (element.updaters) {
-					// so find any variables and install them in the created instance
-					for (var i = 0; i < element.updaters.length; i++){
-						var updater = element.updaters[i]
-						if (updater.name) {
-							instance.set(updater.name, updater.variable)
-						}
+				var variableProperties = {}
+				for (var i = 0; i < element.updaters.length; i++){
+					var updater = element.updaters[i]
+					if (updater.name) {
+						variableProperties[updater.name] = {value: updater.variable}
 					}
 				}
+
+				var elementOverlay = Object.create(element, variableProperties)
+				var instance = new ThisElementVariable(elementOverlay)
+				// we are not observing, because you can't delegate getters and setters in safari
+				// instance.observeObject()
 				return instance
 			})
 		}

@@ -462,9 +462,9 @@ new Div({
 ### Construction Lifecycle Methods
 
 There are several methods that are called as part of the construction of an element that can be used to define additional behavior of an element. These include:
-* `created(properties)` - This is called for each new element instance prior to applying any properties or doing any rendering of the element or children, or attaching to the DOM. It is called with the properties that were provided to construct the element (merged arguments from construction, including original variables in the case of properties that contain variables). This method can modify the properties object, to apply different properties to the element during construction. This is the most common method for adding custom handling of elements.
-* `setup(properties)` - This is called for each new element instance after the properties have been applied and rendering and construction of children have completed, and is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached.
-* `attached()` (and `attachedCallback()`) - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached.
+* `created(properties)` - This is called for each new element instance prior to applying any properties or doing any rendering of the element or children, or attaching to the DOM. It is called with the properties that were provided to construct the element (merged arguments from construction, including original variables in the case of properties that contain variables). This method can modify the properties object, to apply different properties to the element during construction. This is the most common method for adding custom handling of elements. When an element contains children, the parent will be executed before the children `created` methods.
+* `ready(properties)` - This is called for each new element instance after the properties have been applied and rendering and construction of children have completed, and is called with the properties that were provided to construct the element (including original variables in the case of properties that contain variables). It is called after the properties and children have been assigned, but before the element is attached to a parent. Generally, DOM operations are faster prior to an element being attached. When an element contains children, the children will be executed before the parent `ready` method.
+* `attached()` (and `attachedCallback()`) - This is called when an element is attached to the document tree. This is useful for performing operations that may involve dimensional layout (measuring dimensions), requiring the element to be attached. When an element contains children, the parent will be executed before the children `attached` methods.
 * `detached()` - This is called when an element is detached from the document tree. This can be a useful place to perform cleanup operations. However, elements may be reattached as well (and `attached` would be called again).
 
 For example:
@@ -797,12 +797,6 @@ The following methods are also available on variables (but mostly used internall
 ### updated(updateEvent)
 
 This is called to indicate that the variable has been updated. This is typically called between dependent variables, but you can also call this to indicate that an object in a variable has been modified.
-
-### notifies(target)
-
-The `target` can be another variable, or any object with an `updated(updateEvent)` method that will be called with update notifications. The `updateEvent` has the following properties:
-`type` - This is the type of notification. The most common is `'refresh'`.
-`key`	- This is the name of the property or index of the position that was changed.
 
 ### stopNotifies(target)
 

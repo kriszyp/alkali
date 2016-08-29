@@ -1,4 +1,4 @@
-define(['./util/lang'], function (lang, Variable) {
+define(['./util/lang', './HTMLContext'], function (lang, HTMLContext) {
 	var doc = typeof document !== 'undefined' && document
 	var invalidatedElements
 	var queued
@@ -6,48 +6,44 @@ define(['./util/lang'], function (lang, Variable) {
 	var nextId = 1
 	var requestAnimationFrame = lang.requestAnimationFrame
 
-	function Context(subject){
-		this.subject = subject
-	}
-
 	function Renderer(options) {
 		var variable = options.variable
 
 		this.variable = variable
 		this.elements = []
-		if (options) {
-			if (options.selector) {
-				this.selector = options.selector
-			}
-			if (options.elements) {
-				this.elements = options.elements
-				this.element = this.elements[0]
-			}
-			else if (options.element) {
-				this.element = options.element
-				this.elements.push(options.element)
-			} else {
-				throw new Error('No element provided to Renderer')
-			}
-			for(var i = 0, l = this.elements.length; i < l; i++) {
-				(this.elements[i].alkaliRenderers || (this.elements[i].alkaliRenderers = [])).push(this)
-			}
-			if (options.update) {
-				this.updateRendering = options.update
-			}
-			if (options.shouldRender) {
-				this.shouldRender = options.shouldRender
-			}
-			if (options.renderUpdate) {
-				this.renderUpdate = options.renderUpdate
-			}
-			if (options.alwaysUpdate) {
-				this.alwaysUpdate = options.alwaysUpdate
-			}
+		if (options.selector) {
+			this.selector = options.selector
+		}
+		if (options.elements) {
+			this.elements = options.elements
+			this.element = this.elements[0]
+		}
+		else if (options.element) {
+			this.element = options.element
+			this.elements.push(options.element)
+		} else {
+			throw new Error('No element provided to Renderer')
+		}
+		for(var i = 0, l = this.elements.length; i < l; i++) {
+			(this.elements[i].alkaliRenderers || (this.elements[i].alkaliRenderers = [])).push(this)
+		}
+		if (options.update) {
+			this.updateRendering = options.update
+		}
+		if (options.shouldRender) {
+			this.shouldRender = options.shouldRender
+		}
+		if (options.renderUpdate) {
+			this.renderUpdate = options.renderUpdate
+		}
+		if (options.alwaysUpdate) {
+			this.alwaysUpdate = options.alwaysUpdate
 		}
 		if (variable.updated) {
 			// if it has update, we don't need to instantiate a closure
-			variable.notifies(this)
+			if (options.updateOnStart === false) {
+				variable.notifies(this)
+			}
 		} else {
 			// baconjs-esqe API
 			var renderer = this
@@ -62,7 +58,7 @@ define(['./util/lang'], function (lang, Variable) {
 				renderer.updated()
 			})
 		}
-		if(options && options.updateOnStart !== false){
+		if (options.updateOnStart !== false){
 			this.updateRendering(true)
 		}
 	}
@@ -176,8 +172,11 @@ define(['./util/lang'], function (lang, Variable) {
 	ElementRenderer.prototype.updateElement = function(element) {
 		this.invalidated = false
 		try {
-			// TODO: might make something cheaper than for(element) for setting context?
-			var value = !this.omitValueOf && this.variable.valueOf(new Context(element))
+			if (!this.omitValueOf) {
+				var context = new HTMLContext(element)
+				var value = this.variable.valueOf(context)
+				context.notifies(this)
+			}
 		} catch (error) {
 			element.appendChild(document.createTextNode(error))
 		}
@@ -335,9 +334,11 @@ define(['./util/lang'], function (lang, Variable) {
 			this.builtList = true
 			container = document.createDocumentFragment()
 			var childElements = this.childElements = []
-			this.variable.for(thisElement).forEach(function(item) {
+			var context = new HTMLContext(thisElement)
+			this.variable.for(context).forEach(function(item) {
 				eachItem(item)
 			})
+			context.notfies(this)
 			this.element.appendChild(container)
 		} else {
 			var childElements = this.childElements
