@@ -43,7 +43,7 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 				}
 				return derivative
 			}
-			var thisValue = this.getValue(context)
+			var thisValue = this.getValue ? this.getValue(context) : this.value
 			if(thisValue === undefined) {
 				return value
 			}
