@@ -15,27 +15,22 @@ HTMLContext.prototype.merge = function(childContext) {
     this.distinctSubject = childContext.distinctSubject
   }
 }
-HTMLContext.prototype.specify = function(Variable) {
+HTMLContext.prototype.getSubjectMaps = function(classMap) {
   // specify a particular instance of a generic variable
-  var subject = this.subject
+  var element = this.subject
   var distinctive = true
   do {
-    if (this.distinctSubject === subject) {
+    if (this.distinctSubject === element) {
       distinctive = false
     }
-    var subjectMap = classMaps.get(subject.constructor)
+    var subjectMap = classMaps.get(element.constructor)
     if (subjectMap) {
-      var variableMap = subjectMap.get(Variable)
-      if (variableMap) {
-        if (distinctive) {
-          this.distinctSubject = subject
-        }
-        return variableMap.get(subject)
+      if (distinctive) {
+        this.distinctSubject = element
       }
+      return subjectMap
     }
-  } while ((subject = subject.parentNode))
-  // else if no specific context is found, return default instance
-  return Variable.defaultInstance
+  } while ((element = element.parentNode))
 }
 HTMLContext.prototype.matches = function(context) {
   // does another context match the resolution of this one?

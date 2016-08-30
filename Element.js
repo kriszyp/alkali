@@ -1,4 +1,4 @@
-define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer, lang) {
+define(['./Variable', './Renderer', './util/lang', './HTMLContext'], function (Variable, Renderer, lang, HTMLContext) {
 	var knownElementProperties = {};
 	['textContent', 'innerHTML', 'title', 'href', 'value', 'valueAsNumber', 'role', 'render'].forEach(function(property) {
 		knownElementProperties[property] = true
@@ -10,9 +10,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			var constructor = func.constructor
 			return (constructor.displayName || constructor.name) === 'GeneratorFunction'
 		}
-	}
-	function Context(subject){
-		this.subject = subject
 	}
 
 	var PropertyRenderer = Renderer.PropertyRenderer
@@ -448,7 +445,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			for (var i = 0, l = inputEvents.length; i < l; i++) {
 				element.addEventListener(inputEvents[i], function (event) {
 					var value = element[key]
-					var result = variable.put(conversion ? conversion(value, element) : value, new Context(element))
+					var result = variable.put(conversion ? conversion(value, element) : value, new HTMLContext(element))
 					if (result === Variable.deny) {
 						throw new Error('Variable change denied')
 					}
@@ -1011,11 +1008,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				hasOwn(From, Target)
 			})
 		}
-		var ownedClasses = From.ownedClasses || (From.ownedClasses = new WeakMap())
-		// TODO: assign to super classes
-		ownedClasses.set(Target, createInstance || function() {
-			return new Target()
-		})
+		Target.belongsTo(From, createInstance)
 		return From
 	}
 

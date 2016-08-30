@@ -5,6 +5,14 @@ define([
 	'intern!object',
 	'intern/chai!assert'
 ], function (Element, Variable, react, registerSuite, assert) {
+	function valueOfAndNotify(variable, callback) {
+		var context = new Variable.Context()
+		var value = variable.valueOf(context)
+		context.notifies(typeof callback === 'object' ? callback : {
+			updated: callback
+		})
+		return value
+	}
 	var Div = Element.Div
 	registerSuite({
 		name: 'es6',
@@ -15,18 +23,14 @@ define([
 				return (yield a) + (yield b)
 			})
 			var invalidated = false
-			sum.notifies({
-				updated: function() {
-					invalidated = true
-				}
+			valueOfAndNotify(sum, function() {
+				invalidated = true
 			})
 			var target = new Variable()
 			target.put(sum)
 			var targetInvalidated = false
-			target.notifies({
-				updated: function() {
-					targetInvalidated = true
-				}
+			valueOfAndNotify(target, function() {
+				targetInvalidated = true
 			})
 			a.put(3)
 			// assert.isFalse(invalidated)

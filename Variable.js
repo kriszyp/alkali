@@ -23,16 +23,6 @@ define(['./util/lang'], function (lang) {
 	})
 	var listenerId = 1
 
-	function mergeSubject(context) {
-		for (var i = 1, l = arguments.length; i < l; i++) {
-			var nextContext = arguments[i]
-			if (nextContext !== context && (!context || nextContext && context.contains && context.contains(nextContext))) {
-				context = nextContext
-			}
-		}
-		return context
-	}
-
 	function when(value, callback) {
 		if (value && value.then) {
 			return value.then(callback)
@@ -61,7 +51,7 @@ define(['./util/lang'], function (lang) {
 			return newContext
 		},
 		contextualize: function(variable, parentContext) {
-			// resolve the contextualized variable, and updates this context to be aware of what distinctive aspect of the context has
+			// resolve the contextualization of a variable, and updates this context to be aware of what distinctive aspect of the context has
 			// been used for resolution
 			var contextualized
 			if (this.distinctSubject) {
@@ -74,30 +64,48 @@ define(['./util/lang'], function (lang) {
 				if (parentContext) {
 					parentContext.merge(this)
 				}
-				contextualized
 			} else {
 				contextualized = variable
 			}
+			//if (this.contextualized && this.contextualized !== contextualized) {
+				// TOOD: if it has previously been contextualized to a different context (can happen in a promise/async situation), stop previous notifiers and start new ones
+			//}
 			this.contextualized = contextualized
 			return contextualized
 		},
 		merge: function(childContext) {
 			this.distinctSubject = childContext.distinctSubject
 		},
+		getSubjectMap: function(classMaps) {
+			var subject = this.subject
+			return classMaps.get(subject.constructor)
+		},
 		specify: function(Variable) {
 			// specify a particular instance of a generic variable
 			var subject = this.subject
-			var subjectMap = classMaps.get(subject.constructor)
-			if (!subjectMap) {
-				subjectMap.set(subject.constructor, subjectMap = new WeakMap())
+			var subjectMap = subject && this.getSubjectMap(classMaps)
+			var specifiedInstance
+			if (subjectMap) {
+				if (!this.distinctSubject) {
+	        this.distinctSubject = subject
+				}
+				var instanceMap = subjectMap.get(Variable)
+				if (!instanceMap) {
+					subjectMap.set(Variable, instanceMap = new WeakMap())
+				}
+				specifiedInstance = instanceMap.get(subject)
+				if (!specifiedInstance) {
+					instanceMap.set(subject, specifiedInstance = subjectMap.createInstance ? subjectMap.createInstance(subject) : new Variable(subject))
+				}
+				return specifiedInstance
+				//classMaps.set(subject.constructor, subjectMap = new WeakMap())
 			}
-			var specifiedInstance = subjectMap.get(Variable)
 			// else if no specific context is found, return default instance
-			return specifiedInstance || Variable.defaultInstance
+			return Variable.defaultInstance
 		},
 		getContextualized: function(variable) {
 			// returns a variable that has already been contextualized
-			var instance = variable._contextMap && variable._contextMap.get(variable).get(this.element)
+			var instance = variable._contextMap && this.subject && variable._contextMap.get(this.subject)
 			if (instance && instance.context.matches(this)) {
 				return instance
 			}
@@ -232,15 +240,24 @@ define(['./util/lang'], function (lang) {
 		gotValue: function(value, parentContext, context) {
 			var previousNotifyingValue = this.notifyingValue
 			var variable = this
-			if (value && value.then) {
-				return when(value, function(value) {
-					return Variable.prototype.gotValue.call(variable, value, context)
-				})
-			}
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
 					// nothing changed, immediately return valueOf (or ownObject if we have it)
-					return variable.ownObject || value.valueOf(context || parentContext && (context = parentContext.newContext()))
+					if (variable.ownObject) {
+						return variable.ownObject
+					}
+					if (parentContext) {
+						if (!context) {
+							context = parentContext.newContext()
+						}
+						if (!this.dependents) {
+							this.dependents = new Set()
+						}
+						context.contextualize(this, parentContext)
+						return value.valueOf(context)
+					} else {
+						return value.valueOf()
+					}
 				}
 				// if there was a another value that we were dependent on before, stop listening to it
 				// TODO: we may want to consider doing cleanup after the next rendering turn
@@ -273,6 +290,9 @@ define(['./util/lang'], function (lang) {
 			if (value === undefined) {
 				value = variable.default
 			}
+			if (context) {
+				context.contextualize(this, parentContext)
+			}
 			if (parentContext) {
 
 				/*if (!contextualized.dependents) {
@@ -280,13 +300,16 @@ define(['./util/lang'], function (lang) {
 					contextualized.dependents = []
 				}*/
 				if (!this.dependents) {
-					this.dependents = []
+					this.dependents = new Set()
 				}
-				if (context) {
-					context.contextualize(this, parentContext)
-				} else {
+				if (!context) {
 					parentContext.inputs.push(this)
 				}				
+			}
+			if (value && value.then) {
+				return when(value, function(value) {
+					return Variable.prototype.gotValue.call(variable, value, context)
+				})
 			}
 			return value
 		},
@@ -312,35 +335,6 @@ define(['./util/lang'], function (lang) {
 			if (subject && subject.target && !subject.constructor.getForClass) {
 				// makes HTML events work
 				subject = subject.target
-			}
-			if (typeof this === 'function') { // TODO: be polymorphic and make this a static on Variable
-				// this is a class, the subject should hopefully have an entry
-				if (subject !== undefined) {
-					var instance
-					if (subject.constructor.getForClass) {
-						// if the subject has it is own means of retrieving an instance
-						instance = subject.constructor.getForClass(subject, this)
-						if (instance && !instance.subject) {
-							instance.subject = subject
-						}
-					} else {
-						if (subject && typeof subject === 'object') {
-							// a plain object, we use our own map to retrieve the instance (or create one)
-							var instanceMap = this.instanceMap || (this.instanceMap = new WeakMap())
-							instance = instanceMap.get(subject)
-							if (!instance) {
-								instanceMap.set(subject, instance = new this(subject))
-							}
-						} else {
-							// a primitive, just unconditionally create a new variable for it
-							instance = new this(subject)
-						}
-					}
-					// TODO: Do we have a global context that we set on defaultInstance?
-					return instance || this.defaultInstance
-				} else {
-					return this.defaultInstance
-				}
 			}
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
@@ -473,22 +467,16 @@ define(['./util/lang'], function (lang) {
 			var dependents = this.dependents
 			if (dependents) {
 				// make a copy, in case they change
-				dependents = dependents.slice(0)
-				for (var i = 0, l = dependents.length; i < l; i++) {
-					try{
-						var dependent = dependents[i]
-						if ((updateEvent instanceof PropertyChangeEvent) &&
-								(dependent instanceof Property)) {
-							if (dependent.key === updateEvent.key) {
-								dependent.updated(updateEvent.childEvent, this, context)
-							}
-						} else {
-							dependent.updated(updateEvent, this, context)
+				dependents.forEach(function(dependent) {
+					if ((updateEvent instanceof PropertyChangeEvent) &&
+							(dependent instanceof Property)) {
+						if (dependent.key === updateEvent.key) {
+							dependent.updated(updateEvent.childEvent, this, context)
 						}
-					}catch(e) {
-						console.error(e, e.stack, 'updating a variable')
+					} else {
+						dependent.updated(updateEvent, this, context)
 					}
-				}
+				})
 			}
 			if (updateEvent instanceof PropertyChangeEvent) {
 				if (this.notifyingValue && this.fixed) {
@@ -509,11 +497,10 @@ define(['./util/lang'], function (lang) {
 		notifies: function(target) {
 			var dependents = this.dependents
 			if (!dependents || !this.hasOwnProperty('dependents')) {
-				this.dependents = dependents = []
+				this.dependents = dependents = new Set()
 				this.init()
 			}
-			// TODO: after a certain size, convert to a hash
-			dependents.push(target)
+			dependents.add(target)
 		},
 		subscribe: function(listener) {
 			// ES7 Observable (and baconjs) compatible API
@@ -526,7 +513,10 @@ define(['./util/lang'], function (lang) {
 				var variable = this
 				var event = {
 					value: function() {
-						return variable.valueOf()
+						var context = new Context()
+						var value = variable.valueOf()
+						context.notifies(updateReceiver)
+						return value
 					}
 				}
 				updated = function() {
@@ -537,7 +527,10 @@ define(['./util/lang'], function (lang) {
 				// Assuming ES7 Observable API. It is actually a streaming API, this pretty much violates all principles of reactivity, but we will support it
 				updated = function() {
 					updateQueued = false
-					listener.next(variable.valueOf())
+					var context = new Context()
+					var value = variable.valueOf()
+					context.notifies(updateReceiver)
+					listener.next(value)
 				}
 			} else {
 				throw new Error('Subscribing to an invalid listener, the listener must be a function, or have an update or next method')
@@ -551,7 +544,9 @@ define(['./util/lang'], function (lang) {
 					lang.nextTurn(updated)
 				}
 			}
-			var initialValue = this.valueOf(new Context(null, updateReceiver))
+			var context = new Context()
+			var initialValue = this.valueOf(context)
+			context.notifies(updateReceiver)
 			if (initialValue !== undefined) {
 				updated()
 			}
@@ -564,12 +559,8 @@ define(['./util/lang'], function (lang) {
 		stopNotifies: function(dependent) {
 			var dependents = this.dependents
 			if (dependents) {
-				for (var i = 0; i < dependents.length; i++) {
-					if (dependents[i] === dependent) {
-						dependents.splice(i--, 1)
-					}
-				}
-				if (dependents.length === 0) {
+				dependents.delete(dependent)
+				if (dependents.size === 0) {
 					// clear the dependents so it will be reinitialized if it has
 					// dependents again
 					this.dependents = dependents = false
@@ -632,16 +623,10 @@ define(['./util/lang'], function (lang) {
 			var dependents = this.dependents
 			if (dependents) {
 				// make a copy, in case they change
-				dependents = dependents.slice(0)
-				for (var i = 0, l = dependents.length; i < l; i++) {
-					try{
-						var dependent = dependents[i]
-						// skip notifying property dependents if we are headed up the parent chain
-						dependent.error(error)
-					}catch(e) {
-						console.error(e, 'sending an error')
-					}
-				}
+				dependents.forEach(function(dependent) {
+					// skip notifying property dependents if we are headed up the parent chain
+					dependent.error(error)
+				})
 			}
 		},
 		complete: function(value) {
@@ -970,10 +955,15 @@ define(['./util/lang'], function (lang) {
 			var transformContext
 			if (context) {
 				transformContext = context.newContext()
+			} else {
+				// we always need a context for caching, since it might be made live later
+				transformContext = new Context()
 			}
 			var newVersion = this.getVersion()
 			var computedValue = this.getValue(transformContext)
 			if (computedValue && computedValue.then) {
+				// call it initially so the dependencies can be registered
+				this.gotValue(null, context, transformContext)
 				return computedValue.then(withComputedValue)
 			} else {
 				return withComputedValue(computedValue)
@@ -1014,6 +1004,8 @@ define(['./util/lang'], function (lang) {
 				return value
 			}
 			if (object && object.then) {
+				// call it initially so the dependencies can be registered
+				this.gotValue(null, context, propertyContext)
 				return when(object, gotValueAndListen)
 			}
 			return gotValueAndListen(object)
@@ -1281,24 +1273,24 @@ define(['./util/lang'], function (lang) {
 	})
 	Variable.Call = Call
 
-	var ContextualizedVariable = lang.compose(Variable, function ContextualizedVariable(generic, subject, context) {
+	var ContextualizedVariable = lang.compose(Variable, function ContextualizedVariable(generic, subject) {
 		this.generic = generic
-		this.context = context
 		this.subject = subject
 	}, {
 		valueOf: function() {
-			return this.constructor.valueOf(this.context || new Context(this.subject))
+			// TODO: Lookup Context type for all of these using registry or something
+			return this.generic.valueOf(new Context(this.subject))
 		},
 
 		put: function(value) {
-			return this.constructor.put(value, this.context || new Context(this.subject))
+			return this.generic.put(value, new Context(this.subject))
 		},
 		parentUpdated: function(event, context) {
 			// if we receive an outside update, send it to the constructor
-			this.constructor.updated(event, this.parent, this.context || new Context(this.subject))
+			this.generic.updated(event, this.parent, new Context(this.subject))
 		},
 		updated: function(event, context) {
-			return this.constructor.updated(updateEvent, this, this.context || new Context(this.subject))
+			return this.generic.updated(updateEvent, this, new Context(this.subject))
 		}
 	})
 
@@ -1457,7 +1449,6 @@ define(['./util/lang'], function (lang) {
 				generatorIterator = this.generator()				
 			}
 
-			context = context && context.newContext()
 			var args = this.args
 			do {
 				var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](lastValue)
@@ -1575,6 +1566,7 @@ define(['./util/lang'], function (lang) {
 	}
 
 	function hasOwn(Target, createForInstance) {
+
 		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
 		// TODO: assign to super classes
 		var Class = this
@@ -1655,11 +1647,44 @@ define(['./util/lang'], function (lang) {
 	}
 	Variable.valueOf = function(context) {
 		// contextualized getValue
-		return instanceForContext(this, context).valueOf(new Context(context.subject, context.notify))
+		return instanceForContext(this, context).valueOf(new Context(context.subject))
 	}
 	Variable.setValue = function(value, context) {
 		// contextualized setValue
 		return instanceForContext(this, context).put(value)
+	
+	}
+	Variable.for = function(subject) {
+		if (subject && subject.target && !subject.constructor.getForClass) {
+			// makes HTML events work
+			subject = subject.target
+		}
+		if (subject !== undefined) {
+			var instance
+			if (classMaps.has(subject.constructor)) {
+				// if the subject has it is own means of retrieving an instance
+				instance = new Context(subject).specify(this)
+				if (instance && !instance.subject) {
+					instance.subject = subject
+				}
+			} else {
+				if (subject && typeof subject === 'object') {
+					// a plain object, we use our own map to retrieve the instance (or create one)
+					var instanceMap = this.instanceMap || (this.instanceMap = new WeakMap())
+					instance = instanceMap.get(subject)
+					if (!instance) {
+						instanceMap.set(subject, instance = new this(subject))
+					}
+				} else {
+					// a primitive, just unconditionally create a new variable for it
+					instance = new this(subject)
+				}
+			}
+			// TODO: Do we have a global context that we set on defaultInstance?
+			return instance || this.defaultInstance
+		} else {
+			return this.defaultInstance
+		}
 	}
 	Variable.Context = Context
 	Variable.ChildContext = ChildContext
@@ -1699,7 +1724,14 @@ define(['./util/lang'], function (lang) {
 					this._defaultInstance)
 		}
 	})
-	Variable.hasOwn = hasOwn
+	Variable.hasOwn = function(Target, createInstance) {
+		Target.belongsTo(this, createInstance)
+	}
+	Variable.belongsTo = function(Subject, createInstance) {
+		var map = new WeakMap()
+		map.createInstance = createInstance
+		classMaps.set(Subject, map)
+	}
 	Variable.all = all
 	Variable.objectUpdated = objectUpdated
 
