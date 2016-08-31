@@ -1228,7 +1228,7 @@ define(['./Variable', './Renderer', './util/lang', './HTMLContext'], function (V
 						specifiedInstance = instanceMap.get(element)
 						if (!specifiedInstance) {
 							instanceMap.set(element, specifiedInstance = instanceMap.createInstance ?
-								instanceMap.createInstance(element) : new Variable(element))
+								instanceMap.createInstance(element) : new Variable())
 						}
 						return specifiedInstance
 					}

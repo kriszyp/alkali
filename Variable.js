@@ -41,7 +41,7 @@ define(['./util/lang'], function (lang) {
 				if (instanceMap) {
 					specifiedInstance = instanceMap.get(subject)
 					if (!specifiedInstance) {
-						instanceMap.set(subject, specifiedInstance = instanceMap.createInstance ? instanceMap.createInstance(subject) : new Variable(subject))
+						instanceMap.set(subject, specifiedInstance = instanceMap.createInstance ? instanceMap.createInstance(subject) : new Variable())
 					}
 					return specifiedInstance
 				}
@@ -1005,9 +1005,6 @@ define(['./util/lang'], function (lang) {
 			callback(this.parent)
 		},
 		valueOf: function(context) {
-			if (this.value) {
-				return Variable.prototype.valueOf.call(this, context)
-			}
 			if (context) {
 				var propertyContext = context.newContext()
 			}
@@ -1323,13 +1320,6 @@ define(['./util/lang'], function (lang) {
 		put: function(value) {
 			var subject = this.subject
 			return this.generic.put(value, subject instanceof Context ? subject : new Context(subject))
-		},
-		parentUpdated: function(event, context) {
-			// if we receive an outside update, send it to the constructor
-			this.generic.updated(event, this.parent, new Context(this.subject))
-		},
-		updated: function(event, context) {
-			return this.generic.updated(event, this, new Context(this.subject))
 		}
 	})
 
