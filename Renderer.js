@@ -1,10 +1,11 @@
-define(['./util/lang', './HTMLContext'], function (lang, HTMLContext) {
+define(['./util/lang', './Variable'], function (lang, Variable) {
 	var doc = typeof document !== 'undefined' && document
 	var invalidatedElements
 	var queued
 	var toRender = []
 	var nextId = 1
 	var requestAnimationFrame = lang.requestAnimationFrame
+	var Context = Variable.Context
 
 	function Renderer(options) {
 		var variable = options.variable
@@ -173,14 +174,14 @@ define(['./util/lang', './HTMLContext'], function (lang, HTMLContext) {
 		this.invalidated = false
 		try {
 			if (!this.omitValueOf) {
-				var context = new HTMLContext(element)
+				var context = new Context(element)
 				var value = this.variable.valueOf(context)
 				context.notifies(this)
 			}
 		} catch (error) {
 			element.appendChild(document.createTextNode(error))
 		}
-		if(value !== undefined || this.started){
+		if(value !== undefined || this.started || this.omitValueOf){
 			this.started = true
 			if(value && value.then){
 				if(this.renderLoading){
@@ -334,11 +335,11 @@ define(['./util/lang', './HTMLContext'], function (lang, HTMLContext) {
 			this.builtList = true
 			container = document.createDocumentFragment()
 			var childElements = this.childElements = []
-			var context = new HTMLContext(thisElement)
+			var context = new Context(thisElement)
 			this.variable.for(context).forEach(function(item) {
 				eachItem(item)
 			})
-			context.notfies(this)
+			context.notifies(this)
 			this.element.appendChild(container)
 		} else {
 			var childElements = this.childElements

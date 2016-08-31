@@ -1008,7 +1008,10 @@ define(['./Variable', './Renderer', './util/lang', './HTMLContext'], function (V
 				hasOwn(From, Target)
 			})
 		}
-		Target.belongsTo(From, createInstance)
+		var instanceMap = new WeakMap()
+		instanceMap.createInstance = createInstance
+		var elementMap = From.ownedClasses || (From.ownedClasses = new WeakMap())
+		elementMap.set(Target, instanceMap)
 		return From
 	}
 
@@ -1207,6 +1210,42 @@ define(['./Variable', './Renderer', './util/lang', './HTMLContext'], function (V
 			subtree: true
 		})
 	}
+
+	Variable.registerSubjectResolver({
+		resolve: function(Variable, element, context) {
+		  var distinctive = true
+		  do {
+		    if (context.distinctSubject === element) {
+		      distinctive = false
+		    }
+		    var subjectMap = element.constructor.ownedClasses
+		    if (subjectMap) {
+					var instanceMap = subjectMap.get(Variable)
+					if (instanceMap) {
+			      if (distinctive) {
+			        context.distinctSubject = element
+			      }
+						specifiedInstance = instanceMap.get(element)
+						if (!specifiedInstance) {
+							instanceMap.set(element, specifiedInstance = instanceMap.createInstance ?
+								instanceMap.createInstance(element) : new Variable(element))
+						}
+						return specifiedInstance
+					}
+		    }
+		  } while ((element = element.parentNode || presumptiveParentMap.get(element)))
+		},
+		merge: function(targetContext, childContext) {
+		  if (!targetContext.distinctSubject || targetContext.distinctSubject.contains(childContext.distinctSubject)) {
+		    targetContext.distinctSubject = childContext.distinctSubject
+		  }
+		},
+		matches: function(contextA, contextB) {
+			return contextA.subject === contextB.subject
+		}
+	})
+	
+
 
 	return Element
 })

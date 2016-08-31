@@ -1,8 +1,5 @@
 define(['./Variable'], function (Variable) {
 
-var classMaps = new WeakMap()
-var instanceContextualizations = new WeakMap()
-
 function HTMLContext(element) {
   // construct a new context that contextualizes based on an HTML Element
   this.subject = element
@@ -15,7 +12,7 @@ HTMLContext.prototype.merge = function(childContext) {
     this.distinctSubject = childContext.distinctSubject
   }
 }
-HTMLContext.prototype.getSubjectMaps = function(classMap) {
+HTMLContext.prototype.getSubjectMap = function(classMaps) {
   // specify a particular instance of a generic variable
   var element = this.subject
   var distinctive = true

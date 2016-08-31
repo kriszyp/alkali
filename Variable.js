@@ -29,8 +29,36 @@ define(['./util/lang'], function (lang) {
 		}
 		return callback(value)
 	}
-	var classMaps = new WeakMap()
-	var instanceContextualizations = new WeakMap()
+	resolverRegistry = [{
+		resolve: function(Variable, subject, context) {
+			var subjectMap = subject.constructor.ownedClasses
+			var specifiedInstance
+			if (subjectMap) {
+				if (!this.distinctSubject) {
+	        this.distinctSubject = subject
+				}
+				var instanceMap = subjectMap.get(Variable)
+				if (instanceMap) {
+					specifiedInstance = instanceMap.get(subject)
+					if (!specifiedInstance) {
+						instanceMap.set(subject, specifiedInstance = instanceMap.createInstance ? instanceMap.createInstance(subject) : new Variable(subject))
+					}
+					return specifiedInstance
+				}
+			}
+		},
+		merge: function(sourceContext, childContext) {
+			if (!sourceContext.distinctSubject) {
+				sourceContext.distinctSubject = childContext.distinctSubject
+			}
+		},
+		matches: function(contextA, contextB) {
+			return contextA.subject === contextB.subject
+		}
+	}]
+	function registerSubjectResolver(subjectResolver) {
+		resolverRegistry.push(subjectResolver)
+	}
 
 	function Context(subject){
 		this.subject = subject
@@ -59,6 +87,7 @@ define(['./util/lang'], function (lang) {
 				contextualized = contextMap.get(this.distinctSubject)
 				if (!contextualized) {
 					contextMap.set(this.distinctSubject, contextualized = variable.for(this.distinctSubject))
+					contextualized.inputs = this.inputs
 				}
 				// do the merge
 				if (parentContext) {
@@ -74,31 +103,23 @@ define(['./util/lang'], function (lang) {
 			return contextualized
 		},
 		merge: function(childContext) {
-			this.distinctSubject = childContext.distinctSubject
-		},
-		getSubjectMap: function(classMaps) {
-			var subject = this.subject
-			return classMaps.get(subject.constructor)
+			for (var i = resolverRegistry.length; i > 0;) {
+				var entry = resolverRegistry[--i]
+				var merged = entry.merge(this, childContext)
+				if (merged) {
+					return
+				}
+			}
 		},
 		specify: function(Variable) {
 			// specify a particular instance of a generic variable
 			var subject = this.subject
-			var subjectMap = subject && this.getSubjectMap(classMaps)
-			var specifiedInstance
-			if (subjectMap) {
-				if (!this.distinctSubject) {
-	        this.distinctSubject = subject
+			for (var i = resolverRegistry.length; i > 0;) {
+				var entry = resolverRegistry[--i]
+				var instance = entry.resolve(Variable, subject, this)
+				if (instance) {
+					return instance
 				}
-				var instanceMap = subjectMap.get(Variable)
-				if (!instanceMap) {
-					subjectMap.set(Variable, instanceMap = new WeakMap())
-				}
-				specifiedInstance = instanceMap.get(subject)
-				if (!specifiedInstance) {
-					instanceMap.set(subject, specifiedInstance = subjectMap.createInstance ? subjectMap.createInstance(subject) : new Variable(subject))
-				}
-				return specifiedInstance
-				//classMaps.set(subject.constructor, subjectMap = new WeakMap())
 			}
 			// else if no specific context is found, return default instance
 			return Variable.defaultInstance
@@ -230,6 +251,13 @@ define(['./util/lang'], function (lang) {
 		}
 	}
 	var VariablePrototype = Variable.prototype = {
+		// for debugging use
+		get _Current_Value() {
+			return this.valueOf()
+		},
+		set _Current_Value(value) {
+			this.put(value)
+		},
 		constructor: Variable,
 		valueOf: function(context) {
 			var valueContext
@@ -337,18 +365,6 @@ define(['./util/lang'], function (lang) {
 				subject = subject.target
 			}
 			return new ContextualizedVariable(this, subject || defaultContext)
-		},
-		distinctFor: function(subject) {
-			if (typeof this === 'function') {
-				return this.for(subject)
-			}
-			var map = this.contextMap || (this.contextMap = new WeakMap())
-			if (map.has(subject)) {
-				return map.get(subject)
-			}
-			var contextualizedVariable
-			map.set(subject, contextualizedVariable = new ContextualizedVariable(this, subject))
-			return contextualizedVariable
 		},
 		_propertyChange: function(propertyName, object, context, type) {
 			if (this.onPropertyChange) {
@@ -466,15 +482,16 @@ define(['./util/lang'], function (lang) {
 
 			var dependents = this.dependents
 			if (dependents) {
+				var variable = this
 				// make a copy, in case they change
 				dependents.forEach(function(dependent) {
 					if ((updateEvent instanceof PropertyChangeEvent) &&
 							(dependent instanceof Property)) {
 						if (dependent.key === updateEvent.key) {
-							dependent.updated(updateEvent.childEvent, this, context)
+							dependent.updated(updateEvent.childEvent, variable, context)
 						}
 					} else {
-						dependent.updated(updateEvent, this, context)
+						dependent.updated(updateEvent, variable, context)
 					}
 				})
 			}
@@ -786,6 +803,10 @@ define(['./util/lang'], function (lang) {
 				})
 			}
 		},
+		_sN: function(name) {
+			// for compilers to set a name
+			this.name = name
+		},
 		// TODO: Move these to VArray
 		splice: function(startingIndex, removalCount) {
 			var args = arguments
@@ -1021,8 +1042,8 @@ define(['./util/lang'], function (lang) {
 				this.parent.updated(new PropertyChangeEvent(this.key, updateEvent, this.parent), this, context)
 			}
 		},
-		for: function(subject, notify) {
-			return this.parent.for(subject, notify).property(this.key)
+		for: function(subject) {
+			return this.parent.for(subject).property(this.key)
 		},
 		_changeValue: function(context, type, newValue) {
 			var key = this.key
@@ -1049,7 +1070,7 @@ define(['./util/lang'], function (lang) {
 						// if a put and the property value is a variable, assign it to that.
 						oldValue.put(newValue)
 					} else {
-						object[key] = newValue && newValue.valueOf(context)
+						object[key] = newValue
 						// or set the setter/getter
 					}
 				}
@@ -1099,12 +1120,12 @@ define(['./util/lang'], function (lang) {
 	}, {})
 
 	var Composite = Variable.Composite = lang.compose(Caching, function Composite(args) {
-		this.args = args
+		this.arguments = args
 	}, {
 		forDependencies: function(callback) {
 			// depend on the args
 			Caching.prototype.forDependencies.call(this, callback)
-			var args = this.args
+			var args = this.arguments
 			for (var i = 0, l = args.length; i < l; i++) {
 				var arg = args[i]
 				if (arg && arg.notifies) {
@@ -1114,7 +1135,7 @@ define(['./util/lang'], function (lang) {
 		},
 
 		updated: function(updateEvent, by, context) {
-			var args = this.args
+			var args = this.arguments
 			if (by !== this.notifyingValue && updateEvent && updateEvent.type !== 'refresh') {
 				// using a painful search instead of indexOf, because args may be an arguments object
 				for (var i = 0, l = args.length; i < l; i++) {
@@ -1137,7 +1158,7 @@ define(['./util/lang'], function (lang) {
 		},
 
 		getVersion: function(context) {
-			var args = this.args
+			var args = this.arguments
 			var version = Variable.prototype.getVersion.call(this, context)
 			for (var i = 0, l = args.length; i < l; i++) {
 				var arg = args[i]
@@ -1150,7 +1171,7 @@ define(['./util/lang'], function (lang) {
 
 		getValue: function(context) {
 			var results = []
-			var args = this.args
+			var args = this.arguments
 			for (var i = 0, l = args.length; i < l; i++) {
 				var arg = args[i]
 				results[i] = arg && arg.valueOf(context)
@@ -1162,9 +1183,9 @@ define(['./util/lang'], function (lang) {
 	})
 
 	// a call variable is the result of a call
-	var Call = lang.compose(Composite, function Call(functionVariable, args) {
+	var Call = lang.compose(Composite, function Transform(functionVariable, args) {
 		this.functionVariable = functionVariable
-		this.args = args
+		this.arguments = args
 	}, {
 		fixed: true,
 		forDependencies: function(callback) {
@@ -1180,10 +1201,10 @@ define(['./util/lang'], function (lang) {
 			if (functionValue.then) {
 				var call = this
 				return functionValue.then(function(functionValue) {
-					return call.invoke(functionValue, call.args, context)
+					return call.invoke(functionValue, call.arguments, context)
 				})
 			}
-			return this.invoke(functionValue, this.args, context)
+			return this.invoke(functionValue, this.arguments, context)
 		},
 
 		getVersion: function(context) {
@@ -1198,7 +1219,7 @@ define(['./util/lang'], function (lang) {
 		execute: function(context) {
 			var call = this
 			return when(this.functionVariable.valueOf(context), function(functionValue) {
-				return call.invoke(functionValue, call.args, context, true)
+				return call.invoke(functionValue, call.arguments, context, true)
 			})
 		},
 
@@ -1211,14 +1232,14 @@ define(['./util/lang'], function (lang) {
 				return when(call.functionVariable.valueOf(context), function(functionValue) {
 					return call.invoke(function() {
 						if (functionValue.reverse) {
-							functionValue.reverse.call(call, value, call.args, context)
+							functionValue.reverse.call(call, value, call.arguments, context)
 							return Variable.prototype.put.call(call, value, context)
 						} else if (originalValue && originalValue.put) {
 							return originalValue.put(value)
 						} else {
 							return deny
 						}
-					}, call.args, context)
+					}, call.arguments, context)
 				});				
 			})
 		},
@@ -1279,18 +1300,36 @@ define(['./util/lang'], function (lang) {
 	}, {
 		valueOf: function() {
 			// TODO: Lookup Context type for all of these using registry or something
-			return this.generic.valueOf(new Context(this.subject))
+			var subject = this.subject
+			return this.generic.valueOf(subject instanceof Context ? subject : new Context(subject))
+		},
+
+		forDependencies: function(callback) {
+			this.inputs && this.inputs.forEach(callback)
+		},
+
+		getVersion: function() {
+			var version = Variable.prototype.getVersion.call(this)
+			var inputs = this.inputs || 0
+			for (var i = 0, l = inputs.length; i < l; i++) {
+				var input = inputs[i]
+				if (input.getVersion) {
+					version = Math.max(version, input.getVersion())
+				}
+			}
+			return version
 		},
 
 		put: function(value) {
-			return this.generic.put(value, new Context(this.subject))
+			var subject = this.subject
+			return this.generic.put(value, subject instanceof Context ? subject : new Context(subject))
 		},
 		parentUpdated: function(event, context) {
 			// if we receive an outside update, send it to the constructor
 			this.generic.updated(event, this.parent, new Context(this.subject))
 		},
 		updated: function(event, context) {
-			return this.generic.updated(updateEvent, this, new Context(this.subject))
+			return this.generic.updated(event, this, new Context(this.subject))
 		}
 	})
 
@@ -1313,11 +1352,11 @@ define(['./util/lang'], function (lang) {
 		this.source = source
 		// source.interestWithin = true
 		this.method = method
-		this.args = args
+		this.arguments = args
 	}, {
 		getValue: function(context) {
 			var method = this.method
-			var args = this.args
+			var args = this.arguments
 			var variable = this
 			return when(this.source.valueOf(context), function(array) {
 				if (array && array.forEach) {
@@ -1367,13 +1406,13 @@ define(['./util/lang'], function (lang) {
 					contextualizedVariable.splice(index, 1)
 				}
 			} else if (event.type === 'add') {
-				if ([event.value].filter(this.args[0]).length > 0) {
+				if ([event.value].filter(this.arguments[0]).length > 0) {
 					contextualizedVariable.push(event.value)
 				}
 			} else if (event.type === 'update') {
 				var object = event.parent.valueOf(context)
 				var index = contextualizedVariable.cachedValue.indexOf(object)
-				var matches = [object].filter(this.args[0]).length > 0
+				var matches = [object].filter(this.arguments[0]).length > 0
 				if (index > -1) {
 					if (matches) {
 						return {
@@ -1400,14 +1439,14 @@ define(['./util/lang'], function (lang) {
 			if (event.type === 'delete') {
 				contextualizedVariable.splice(event.previousIndex, 1)
 			} else if (event.type === 'add') {
-				contextualizedVariable.push(this.args[0].call(this.args[1], event.value))
+				contextualizedVariable.push(this.arguments[0].call(this.arguments[1], event.value))
 			} else if (event.type === 'update') {
 				var object = event.parent.valueOf(context)
 				var array = contextualizedVariable.cachedValue
 				if (array && array.map) {
 					var index = array.indexOf(object)
-					var matches = [object].filter(this.args[0]).length > 0
-					contextualizedVariable.splice(index, 1, this.args[0].call(this.args[1], event.value))
+					var matches = [object].filter(this.arguments[0]).length > 0
+					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], event.value))
 				} else {
 					return event
 				}
@@ -1430,7 +1469,7 @@ define(['./util/lang'], function (lang) {
 	var getValue
 	var GeneratorVariable = Variable.GeneratorVariable = lang.compose(Variable.Composite, function ReactiveGenerator(generator){
 		this.generator = generator
-		this.args = []
+		this.arguments = []
 	}, {
 		getValue: getValue = function(context, resuming) {
 			var lastValue
@@ -1449,7 +1488,7 @@ define(['./util/lang'], function (lang) {
 				generatorIterator = this.generator()				
 			}
 
-			var args = this.args
+			var args = this.arguments
 			do {
 				var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](lastValue)
 				if (stepReturn.done) {
@@ -1464,9 +1503,9 @@ define(['./util/lang'], function (lang) {
 					}
 					// subscribe if it is a variable
 					if (nextVariable && nextVariable.notifies) {
-						this.args[i] = nextVariable
+						this.arguments[i] = nextVariable
 					} else {
-						this.args[i] = null
+						this.arguments[i] = null
 					}
 				}
 				i++
@@ -1647,7 +1686,7 @@ define(['./util/lang'], function (lang) {
 	}
 	Variable.valueOf = function(context) {
 		// contextualized getValue
-		return instanceForContext(this, context).valueOf(new Context(context.subject))
+		return instanceForContext(this, context).valueOf(context)
 	}
 	Variable.setValue = function(value, context) {
 		// contextualized setValue
@@ -1655,13 +1694,17 @@ define(['./util/lang'], function (lang) {
 	
 	}
 	Variable.for = function(subject) {
-		if (subject && subject.target && !subject.constructor.getForClass) {
-			// makes HTML events work
-			subject = subject.target
-		}
-		if (subject !== undefined) {
+		if (subject != null) {
+			if (subject.subject) {
+				// if it is a context
+				Variable.prototype.for.call(this, subject)
+			}
+			if (subject.target && !subject.constructor.getForClass) {
+				// makes HTML events work
+				subject = subject.target
+			}
 			var instance
-			if (classMaps.has(subject.constructor)) {
+			if (subject.constructor.ownedClasses) {
 				// if the subject has it is own means of retrieving an instance
 				instance = new Context(subject).specify(this)
 				if (instance && !instance.subject) {
@@ -1725,15 +1768,14 @@ define(['./util/lang'], function (lang) {
 		}
 	})
 	Variable.hasOwn = function(Target, createInstance) {
-		Target.belongsTo(this, createInstance)
-	}
-	Variable.belongsTo = function(Subject, createInstance) {
-		var map = new WeakMap()
-		map.createInstance = createInstance
-		classMaps.set(Subject, map)
+		var instanceMap = new WeakMap()
+		instanceMap.createInstance = createInstance
+		var subjectMap = this.ownedClasses || (this.ownedClasses = new WeakMap())
+		subjectMap.set(Target, instanceMap)
 	}
 	Variable.all = all
 	Variable.objectUpdated = objectUpdated
+	Variable.registerSubjectResolver = registerSubjectResolver
 
 	return Variable
 })

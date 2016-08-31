@@ -411,7 +411,7 @@ define([
 				Span(a)])
 			document.body.appendChild(div)
 			return new Promise(requestAnimationFrame).then(function() {
-				assert.strictEqual(a.dependents.length, 2)
+				assert.strictEqual(a.dependents.size, 2)
 				document.body.removeChild(div)
 				return new Promise(requestAnimationFrame).then(function() {
 					assert.strictEqual(a.dependents, false)
@@ -605,7 +605,7 @@ define([
 			var custom = new CustomElement()
 			assert.equal(custom.tagName.toUpperCase(), 'CUSTOM-TAG')
 			assert.equal(custom.foo(), 3)
-		}/*,
+		},
 
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
@@ -627,6 +627,6 @@ define([
 				]))
 				container.innerHTML = ''
 			}
-		}*/
+		}
 	})
 });
