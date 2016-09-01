@@ -1266,7 +1266,7 @@ define(['./util/lang'], function (lang) {
 		valueOf: function() {
 			// TODO: Lookup Context type for all of these using registry or something
 			var subject = this.subject
-			return this.generic.valueOf(subject instanceof Context ? subject : new Context(subject))
+			return this.generic.valueOf(subject.getContextualized ? subject : new Context(subject))
 		},
 
 		forDependencies: function(callback) {
@@ -1287,7 +1287,7 @@ define(['./util/lang'], function (lang) {
 
 		put: function(value) {
 			var subject = this.subject
-			return this.generic.put(value, subject instanceof Context ? subject : new Context(subject))
+			return this.generic.put(value, subject.getContextualized ? subject : new Context(subject))
 		}
 	})
 

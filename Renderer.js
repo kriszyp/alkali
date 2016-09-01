@@ -90,6 +90,10 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		getContextualized: function() {
 			return this.contextualized
 		},
+		specify: function(Variable) {
+			// a new context to get thsi
+			return this.newContext().specify(Variable)
+		},
 		merge: function(){
 			// noop
 		},
@@ -345,11 +349,9 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 			this.builtList = true
 			container = document.createDocumentFragment()
 			var childElements = this.childElements = []
-			var context = new Context(thisElement)
-			this.variable.for(context).forEach(function(item) {
+			this.variable.for(this).forEach(function(item) {
 				eachItem(item)
 			})
-			context.notifies(this)
 			this.element.appendChild(container)
 		} else {
 			var childElements = this.childElements

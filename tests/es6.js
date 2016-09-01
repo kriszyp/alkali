@@ -6,12 +6,9 @@ define([
 	'intern/chai!assert'
 ], function (Element, Variable, react, registerSuite, assert) {
 	function valueOfAndNotify(variable, callback) {
-		var context = new Variable.Context()
-		var value = variable.valueOf(context)
-		context.notifies(typeof callback === 'object' ? callback : {
+		return variable.valueOf(new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
 			updated: callback
-		})
-		return value
+		}))
 	}
 	var Div = Element.Div
 	registerSuite({
