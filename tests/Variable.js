@@ -5,12 +5,10 @@ define([
 	'bluebird/js/browser/bluebird'
 ], function (Variable, registerSuite, assert, Promise) {
 	function valueOfAndNotify(variable, callback) {
-		var context = new Variable.Context()
-		var value = variable.valueOf(context)
-		context.notifies(typeof callback === 'object' ? callback : {
+		var context = new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
 			updated: callback
 		})
-		return value
+		return variable.valueOf(context)
 	}
 	registerSuite({
 		name: 'Variable',

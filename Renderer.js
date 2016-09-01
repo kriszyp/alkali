@@ -81,6 +81,18 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 				}
 			}
 		},
+		newContext: function() {
+			return new Variable.Context(this.element)
+		},
+		addInput: function(variable) {
+			this.contextualized = variable
+		},
+		getContextualized: function() {
+			return this.contextualized
+		},
+		merge: function(){
+			// noop
+		},
 		contextMatches: function(context) {
 			return true
 			return context == this.elements ||
@@ -174,9 +186,10 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		this.invalidated = false
 		try {
 			if (!this.omitValueOf) {
-				var context = new Context(element)
-				var value = this.variable.valueOf(context)
-				context.notifies(this)
+				var value = this.variable.valueOf(this)
+				var contextualized = this.contextualized || this.variable
+				// TODO: we may need to handle recontextualization if it returns a promise
+				contextualized.notifies(this)
 			}
 		} catch (error) {
 			element.appendChild(document.createTextNode(error))

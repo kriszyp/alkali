@@ -29,6 +29,7 @@ define(['./util/lang'], function (lang) {
 		}
 		return callback(value)
 	}
+	// TODO: Just eliminate the registry and allow direct replacement
 	resolverRegistry = [{
 		resolve: function(Variable, subject, context) {
 			var subjectMap = subject.constructor.ownedClasses
@@ -66,17 +67,8 @@ define(['./util/lang'], function (lang) {
 	}
 	Context.prototype = {
 		constructor: Context,
-		notifies: function(listener) {
-			var inputs = this.inputs
-			for (var i = 0, l = inputs.length; i < l; i++) {
-				var input = inputs[i]
-				input.notifies(listener)
-			}
-		},
 		newContext: function(variable) {
-			var newContext = new this.ChildContext(this.subject)
-			this.inputs.push(newContext)
-			return newContext
+			return new Context(this.subject)
 		},
 		contextualize: function(variable, parentContext) {
 			// resolve the contextualization of a variable, and updates this context to be aware of what distinctive aspect of the context has
@@ -89,6 +81,7 @@ define(['./util/lang'], function (lang) {
 					contextMap.set(this.distinctSubject, contextualized = variable.for(this.distinctSubject))
 					contextualized.inputs = this.inputs
 				}
+				this.contextualized = contextualized
 				// do the merge
 				if (parentContext) {
 					parentContext.merge(this)
@@ -99,7 +92,7 @@ define(['./util/lang'], function (lang) {
 			//if (this.contextualized && this.contextualized !== contextualized) {
 				// TOOD: if it has previously been contextualized to a different context (can happen in a promise/async situation), stop previous notifiers and start new ones
 			//}
-			this.contextualized = contextualized
+			parentContext.addInput(contextualized)
 			return contextualized
 		},
 		merge: function(childContext) {
@@ -139,22 +132,17 @@ define(['./util/lang'], function (lang) {
 			return context.subject === this.subject
 		}
 	}
-	function ChildContext(subject) {
+
+	function NotifyingContext(listener, subject){
 		this.subject = subject
-		this.inputs = []
+		this.listener = listener
 	}
-	ChildContext.prototype = Object.create(Context.prototype)
-	ChildContext.prototype.constructor = ChildContext
-	ChildContext.prototype.notifies = function(listener) {
-		var contextualized = this.contextualized
-		contextualized.notifies(listener)
-		var inputs = this.inputs
-		for (var i = 0, l = inputs.length; i < l; i++) {
-			var input = inputs[i]
-			input.notifies(contextualized)
-		}
+	NotifyingContext.prototype = Object.create(Context.prototype)
+	NotifyingContext.prototype.constructor = NotifyingContext
+	NotifyingContext.prototype.addInput = function(contextualized) {
+		contextualized.notifies(this.listener)
 	}
-	Context.prototype.ChildContext = ChildContext
+
 	function whenAll(inputs, callback){
 		var promiseInvolved
 		for (var i = 0, l = inputs.length; i < l; i++) {
@@ -278,9 +266,6 @@ define(['./util/lang'], function (lang) {
 						if (!context) {
 							context = parentContext.newContext()
 						}
-						if (!this.dependents) {
-							this.dependents = new Set()
-						}
 						context.contextualize(this, parentContext)
 						return value.valueOf(context)
 					} else {
@@ -296,18 +281,19 @@ define(['./util/lang'], function (lang) {
 			}
 			if (value && value.notifies) {
 				variable.notifyingValue = value
-				value = value.valueOf(context || parentContext && (context = parentContext.newContext()))
-				if (context) {
-					/*var parent = variable
-					do {
-						if (parent.dependents) {
-							// the value is another variable, start receiving notifications, if we, or any parent is live
-							variable.notifyingValue.notifies(variable)
-							break
-						}
-						parent.hasNotifyingChild = true
-					} while((parent = parent.parent))*/
+				if (variable.dependents) {
+					value.notifies(variable)
 				}
+				/*var parent = variable
+				do {
+					if (parent.dependents) {
+						// the value is another variable, start receiving notifications, if we, or any parent is live
+						variable.notifyingValue.notifies(variable)
+						break
+					}
+					parent.hasNotifyingChild = true
+				} while((parent = parent.parent))*/
+				value = value.valueOf(context || parentContext && (context = parentContext.newContext()))
 				if (variable.ownObject) {
 					if (getPrototypeOf(variable.ownObject) !== value) {
 						setPrototypeOf(variable.ownObject, value)
@@ -327,11 +313,9 @@ define(['./util/lang'], function (lang) {
 					// mark it as initialized, since we have already recursively dependended on inputs
 					contextualized.dependents = []
 				}*/
-				if (!this.dependents) {
-					this.dependents = new Set()
-				}
+
 				if (!context) {
-					parentContext.inputs.push(this)
+					parentContext.addInput(this)
 				}				
 			}
 			if (value && value.then) {
@@ -407,6 +391,7 @@ define(['./util/lang'], function (lang) {
 			}
 		},
 		cleanup: function() {
+			this.dependents = false
 			var handles = this.handles
 			if (handles) {
 				for (var i = 0; i < handles.length; i++) {
@@ -527,10 +512,7 @@ define(['./util/lang'], function (lang) {
 				var variable = this
 				var event = {
 					value: function() {
-						var context = new Context()
-						var value = variable.valueOf()
-						context.notifies(updateReceiver)
-						return value
+						return variable.valueOf()
 					}
 				}
 				updated = function() {
@@ -541,10 +523,7 @@ define(['./util/lang'], function (lang) {
 				// Assuming ES7 Observable API. It is actually a streaming API, this pretty much violates all principles of reactivity, but we will support it
 				updated = function() {
 					updateQueued = false
-					var context = new Context()
-					var value = variable.valueOf()
-					context.notifies(updateReceiver)
-					listener.next(value)
+					listener.next(variable.valueOf())
 				}
 			} else {
 				throw new Error('Subscribing to an invalid listener, the listener must be a function, or have an update or next method')
@@ -558,10 +537,8 @@ define(['./util/lang'], function (lang) {
 					lang.nextTurn(updated)
 				}
 			}
-			var context = new Context()
-			var initialValue = this.valueOf(context)
-			context.notifies(updateReceiver)
 			updated()
+			this.notifies(updateReceiver)
 			return {
 				unsubscribe: function() {
 					this.stopNotifies(updateReceiver)
@@ -575,7 +552,6 @@ define(['./util/lang'], function (lang) {
 				if (dependents.size === 0) {
 					// clear the dependents so it will be reinitialized if it has
 					// dependents again
-					this.dependents = dependents = false
 					this.cleanup()
 				}
 			}
@@ -949,8 +925,8 @@ define(['./util/lang'], function (lang) {
 				contextualizedVariable = context.getContextualized(this) || this
 			}
 			if (contextualizedVariable.cachedVersion === contextualizedVariable.getVersion()) {
-				if (context && contextualizedVariable.context) {
-					context.inputs.push(contextualizedVariable.context)
+				if (context) {
+					context.addInput(contextualizedVariable)
 				}
 				return contextualizedVariable.cachedValue
 			}			
@@ -971,9 +947,6 @@ define(['./util/lang'], function (lang) {
 			var transformContext
 			if (context) {
 				transformContext = context.newContext()
-			} else {
-				// we always need a context for caching, since it might be made live later
-				transformContext = new Context()
 			}
 			var newVersion = this.getVersion()
 			var computedValue = this.getValue(transformContext)
@@ -1717,8 +1690,7 @@ define(['./util/lang'], function (lang) {
 		}
 	}
 	Variable.Context = Context
-	Variable.ChildContext = ChildContext
-	Variable.getForClass = getForClass
+	Variable.NotifyingContext = NotifyingContext
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply

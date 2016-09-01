@@ -1,4 +1,4 @@
-define(['./Variable', './Renderer', './util/lang', './HTMLContext'], function (Variable, Renderer, lang, HTMLContext) {
+define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer, lang) {
 	var knownElementProperties = {};
 	['textContent', 'innerHTML', 'title', 'href', 'value', 'valueAsNumber', 'role', 'render'].forEach(function(property) {
 		knownElementProperties[property] = true
@@ -12,6 +12,7 @@ define(['./Variable', './Renderer', './util/lang', './HTMLContext'], function (V
 		}
 	}
 
+	var Context = Variable.Context
 	var PropertyRenderer = Renderer.PropertyRenderer
 	var InputPropertyRenderer = Renderer.InputPropertyRenderer
 	var AttributeRenderer = Renderer.AttributeRenderer
@@ -445,7 +446,7 @@ define(['./Variable', './Renderer', './util/lang', './HTMLContext'], function (V
 			for (var i = 0, l = inputEvents.length; i < l; i++) {
 				element.addEventListener(inputEvents[i], function (event) {
 					var value = element[key]
-					var result = variable.put(conversion ? conversion(value, element) : value, new HTMLContext(element))
+					var result = variable.put(conversion ? conversion(value, element) : value, new Context(element))
 					if (result === Variable.deny) {
 						throw new Error('Variable change denied')
 					}
