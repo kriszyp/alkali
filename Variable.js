@@ -634,6 +634,9 @@ define(['./util/lang'], function (lang) {
 		toJSON: function() {
 			return this.valueOf()
 		},
+		toString: function() {
+			return this.valueOf()
+		},
 		forEach: function(callbackOrItemClass, callbackOrContext, context) {
 			// iterate through current value of variable
 			if (callbackOrItemClass.notifies) {
