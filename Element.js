@@ -403,7 +403,7 @@ define(['./Variable', './Renderer', './util/lang', './HTMLContext'], function (V
 			if (each.create) {
 				var ItemClass = element.itemAs || Item
 				hasOwn(each, ItemClass, function (element) {
-					var itemVariable = ItemClass.for(element._item)
+					var itemVariable = ItemClass.from(element._item)
 					itemVariable.collection = content
 					return itemVariable
 				})

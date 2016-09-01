@@ -423,9 +423,6 @@ define(['./util/lang'], function (lang) {
 			this.forDependencies(function(dependency) {
 				dependency.stopNotifies(variable)
 			})
-			if (this.context) {
-				this.constructor.stopNotifies(this)
-			}
 		},
 
 		updateVersion: function(version) {
@@ -564,9 +561,7 @@ define(['./util/lang'], function (lang) {
 			var context = new Context()
 			var initialValue = this.valueOf(context)
 			context.notifies(updateReceiver)
-			if (initialValue !== undefined) {
-				updated()
-			}
+			updated()
 			return {
 				unsubscribe: function() {
 					this.stopNotifies(updateReceiver)
@@ -1700,23 +1695,25 @@ define(['./util/lang'], function (lang) {
 				if (instance && !instance.subject) {
 					instance.subject = subject
 				}
-			} else {
-				if (subject && typeof subject === 'object') {
-					// a plain object, we use our own map to retrieve the instance (or create one)
-					var instanceMap = this.instanceMap || (this.instanceMap = new WeakMap())
-					instance = instanceMap.get(subject)
-					if (!instance) {
-						instanceMap.set(subject, instance = new this(subject))
-					}
-				} else {
-					// a primitive, just unconditionally create a new variable for it
-					instance = new this(subject)
-				}
 			}
 			// TODO: Do we have a global context that we set on defaultInstance?
 			return instance || this.defaultInstance
 		} else {
 			return this.defaultInstance
+		}
+	}
+	Variable.from = function(value) {
+		if (value && typeof value === 'object') {
+			// a plain object, we use our own map to retrieve the instance (or create one)
+			var instanceMap = this.instanceMap || (this.instanceMap = new WeakMap())
+			var instance = instanceMap.get(value)
+			if (!instance) {
+				instanceMap.set(value, instance = new this(value))
+			}
+			return instance
+		} else {
+			// a primitive, just unconditionally create a new variable for it
+			return new this(value)
 		}
 	}
 	Variable.Context = Context
