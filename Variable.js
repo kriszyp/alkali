@@ -78,7 +78,7 @@ define(['./util/lang'], function (lang) {
 				var contextMap = variable._contextMap || (variable._contextMap = new WeakMap())
 				contextualized = contextMap.get(this.distinctSubject)
 				if (!contextualized) {
-					contextMap.set(this.distinctSubject, contextualized = variable.for(this.distinctSubject))
+					contextMap.set(this.distinctSubject, contextualized = new ContextualizedVariable(this.distinctSubject))
 					contextualized.inputs = this.inputs
 				}
 				this.contextualized = contextualized
@@ -240,10 +240,10 @@ define(['./util/lang'], function (lang) {
 	}
 	var VariablePrototype = Variable.prototype = {
 		// for debugging use
-		get _Current_Value() {
+		get currentValue() {
 			return this.valueOf()
 		},
-		set _Current_Value(value) {
+		set currentValue(value) {
 			this.put(value)
 		},
 		constructor: Variable,
