@@ -1653,21 +1653,14 @@ define(['./util/lang'], function (lang) {
 	}
 	Variable.for = function(subject) {
 		if (subject != null) {
-			if (subject.subject) {
-				// if it is a context
-				Variable.prototype.for.call(this, subject)
-			}
 			if (subject.target && !subject.constructor.getForClass) {
 				// makes HTML events work
 				subject = subject.target
 			}
 			var instance
-			if (subject.constructor.ownedClasses) {
-				// if the subject has it is own means of retrieving an instance
-				instance = new Context(subject).specify(this)
-				if (instance && !instance.subject) {
-					instance.subject = subject
-				}
+			instance = new Context(subject).specify(this)
+			if (instance && !instance.subject) {
+				instance.subject = subject
 			}
 			// TODO: Do we have a global context that we set on defaultInstance?
 			return instance || this.defaultInstance
