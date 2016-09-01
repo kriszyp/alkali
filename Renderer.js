@@ -355,6 +355,9 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 			this.variable.for(this).forEach(function(item) {
 				eachItem(item)
 			})
+			var contextualized = this.contextualized || this.variable
+			contextualized.notifies(this)
+
 			this.element.appendChild(container)
 		} else {
 			var childElements = this.childElements
