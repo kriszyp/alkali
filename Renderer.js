@@ -181,19 +181,16 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		} catch (error) {
 			element.appendChild(document.createTextNode(error))
 		}
-		if(value !== undefined || this.started || this.omitValueOf){
-			this.started = true
-			if(value && value.then){
-				if(this.renderLoading){
-					this.renderLoading(value, element)
-				}
-				var renderer = this
-				value.then(function (value) {
-					renderer.renderUpdate(value, element)
-				})
-			}else{
-				this.renderUpdate(value, element)
+		if(value && value.then){
+			if(this.renderLoading){
+				this.renderLoading(value, element)
 			}
+			var renderer = this
+			value.then(function (value) {
+				renderer.renderUpdate(value, element)
+			})
+		}else{
+			this.renderUpdate(value, element)
 		}
 	}
 	ElementRenderer.prototype.renderUpdate = function (newValue, element) {
