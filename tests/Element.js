@@ -411,10 +411,10 @@ define([
 				Span(a)])
 			document.body.appendChild(div)
 			return new Promise(requestAnimationFrame).then(function() {
-				assert.strictEqual(a.dependents.size, 2)
+				assert.strictEqual(a.listeners.size, 2)
 				document.body.removeChild(div)
 				return new Promise(requestAnimationFrame).then(function() {
-					assert.strictEqual(a.dependents, false)
+					assert.strictEqual(a.listeners, false)
 				})
 			})
 		},

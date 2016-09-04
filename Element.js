@@ -103,7 +103,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	}
 
 	var styleDefinitions = {
-		display: booleanStyle(['initial', 'none']),
+		display: booleanStyle(['', 'none']),
 		visibility: booleanStyle(['visible', 'hidden']),
 		color: directStyle,
 		opacity: directStyle,
@@ -153,44 +153,36 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		for(var i = 0, l = children.length; i < l; i++) {
 			var child = children[i]
 			var childNode
-			if (child && child.create) {
-				// an element constructor
-				currentParent = parent
-				childNode = child.create()
-				fragment.appendChild(childNode)
-				if (child.isContentNode) {
-					container.contentNode = childNode
-				}
-			} else if (typeof child == 'function') {
-				// TODO: reenable this
-//				if (child.for) {
-					// a variable constructor that can be contextualized
-	//				fragment.appendChild(variableAsContent(parent, child))
-		//		} else {
+			if (child != null) { // we just skip nulls and undefined, helps make it easier to write conditional element logic
+				if (child.create) {
 					// an element constructor
-					childNode = new child()
+					currentParent = parent
+					childNode = child.create()
 					fragment.appendChild(childNode)
-			//	}
-			} else if (child && typeof child == 'object') {
-				if (child instanceof Array) {
-					// array of sub-children
-					container = container || parent
-					childNode = childNode || parent
-					layoutChildren(childNode.contentNode || childNode, child, container)
+					if (child.isContentNode) {
+						container.contentNode = childNode
+					}
 				} else if (child.notifies) {
 					// a variable
 					fragment.appendChild(childNode = variableAsContent(parent, child))
-				} else if (child.nodeType) {
-					// an element itself
-					fragment.appendChild(childNode = child)
+				} else if (typeof child == 'object') {
+					if (child instanceof Array) {
+						// array of sub-children
+						container = container || parent
+						childNode = childNode || parent
+						layoutChildren(childNode.contentNode || childNode, child, container)
+					} else if (child.nodeType) {
+						// an element itself
+						fragment.appendChild(childNode = child)
+					} else {
+						// TODO: apply properties to last child, but with binding to the parent (for events)
+						throw new Error('Unknown child type ' + child)
+					}
 				} else {
-					// TODO: apply properties to last child, but with binding to the parent (for events)
-					throw new Error('Unknown child type ' + child)
+					// a primitive value
+					childNode = doc.createTextNode(child)
+					fragment.appendChild(childNode)
 				}
-			} else {
-				// a primitive value
-				childNode = doc.createTextNode(child)
-				fragment.appendChild(childNode)
 			}
 		}
 		if (fragment != parent) {
@@ -1211,12 +1203,14 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			subtree: true
 		})
 	}
-
-	Variable.registerSubjectResolver({
-		resolve: function(Variable, element, context) {
+	
+	lang.copy(Variable.Context.prototype, {
+		specify: function(Variable) {
+			var element = this.subject
 		  var distinctive = true
+		  ;(this.generics || (this.generics = [])).push(Variable)
 		  do {
-		    if (context.distinctSubject === element) {
+		    if (this.distinctSubject === element) {
 		      distinctive = false
 		    }
 		    var subjectMap = element.constructor.ownedClasses
@@ -1224,7 +1218,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					var instanceMap = subjectMap.get(Variable)
 					if (instanceMap) {
 			      if (distinctive) {
-			        context.distinctSubject = element
+			        this.distinctSubject = element
 			      }
 						specifiedInstance = instanceMap.get(element)
 						if (!specifiedInstance) {
@@ -1235,14 +1229,58 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					}
 		    }
 		  } while ((element = element.parentNode || presumptiveParentMap.get(element)))
+			// else if no specific context is found, return default instance
+			return Variable.defaultInstance
 		},
-		merge: function(targetContext, childContext) {
-		  if (!targetContext.distinctSubject || targetContext.distinctSubject.contains(childContext.distinctSubject)) {
-		    targetContext.distinctSubject = childContext.distinctSubject
+
+		getContextualized: function(variable) {
+			// returns a variable that has already been contextualized
+			var element = this.subject
+			if (!element) {
+				// no element, just use the default variable
+				return variable
+			}
+			if (variable._contextMap) {
+				do {
+					var instance = variable._contextMap.get(element)
+					if (instance && instance.context.matches(element)) {
+						return instance
+					}
+				} while ((element = element.parentNode || presumptiveParentMap.get(element)))
+			}
+			if (variable.context && variable.context.matches(this.subject)) {
+				// check if the default variable is allowed
+				return variable
+			}
+		},
+
+		merge: function(childContext) {
+		  if (!this.distinctSubject || this.distinctSubject.contains(childContext.distinctSubject)) {
+		    this.distinctSubject = childContext.distinctSubject
 		  }
+		  [].push.apply(this.generics || (this.generics = []), childContext.generics)
 		},
-		matches: function(contextA, contextB) {
-			return contextA.subject === contextB.subject
+		getDistinctElement: function(Variable, element) {
+		  do {
+		    var subjectMap = element.constructor.ownedClasses
+		    if (subjectMap) {
+					var instanceMap = subjectMap.get(Variable)
+					if (instanceMap && instanceMap.has(element)) {
+						return element
+					}
+		    }
+		  } while ((element = element.parentNode || presumptiveParentMap.get(element)))
+		},
+		matches: function(element) {
+			var generics = this.generics
+			if (generics) {
+				for (var i = 0, l = generics.length; i < l; i++) {
+					if (this.getDistinctElement(generics[i], element) !== this.distinctSubject) {
+						return false
+					}
+				}
+			}
+			return true
 		}
 	})
 	
