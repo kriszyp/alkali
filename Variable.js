@@ -80,8 +80,8 @@ define(['./util/lang'], function (lang) {
 			var subjectMap = subject.constructor.ownedClasses
 			var specifiedInstance
 			if (subjectMap) {
-				if (!context.distinctSubject) {
-	        context.distinctSubject = subject
+				if (!this.distinctSubject) {
+	        this.distinctSubject = subject
 				}
 				var instanceMap = subjectMap.get(Variable)
 				if (instanceMap) {
