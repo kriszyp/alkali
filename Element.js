@@ -395,7 +395,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			// render as list
 			if (each.create) {
 				each.defineHasOwn = function () {
-					var ItemClass = content.getCollectionOf() || Item
+					var ItemClass = content.getCollectionOf && content.getCollectionOf() || Item
 					hasOwn(each, ItemClass, function (element) {
 						var itemVariable = ItemClass.from(element._item)
 						return itemVariable
@@ -410,6 +410,9 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				})
 			} else {
 				var fragment = doc.createDocumentFragment()
+				if (each.defineHasOwn) {
+					each.defineHasOwn()
+				}
 				content.forEach(function(item) {
 					if (each.create) {
 						childElement = each.create({parent: element, _item: item}) // TODO: make a faster object here potentially
