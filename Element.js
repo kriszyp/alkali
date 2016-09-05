@@ -394,12 +394,13 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		if (each && content) {
 			// render as list
 			if (each.create) {
-				var ItemClass = element.itemAs || Item
-				hasOwn(each, ItemClass, function (element) {
-					var itemVariable = ItemClass.from(element._item)
-					itemVariable.collection = content
-					return itemVariable
-				})
+				each.defineHasOwn = function () {
+					var ItemClass = content.getCollectionOf() || Item
+					hasOwn(each, ItemClass, function (element) {
+						var itemVariable = ItemClass.from(element._item)
+						return itemVariable
+					})
+				}
 			}
 			if (content.notifies) {
 				enterRenderer(ListRenderer, {

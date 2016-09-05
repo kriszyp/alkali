@@ -465,8 +465,8 @@ define(['./util/lang'], function (lang) {
 				if (this.returnedVariable && this.fixed) {
 					this.returnedVariable.updated(updateEvent, this, context)
 				}
-				if (this.collection) {
-					this.collection.updated(updateEvent, this, context)
+				if (this.constructor.collection) {
+					this.constructor.collection.updated(updateEvent, this, context)
 				}
 			}
 			return updateEvent
@@ -625,9 +625,8 @@ define(['./util/lang'], function (lang) {
 			// iterate through current value of variable
 			if (callbackOrItemClass.notifies) {
 				var collectionVariable = this
-				this.forEach(function(item) {
-					var itemVariable = callbackOrItemClass.for(item)
-					itemVariable.collection = collectionVariable
+				return this.forEach(function(item) {
+					var itemVariable = callbackOrItemClass.from(item)
 					callbackOrContext.call(this, itemVariable)
 				}, context)
 			}
@@ -739,6 +738,9 @@ define(['./util/lang'], function (lang) {
 					}
 				}
 			})
+		},
+		getCollectionOf: function() {
+			return this.constructor.collectionOf
 		},
 		_willModify: function(context) {
 			// an intent to modify, so we need to make sure we have our own copy
@@ -1263,6 +1265,9 @@ define(['./util/lang'], function (lang) {
 		setReverse: function(reverse) {
 			this.functionVariable.valueOf().reverse = reverse
 			return this
+		},
+		getCollectionOf: function() {
+			return this.returnedVariable && this.returnedVariable.getCollectionOf()
 		}
 	})
 	Variable.Call = Call
@@ -1430,7 +1435,10 @@ define(['./util/lang'], function (lang) {
 		},
 		getVersion: function(context) {
 			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getVersion(context))
-		}		
+		},
+		getCollectionOf: function(){
+			return this.source.getCollectionOf()
+		}
 	})
 
 
@@ -1642,7 +1650,7 @@ define(['./util/lang'], function (lang) {
 	}
 	function instanceForContext(Class, context) {
 		if (!context) {
-			throw new TypeError('Accessing a generalized class without context to resolve to an instance, call for(context) (where context is an element or related variable instance) on your variable first')
+			return Class.defaultInstance
 		}
 		return context.specify(Class)
 //		var instance = context.subject.constructor.getForClass && context.subject.constructor.getForClass(context.subject, Class) || Class.defaultInstance
@@ -1660,7 +1668,7 @@ define(['./util/lang'], function (lang) {
 	}
 	Variable.put = function(value, context) {
 		// contextualized setValue
-		return instanceForContext(this, context).put(value)
+		return instanceForContext(this, context).put(value, context)
 	}
 	Variable.for = function(subject) {
 		if (subject != null) {
@@ -1699,6 +1707,34 @@ define(['./util/lang'], function (lang) {
 	Variable.stopNotifies = function(target) {
 		this.defaultInstance.stopNotifies(target)
 	}
+	Variable.getCollectionOf = function () {
+		return this.collectionOf
+	}
+	Variable.updated = function(updateEvent, by, context) {
+		return instanceForContext(this, context).updated(updateEvent, by, context)
+	}
+	Object.defineProperty(Variable, 'collectionOf', {
+		get: function() {
+			return this._collectionOf
+		},
+		set: function(ItemClass) {
+			if (this._collectionOf != ItemClass) {
+				this._collectionOf = ItemClass
+				ItemClass.collection = this
+			}
+		}
+	})
+	Object.defineProperty(Variable, 'collection', {
+		get: function() {
+			return this._collection
+		},
+		set: function(Collection) {
+			if (this._collection != Collection) {
+				this._collection = Collection
+				Collection.collectionOf = this
+			}
+		}
+	})
 	Variable.Context = Context
 	Variable.NotifyingContext = NotifyingContext
 	Variable.generalize = generalizeClass

@@ -313,10 +313,22 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 	}
 	TextRenderer.prototype = Object.create(ElementRenderer.prototype)
 	TextRenderer.prototype.type = 'TextRenderer'
+	TextRenderer.prototype.updated = function (updateEvent, context) {
+		if (this.builtList) {
+			if (updateEvent.type === 'refresh') {
+				this.builtList = false
+				this.omitValueOf = false
+			} else {
+				(this.updates || (this.updates = [])).push(updateEvent)
+			}
+		}
+		ElementRenderer.prototype.updated.call(this, updateEvent, context)
+	}
 	TextRenderer.prototype.renderUpdate = function (newValue, element) {
 		if (newValue == null){
 			newValue = ''
-		} else if (newValue.nodeType) {
+		}
+		if (newValue.nodeType) {
 			if (this.textNode && this.textNode.parentNode == element) {
 				// text node is attached, we can replace it with the node
 				element.replaceChild(newValue, this.textNode)
@@ -324,9 +336,13 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 				element.appendChild(newValue)
 			}
 			this.textNode = newValue
-			return
+		} else if (newValue instanceof Array) {
+			this.renderUpdate = ListRenderer.prototype.renderUpdate
+			this.omitValueOf = true
+			this.renderUpdate(newValue, element)
+		} else {
+			(this.textNode || element.childNodes[this.position]).nodeValue = newValue
 		}
-		(this.textNode || element.childNodes[this.position]).nodeValue = newValue
 	}
 	Renderer.TextRenderer = TextRenderer
 
@@ -338,11 +354,17 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 	}
 	ListRenderer.prototype = Object.create(ElementRenderer.prototype)
 	ListRenderer.prototype.updated = function (updateEvent, context) {
-		(this.updates || (this.updates = [])).push(updateEvent)
+		if (this.builtList) {
+			if (updateEvent.type === 'refresh') {
+				this.builtList = false
+				this.omitValueOf = false
+			} else {
+				(this.updates || (this.updates = [])).push(updateEvent)
+			}
+		}
 		ElementRenderer.prototype.updated.call(this, updateEvent, context)
 	}
 	ListRenderer.prototype.type = 'ListRenderer'
-	ListRenderer.prototype.omitValueOf = true
 	ListRenderer.prototype.renderUpdate = function (newValue, element) {
 		var container
 		var each = this.each
@@ -350,9 +372,14 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		var renderer = this
 		if (!this.builtList) {
 			this.builtList = true
+			this.omitValueOf = true
+			element.innerHTML = ''
 			container = document.createDocumentFragment()
 			var childElements = this.childElements = []
-			this.variable.for(this).forEach(function(item) {
+			if (each.defineHasOwn) {
+				each.defineHasOwn()
+			}
+			newValue.forEach(function(item) {
 				eachItem(item)
 			})
 			var contextualized = this.contextualized || this.variable
