@@ -570,6 +570,20 @@ new Select({
 ```
 Again, we can also use a variable that contains an array as the content to drive the list. When using a variable, the child elements will reactively be added, removed, or updated as the variable is modified in the future. If we use the array methods on the variable, the updates will be progressive or iterative, and will not require rerendering the whole list.
 
+The generic `Item` class can be limiting in that it offers no connection back to a collection for updates. However, classes can extend a `VArray` and define a relationship with the class of the items within the array/collection. This can done setting a static `collection` property on the item class to reference the collection class. For example:
+```
+class Widgets extends VArray {...}
+class Widget extends Variable {...}
+Widget.collection = Widgets
+```
+One this has been the child class can be referenced in loops as well, and the changes can propagate to the collection:
+```
+new Div({
+	content: Widgets,
+	each: Input(Widget.property('selected'))
+});
+```
+
 ## Metadata and Validation
 
 Alkali provides metadata/schema information, as well as validation functionality that can be associated with variables and their properties and derived variables. This can further facilitate the encapsulation of a property, allowing you variable-aware UI controls to interact with a variable or property's future value changes, as well as metadata and validation that further defines the property.
