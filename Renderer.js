@@ -367,7 +367,9 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 	ListRenderer.prototype.type = 'ListRenderer'
 	ListRenderer.prototype.renderUpdate = function (newValue, element) {
 		var container
-		var each = this.each
+		var each = this.each || function(item) { // TODO: make a single identity function
+			return item
+		}
 		var thisElement = this.elements[0]
 		var renderer = this
 		if (!this.builtList) {
@@ -416,6 +418,9 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 				childElement = each.create({parent: thisElement, _item: item}) // TODO: make a faster object here potentially
 			} else {
 				childElement = each(item, thisElement)
+				if (childElement.create) {
+					childElement = childElement.create({parent: thisElement, _item: item})
+				}
 			}
 			if (nextChild) {
 				container.insertBefore(childElement, nextChild)
