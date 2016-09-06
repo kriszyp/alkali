@@ -544,8 +544,13 @@ define(['./util/lang'], function (lang) {
 			var variable = this
 			if (this.ownObject) {
 				this.ownObject = false
-			}			
+			}		
 			return when(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
+				if (variable._tracking) {
+					// tracking tracking is on
+					console.log('Variable changed from', oldValue, newValue, 'at')
+					console.log((new Error().stack || '').replace(/Error/, ''))
+				}
 				if (oldValue === value) {
 					return noChange
 				}
@@ -766,6 +771,15 @@ define(['./util/lang'], function (lang) {
 		_sN: function(name) {
 			// for compilers to set a name
 			this.name = name
+		},
+		get tracking() {
+			if (this._tracking === undefined) {
+				this._tracking = true
+			}
+			return this._tracking
+		},
+		set tracking(tracking) {
+			this._tracking = tracking
 		},
 		// TODO: Move these to VArray
 		splice: function(startingIndex, removalCount) {
@@ -1020,6 +1034,11 @@ define(['./util/lang'], function (lang) {
 				if (oldValue === newValue) {
 					// no actual change to make
 					return noChange
+				}
+				if (variable._tracking) {
+					// tracking tracking is on
+					console.log('Variable changed from', oldValue, newValue, 'at')
+					console.log((new Error().stack || '').replace(/Error/, ''))
 				}
 				if (typeof object.set === 'function') {
 					object.set(key, newValue)
