@@ -525,7 +525,7 @@ define(['./util/lang'], function (lang) {
 			this.notifies(updateReceiver)
 			return {
 				unsubscribe: function() {
-					this.stopNotifies(updateReceiver)
+					variable.stopNotifies(updateReceiver)
 				}
 			}
 		},
