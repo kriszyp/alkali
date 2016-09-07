@@ -1497,6 +1497,7 @@ define(['./util/lang'], function (lang) {
 					}
 					// subscribe if it is a variable
 					if (nextVariable && nextVariable.notifies) {
+						nextVariable.notifies(this)
 						this[argumentName] = nextVariable
 					} else {
 						this[argumentName] = null
