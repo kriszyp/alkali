@@ -255,10 +255,8 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 	InputPropertyRenderer.prototype = Object.create(PropertyRenderer.prototype)
 	InputPropertyRenderer.prototype.type = 'InputPropertyRenderer'
 	InputPropertyRenderer.prototype.renderUpdate = function(newValue, element) {
-		if (element.type === 'number') {
-			if (isNaN(newValue)) {
-				newValue = ''
-			}
+		if (newValue == null || (element.type === 'number' && isNaN(newValue))) {
+			newValue = ''
 		}
 		element[this.name] = newValue
 	}
