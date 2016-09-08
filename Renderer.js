@@ -11,22 +11,21 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		var variable = options.variable
 
 		this.variable = variable
-		this.elements = []
 		if (options.selector) {
 			this.selector = options.selector
 		}
 		if (options.elements) {
 			this.elements = options.elements
 			this.element = this.elements[0]
+			for(var i = 0, l = this.elements.length; i < l; i++) {
+				(this.elements[i].alkaliRenderers || (this.elements[i].alkaliRenderers = [])).push(this)
+			}
 		}
 		else if (options.element) {
-			this.element = options.element
-			this.elements.push(options.element)
+			var element = this.element = options.element;
+			(element.alkaliRenderers || (element.alkaliRenderers = [])).push(this)
 		} else {
 			throw new Error('No element provided to Renderer')
-		}
-		for(var i = 0, l = this.elements.length; i < l; i++) {
-			(this.elements[i].alkaliRenderers || (this.elements[i].alkaliRenderers = [])).push(this)
 		}
 		if (options.update) {
 			this.updateRendering = options.update
@@ -99,22 +98,10 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		},
 		contextMatches: function(context) {
 			return true
-			return context == this.elements ||
-				// if context is any element in this.elements - perhaps return only the specific matching elements?
-				(this.elements.indexOf(context) != -1) ||
-			  // (context is an array and any/all elements are contained in this.elements) ||
-				// context contains() any of this.elements
-				(function(elements) {
-					for(var i = 0, l = elements.length; i < l; i++) {
-						if (context.contains(elements[i])) return true
-					}
-					return false
-				})(this.elements)
 		},
 		invalidateElement: function(element) {
 			if(!invalidatedElements){
 				invalidatedElements = new WeakMap(null, 'invalidated')
-				// TODO: if this is not a real weak map, we don't want to GC it, or it will leak
 			}
 			var invalidatedParts = invalidatedElements.get(element)
 			invalidatedElements.set(element, invalidatedParts = {})
@@ -135,9 +122,9 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 			return this.id || (this.id = nextId++)
 		},
 		stop: function() {
-			this.variable.stopNotifies(this)
+			var contextualized = this.contextualized || this.variable
+			contextualized.stopNotifies(this)
 		}
-
 	}
 
 	function ElementRenderer(options) {
@@ -148,28 +135,34 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		return document.body.contains(element)
 	}
 	ElementRenderer.prototype.getSubject = function () {
-		return this.element || this.elements[0]
+		return this.element
 	}
 	ElementRenderer.prototype.updateRendering = function (always, element) {
-		var elements = this.elements || (element && [element]) || []
-		if(!elements.length){
-			if(this.selector){
-				elements = document.querySelectorAll(this.selector)
-			}else{
-				throw new Error('No element or selector was provided to the Renderer')
+		if (!element && this.elements) {
+			var elements = this.elements
+			if(!elements.length){
+				if(this.selector){
+					elements = document.querySelectorAll(this.selector)
+				}else{
+					throw new Error('No element or selector was provided to the Renderer')
+				}
+				return
 			}
-			return
-		}
-		for(var i = 0, l = elements.length; i < l; i++){
-			if(always || this.shouldRender(elements[i])){
+			for(var i = 0, l = elements.length; i < l; i++){
+				this.updateRendering(always, elements[i])
+			}
+		} else {
+			var thisElement = element || this.element
+
+			if(always || this.shouldRender(thisElement)){
 				// it is connected
-				this.updateElement(elements[i])
-			}else{
+				this.updateElement(thisElement)
+			} else {
 				var id = this.getId()
-				var renderers = elements[i].renderersOnShow
+				var renderers = thisElement.renderersOnShow
 				if(!renderers){
-					renderers = elements[i].renderersOnShow = []
-					elements[i].className += ' needs-rerendering'
+					renderers = thisElement.renderersOnShow = []
+					thisElement.className += ' needs-rerendering'
 				}
 				if (!renderers[id]) {
 					renderers[id] = this
@@ -368,7 +361,7 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		var each = this.each || function(item) { // TODO: make a single identity function
 			return item
 		}
-		var thisElement = this.elements[0]
+		var thisElement = this.element
 		var renderer = this
 		if (!this.builtList) {
 			this.builtList = true
@@ -385,11 +378,11 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 			var contextualized = this.contextualized || this.variable
 			contextualized.notifies(this)
 
-			this.element.appendChild(container)
+			thisElement.appendChild(container)
 		} else {
 			var childElements = this.childElements
 			var updates = this.updates
-			container = this.element
+			container = thisElement
 			updates.forEach(function(update) {
 				if (update.type === 'refresh') {
 					renderer.builtList = false
