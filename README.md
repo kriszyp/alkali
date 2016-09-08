@@ -26,13 +26,13 @@ Alkali uses UMD format, so it can be consumed by CommonJS or AMD module systems 
 
 ## Debugging/Interaction
 
-[Litmus](https://github.com/kriszyp/litmus) is a project that provides a visual explorer/graph of alkali variables and data flow, that can assist with debugging and interaction with alkali data.
+See the [Debugging](#debugging) section below for information on debugging tips with standard developer tools. Also [Litmus](https://github.com/kriszyp/litmus) is a project that aims to provide a visual explorer/graph of alkali variables and data flow.
 
 ## Todo Example
 [Alkali-Todo](https://github.com/kriszyp/alkali-todo) is a the TodoMVC application written with Alkali. This repository includes a walk-through for a good example-based approach to learning to use Alkali.
 
 ## Typings
-Alkali includes an index.d.ts file to provide a TypeScript type interface.
+Alkali includes an `index.d.ts` file to provide a TypeScript type interface.
 
 ## Babel Plugin for Reactive Expressions
 The [babel-plugin-transform-alkali](https://github.com/kriszyp/babel-plugin-transform-alkali) can optionally be used to write and transform reactive expressions that create alkali variables from expressions.
@@ -850,9 +850,21 @@ There are several ways to listen for variable updates with Alkali, and which are
 
 One other difference is that if a variable is given a value that is a promise, both `to` and `Renderer` will resolve any promise first, and then call the callback functions with the resolved value. `subscribe`, on the otherhand, calls the listener immediately in response to update events, so the value returned from `event.value()` may be a yet-to-be-resolved promise.
 
+# Debugging
+
+Debugging reactive code may seem unfamilar at first, but there are actually substantial benefits, since data flows can be visually inspected rather than requiring the complex reasoning involved in stepping through imperative state changes. Alkali element constructors and variables are designed to easily be traced with standard web development tools. If you are using Alkali element constructors, the easiest way to start inspecting code flow is by select an element that was constructed with variables. With Chrome's developer tools, we select an element (which can be done by right clicking on the page and choosing "inspect"), and then choose the "Properties" tab on the element information pane. Then expand the first item in the list. If the element is driven by variables, you should now see an `alkaliRenderers` property, that you can expand. This will show you a renderer for each variable that controls the element (different renderers are used for text, properties, styles, etc.). Each renderer has a `variable` property that can be expanded to show you the variable itself. This represents the bottom of the dependency chain, and we can continue to walk up the chain to see how the data is derived.
+
+You can check the current value of variable by clicking on the `currentValue` getter (it will show `(...)` until you click on it, at which point it will be evaluated). You can also reassign this value, and elements should reactively respond. This can be a great way to test if elements are responding to different variable values as expected. If the variable is a transform, we can then expand the input arguments in the `argument0`, `argument1` properties, for inspection into the input variables. We can also inspect the `functionVariable` to see what function is handling transforms (and you can right click on the function, and choose "Show function definition" to go to your source code, and potentially set breakpoints in the transform function). If a transform returns another variable (or a variable contains another variable), this will be available in the `returnedVariable` property.
+
+You can also walk back down the dependency chain to see what other renderers or variables may be driven by this variable by expanding the `listeners` property.
+
+There can be situations where you may wish to understand what is causing variables to change their state. Often there may be some code that is reassigning variable values, and determine what caused the change can be helpful. Alkali provides a `_debug` getter to easily turn on debugging of a variable. Clicking on the getter will turn on the debugging. At this point, any changes to the variable will be logged to console, along with a stack trace of the call that triggered the variable change, so you can actually see exactly what code made variable changes.
+
+Using the babel-plugin-transform-alkali can also provide additional information in the form of a `name` property on variables, based on the code context.
+
 # Design Philosophy
 
- This has several key architectural advantages:
+Alkali has several key architectural advantages:
 * Getting values from a variable always (new or original) always goes through the same code path.
 * Caching avoids unnecessary computations
 * Getting values and performing computations based on changes is not performed until needed (lazy, on-demand).
