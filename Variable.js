@@ -219,10 +219,10 @@ define(['./util/lang'], function (lang) {
 	}
 	var VariablePrototype = Variable.prototype = {
 		// for debugging use
-		get currentValue() {
+		get _currentValue() {
 			return this.valueOf()
 		},
-		set currentValue(value) {
+		set _currentValue(value) {
 			this.put(value)
 		},
 		constructor: Variable,
@@ -434,6 +434,9 @@ define(['./util/lang'], function (lang) {
 			if (contextualInstance) {
 				contextualInstance.updated(updateEvent, this, context)
 			}
+			/*
+			// at some point we could do an update list so that we could incrementally update
+			// lists in non-live situations
 			if (this.lastUpdate) {
 				var nextUpdateMap = this.nextUpdateMap
 				if (!nextUpdateMap) {
@@ -442,7 +445,7 @@ define(['./util/lang'], function (lang) {
 				nextUpdateMap.set(this.lastUpdate, updateEvent)
 			}
 
-			this.lastUpdate = updateEvent
+			this.lastUpdate = updateEvent */
 			this.updateVersion()
 			var value = this.value
 
@@ -546,8 +549,8 @@ define(['./util/lang'], function (lang) {
 				this.ownObject = false
 			}		
 			return when(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
-				if (variable._tracking) {
-					// tracking tracking is on
+				if (variable.__debug) {
+					// _debug _debug is on
 					console.log('Variable changed from', oldValue, newValue, 'at')
 					console.log((new Error().stack || '').replace(/Error/, ''))
 				}
@@ -772,14 +775,14 @@ define(['./util/lang'], function (lang) {
 			// for compilers to set a name
 			this.name = name
 		},
-		get tracking() {
-			if (this._tracking === undefined) {
-				this._tracking = true
+		get _debug() {
+			if (this.__debug === undefined) {
+				this.__debug = true
 			}
-			return this._tracking
+			return this.__debug
 		},
-		set tracking(tracking) {
-			this._tracking = tracking
+		set _debug(_debug) {
+			this.__debug = _debug
 		},
 		// TODO: Move these to VArray
 		splice: function(startingIndex, removalCount) {
@@ -1035,8 +1038,8 @@ define(['./util/lang'], function (lang) {
 					// no actual change to make
 					return noChange
 				}
-				if (variable._tracking) {
-					// tracking tracking is on
+				if (variable.__debug) {
+					// debug is on
 					console.log('Variable changed from', oldValue, newValue, 'at')
 					console.log((new Error().stack || '').replace(/Error/, ''))
 				}
@@ -1497,7 +1500,9 @@ define(['./util/lang'], function (lang) {
 					}
 					// subscribe if it is a variable
 					if (nextVariable && nextVariable.notifies) {
-						nextVariable.notifies(this)
+						if (this.listeners) {
+							nextVariable.notifies(this)
+						}
 						this[argumentName] = nextVariable
 					} else {
 						this[argumentName] = null
