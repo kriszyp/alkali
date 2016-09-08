@@ -774,6 +774,7 @@ define(['./util/lang'], function (lang) {
 		_sN: function(name) {
 			// for compilers to set a name
 			this.name = name
+			return this
 		},
 		get _debug() {
 			if (this.__debug === undefined) {
