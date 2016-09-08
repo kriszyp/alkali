@@ -201,7 +201,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		var textNode
 		if (content.notifies) {
 			textNode = doc.createTextNode('')
-			enterRenderer(TextRenderer, {
+			new TextRenderer({
 				element: parent,
 				textNode: textNode,
 				variable: content
@@ -214,7 +214,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 	function bidirectionalHandler(element, value, key) {
 		if (value && value.notifies) {
-			enterRenderer(InputPropertyRenderer, {
+			new InputPropertyRenderer({
 				name: key,
 				variable: value,
 				element: element
@@ -261,7 +261,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				var flag = classes[className]
 				if (flag && flag.notifies) {
 					// if it is a variable, we react to it
-					enterRenderer(ClassNameRenderer, {
+					new ClassNameRenderer({
 						element: element,
 						className: className,
 						variable: flag
@@ -278,7 +278,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			// TODO: This doesn't need to be a property updater
 			// we should also verify it is a generator
 			// and maybe, at some point, find an optimization to eliminate the bind()
-			enterRenderer(PropertyRenderer, {
+			new PropertyRenderer({
 				name: key,
 				variable: new Variable.GeneratorVariable(value.bind(element, properties)),
 				element: element
@@ -298,7 +298,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			if (typeof value === 'string') {
 				element.setAttribute('style', value)
 			} else if (value && value.notifies) {
-				enterRenderer(AttributeRenderer, {
+				new AttributeRenderer({
 					name: 'style',
 					variable: value,
 					elment: element
@@ -310,7 +310,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	}
 	function applyAttribute(element, value, key) {
 		if (value && value.notifies) {
-			enterRenderer(AttributeRenderer, {
+			new AttributeRenderer({
 				name: key,
 				variable: value,
 				element: element
@@ -335,7 +335,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			for (var subKey in value) {
 				var subValue = value[subKey]
 				if (subValue && subValue.notifies) {
-					enterRenderer(SubPropertyRenderer, {
+					new SubPropertyRenderer({
 						name: subKey,
 						variable: subValue,
 						element: element
@@ -355,7 +355,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				propertyHandlers[key](element, value, key, properties)
 			} else if ((styleDefinition = styleDefinitions[key]) && element[key] === undefined) {
 				if (value && value.notifies) {
-					enterRenderer(StyleRenderer, {
+					new StyleRenderer({
 						name: key,
 						variable: value,
 						element: element
@@ -364,7 +364,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					styleDefinition(element, value, key)
 				}
 			} else if (value && value.notifies) {
-				enterRenderer(PropertyRenderer, {
+				new PropertyRenderer({
 					name: key,
 					variable: value,
 					element: element
@@ -403,7 +403,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				}
 			}
 			if (content.notifies) {
-				enterRenderer(ListRenderer, {
+				new ListRenderer({
 					each: each,
 					variable: content,
 					element: element
@@ -479,7 +479,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 		if (content && content.notifies) {
 			// a variable, respond to changes
-			enterRenderer(InputPropertyRenderer, {
+			new InputPropertyRenderer({
 				variable: content,
 				name: inputProperty,
 				element: element
@@ -1039,10 +1039,10 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			hasOwn(this, ThisElementVariable, function(element) {
 				// TODO: we might want to do this in init instead
 				var variableProperties = {}
-				for (var i = 0; i < element.updaters.length; i++){
-					var updater = element.updaters[i]
-					if (updater.name) {
-						variableProperties[updater.name] = {value: updater.variable}
+				for (var i = 0; i < element.alkaliRenderers.length; i++){
+					var renderer = element.alkaliRenderers[i]
+					if (renderer.name) {
+						variableProperties[renderer.name] = {value: renderer.variable}
 					}
 				}
 
@@ -1062,28 +1062,26 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	function enterRenderer(Renderer, options/*, target*/) {
 		// this will be used for optimized class-level variables
 		/*if (target.started) { // TODO: Might want to pass in started as a parameter
-			// this means that the updater has already been created, so we just need to add this instance
+			// this means that the renderer has already been created, so we just need to add this instance
 			Renderer.prototype.renderUpdate.call(options, element)
 		} else {*/
-		var target = options.element
-		var updaters = target.updaters || (target.updaters = [])
-		updaters.push(new Renderer(options))
+		new Renderer(options)
 		//}
 	}
 
 	function cleanup(target) {
-		var updaters = target.updaters
-		if (updaters) {
-			for (var i = 0, l = updaters.length; i < l; i++) {
-				updaters[i].stop()
+		var renderers = target.alkaliRenderers
+		if (renderers) {
+			for (var i = 0, l = renderers.length; i < l; i++) {
+				renderers[i].stop()
 			}
 			target.needsRestart = true
 		}
 	}
 	function restart(target) {
-		var updaters = target.updaters
-		if (updaters) {
-			for (var i = 0, l = updaters.length; i < l; i++) {
+		var renderers = target.alkaliRenderers
+		if (renderers) {
+			for (var i = 0, l = renderers.length; i < l; i++) {
 //				updaters[i].start()
 			}
 		}
