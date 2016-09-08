@@ -11,10 +11,10 @@ define(['./util/lang', './Variable', './operators'], function (lang, Variable, o
 	}
   Object.assign(react, operators)
   react.from = function(value) {
-    if (value && value.notifies) {
+    if (value && value.property) {
       return value
     }
-    return Variable.for(value)
+    return Variable.from(value)
   }
   react.prop = function(object, property) {
     if (object) {
@@ -32,10 +32,26 @@ define(['./util/lang', './Variable', './operators'], function (lang, Variable, o
     return operators.if(test, operators.choose(consequent, alternate))
   }
   react.fcall = function(target, args) {
+    if (target.property && typeof target === 'function') {
+      return target.apply(null, args)
+    }
     return new Variable.Call(target, args)
   }
   react.mcall = function(target, key, args) {
+    var method = target[key]
+    if (method.property && typeof method === 'function') {
+      return method.apply(target, args)
+    }
     return new Variable.Call(target[key].bind(target), args)
   }
+  react.ncall = function(target, args) {
+    if (target.property && typeof target === 'function') {
+      return new (target.bind.apply(target, [null].concat(args)))()
+    }
+    return new Variable.Call(function() {
+      return new (target.bind.apply(target, [null].concat(arguments)))()
+    }, args)
+  }
+
 	return react
 })
