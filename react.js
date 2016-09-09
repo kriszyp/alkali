@@ -1,5 +1,22 @@
 define(['./util/lang', './Variable', './operators'], function (lang, Variable, operators) {
 
+  var ObjectTransform = lang.compose(Variable.Call, function ObjectTransform(transform, inputs) {
+    this.inputs = inputs
+    Variable.Call.apply(this, arguments)
+  }, {
+    _getAsObject: function() {
+      return this.transform.apply(this, preserveObjects(this.inputs))
+    }
+  })
+  function preserveObjects(inputs) {
+    for (var i = 0, l = inputs.length; i < l; i++) {
+      var input = inputs[i]
+      if (input && input._getAsObject) {
+        inputs[i] = input._getAsObject()
+      }
+    }
+    return inputs
+  }
 	function react(generator, options) {
     if (typeof generator !== 'function') {
       throw new Error('react() must be called with a generator. You need to use the babel-plugin-transform-alkali plugin if you want to use reactive expressions')
@@ -33,24 +50,28 @@ define(['./util/lang', './Variable', './operators'], function (lang, Variable, o
   }
   react.fcall = function(target, args) {
     if (target.property && typeof target === 'function') {
-      return target.apply(null, args)
+      return target.apply(null, preserveObjects(args))
     }
     return new Variable.Call(target, args)
   }
   react.mcall = function(target, key, args) {
     var method = target[key]
     if (method.property && typeof method === 'function') {
-      return method.apply(target, args)
+      return method.apply(target, preserveObjects(args))
     }
     return new Variable.Call(target[key].bind(target), args)
   }
   react.ncall = function(target, args) {
     if (target.property && typeof target === 'function') {
-      return new (target.bind.apply(target, [null].concat(args)))()
+      return new (target.bind.apply(target, [null].concat(preserveObjects(args))))()
     }
     return new Variable.Call(function() {
       return new (target.bind.apply(target, [null].concat(arguments)))()
     }, args)
+  }
+
+  react.obj = function(transform, inputs) {
+    return new ObjectTransform(transform, inputs)
   }
 
 	return react
