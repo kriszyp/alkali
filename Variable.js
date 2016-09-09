@@ -1173,8 +1173,8 @@ define(['./util/lang'], function (lang) {
 	})
 
 	// a call variable is the result of a call
-	var Call = lang.compose(Composite, function Transform(functionVariable, args) {
-		this.functionVariable = functionVariable
+	var Call = lang.compose(Composite, function Transform(transform, args) {
+		this.transform = transform
 		for (var i = 0, l = args.length; i < l; i++) {
 			this['argument' + i] = args[i]
 		}
@@ -1183,16 +1183,16 @@ define(['./util/lang'], function (lang) {
 		forDependencies: function(callback) {
 			// depend on the args
 			Composite.prototype.forDependencies.call(this, callback)
-			if (this.functionVariable.notifies) {
-				callback(this.functionVariable)
+			if (this.transform.notifies) {
+				callback(this.transform)
 			}
 		},
 
 		getValue: function(context) {
 			if (context) {
-				context.nextProperty = 'functionVariable'
+				context.nextProperty = 'transform'
 			}
-			var functionValue = this.functionVariable.valueOf(context)
+			var functionValue = this.transform.valueOf(context)
 			if (functionValue.then) {
 				var call = this
 				return functionValue.then(function(functionValue) {
@@ -1205,15 +1205,15 @@ define(['./util/lang'], function (lang) {
 		getVersion: function(context) {
 			// TODO: shortcut if we are live and since equals this.lastUpdate
 			var argsVersion = Composite.prototype.getVersion.call(this, context)
-			if (this.functionVariable.getVersion) {
-				return Math.max(argsVersion, this.functionVariable.getVersion(context))
+			if (this.transform.getVersion) {
+				return Math.max(argsVersion, this.transform.getVersion(context))
 			}
 			return argsVersion
 		},
 
 		execute: function(context) {
 			var call = this
-			return when(this.functionVariable.valueOf(context), function(functionValue) {
+			return when(this.transform.valueOf(context), function(functionValue) {
 				return call.invoke(functionValue, context, true)
 			})
 		},
@@ -1224,7 +1224,7 @@ define(['./util/lang'], function (lang) {
 				if (originalValue === value) {
 					return noChange
 				}
-				return when(call.functionVariable.valueOf(context), function(functionValue) {
+				return when(call.transform.valueOf(context), function(functionValue) {
 					return call.invoke(function() {
 						if (functionValue.reverse) {
 							functionValue.reverse.call(call, value, call.getArguments(), context)
@@ -1239,7 +1239,7 @@ define(['./util/lang'], function (lang) {
 			})
 		},
 		invoke: function(functionValue, context, observeArguments) {
-			var instance = this.functionVariable.parent
+			var instance = this.transform.parent
 			if (functionValue.handlesVariables || functionValue.property) {
 				return functionValue.apply(instance, this.getArguments(), context)
 			}else{
@@ -1286,7 +1286,7 @@ define(['./util/lang'], function (lang) {
 			}
 		},
 		setReverse: function(reverse) {
-			this.functionVariable.valueOf().reverse = reverse
+			this.transform.valueOf().reverse = reverse
 			return this
 		},
 		getCollectionOf: function() {
