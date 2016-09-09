@@ -1,4 +1,5 @@
-/// <reference path="./typing.d.ts" />
+/// <reference path="./index.d.ts" />
+if (typeof define === 'function' && define.amd) {
 define(['./Element', './Variable', './react', './Renderer', './operators', './Copy'], function(Element, Variable, react, Renderer, operators, Copy) {
 	var main = Object.create(Element)
 	main.Copy = Copy
@@ -17,3 +18,7 @@ define(['./Element', './Variable', './react', './Renderer', './operators', './Co
 	Object.assign(main, operators)
 	return main
 })
+} else if (typeof module === 'object' && module.exports) {
+	// delegate to the built UMD file, if loaded in node
+	module.exports = (require)('./dist/index')
+}
