@@ -5,13 +5,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	})
 
 	var SELECTOR_REGEX = /(\.|#)([-\w]+)(.+)?/
-	function isGenerator(func) {
-		if (typeof func === 'function') {
-			var constructor = func.constructor
-			return (constructor.displayName || constructor.name) === 'GeneratorFunction'
-		}
-	}
-
+	var isGenerator = lang.isGenerator
 	var Context = Variable.Context
 	var PropertyRenderer = Renderer.PropertyRenderer
 	var InputPropertyRenderer = Renderer.InputPropertyRenderer

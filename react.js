@@ -1,5 +1,6 @@
 define(['./util/lang', './Variable', './operators'], function (lang, Variable, operators) {
 
+  var isGenerator = lang.isGenerator
   var ObjectTransform = lang.compose(Variable.Call, function ObjectTransform(transform, inputs) {
     this.inputs = inputs
     Variable.Call.apply(this, arguments)
@@ -27,9 +28,12 @@ define(['./util/lang', './Variable', './operators'], function (lang, Variable, o
 		return new Variable.GeneratorVariable(generator)
 	}
   Object.assign(react, operators)
-  react.from = function(value) {
+  react.from = function(value, options) {
     if (value && value.property) {
       return value
+    }
+    if (typeof value === 'function' && isGenerator(value)) {
+      return react(value, options)
     }
     return Variable.from(value)
   }
@@ -56,7 +60,8 @@ define(['./util/lang', './Variable', './operators'], function (lang, Variable, o
   }
   react.mcall = function(target, key, args) {
     var method = target[key]
-    if (method.property && typeof method === 'function') {
+    if (typeof method === 'function' && method.property || key === 'bind') {
+      // for now we check to see if looks like it could handle a variable, or is a bind call
       return method.apply(target, preserveObjects(args))
     }
     return new Variable.Call(target[key].bind(target), args)

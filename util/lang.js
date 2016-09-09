@@ -379,5 +379,12 @@ define([], function () {
 			return target
 		}
 	}
+	function isGenerator(func) {
+		if (typeof func === 'function') {
+			var constructor = func.constructor
+			return (constructor.displayName || constructor.name) === 'GeneratorFunction'
+		}
+	}
+	lang.isGenerator = isGenerator
 	return lang
 })
