@@ -1549,6 +1549,9 @@ define(['./util/lang'], function (lang) {
 		},
 		getValue: function(context) {
 			var target = this.target
+			// need to actually access the target value, so it can be evaluated in case it
+			// there is a returned variable that we should delegate to.
+			target.valueOf(context)
 			return target.validate(target, target.schema)
 		}
 	})

@@ -519,14 +519,18 @@ define([
 				}
 			})
 			var variable = new TypedVariable(object)
+			var derived = new Variable()
+			derived.put(variable)
 			var propertyA = variable.property('a')
 			assert.equal(propertyA.schema.type, 'number')
 			assert.deepEqual(propertyA.validation.valueOf().isValid, true)
 			propertyA.put('not a number')
+			assert.deepEqual(derived.property('a').validation.valueOf().length, 1)
 			assert.deepEqual(propertyA.validation.valueOf().length, 1)
 			variable.set('a', 8)
 			assert.deepEqual(propertyA.validation.valueOf().length, 0)
 		},
+
 		schemaCustomValidate: function() {
 		},
 
