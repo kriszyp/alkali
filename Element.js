@@ -738,6 +738,8 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		}
 		if (element.created) {
 			applyOnCreate = element.created(applyOnCreate) || applyOnCreate
+		} else if (applyOnCreate.created) {
+			applyOnCreate = applyOnCreate.created.call(element, applyOnCreate) || applyOnCreate
 		}
 		// TODO: inline this for better performance, possibly
 		assignProperties(element, applyOnCreate)
