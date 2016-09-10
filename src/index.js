@@ -7,16 +7,18 @@ function makeExample(code) {
 			H3('.demo-header', ['EXAMPLE']),
 			Textarea(content, {spellcheck: false}),
 			Div('.output', {
-				renderCode(newCode) {
-					var container = this
-					container.innerHTML = ''
-					try {
-						container.appendChild(evalWith(newCode, alkali, container))
-					} catch (e) {
-						container.textContent = e.message
-					}
-				},
-				code: content
+				created(properties) {
+					properties.code = content.to(newCode => {
+						var container = this
+						container.innerHTML = ''
+						try {
+							container.appendChild(evalWith(newCode, alkali, container))
+						} catch (e) {
+							container.textContent = e.message
+						}
+
+					})
+				}
 			})
 		]),
 		Div('.fade')

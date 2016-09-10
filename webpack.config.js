@@ -1,3 +1,4 @@
+var path = require('path')
 module.exports = {
     entry:  './src',
     output: {
@@ -12,5 +13,11 @@ module.exports = {
                 loader: 'babel-loader'
             }
         ]
-    }
+    },
+    resolve: {
+        alias: {
+            alkali: path.resolve(__dirname, 'bower_components/alkali')
+        }
+    },
+    devtool: 'cheap-source-map'
 };
