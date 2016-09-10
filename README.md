@@ -6,21 +6,22 @@
 
 # Alkali Basics
 
-The basic approach of using Alkali within your application, is first, creating a "Variables" that holds your source data. A variable is the central entity in Alkali and represents a value that may change and can be reacted to. Next, we can traverse or transform variables into other derived variables. Next we can use these transformations, or the orginal variables directly, in element constructors to create bindings to DOM elements. A simple example would look like:
+The basic approach of using Alkali within your application, is to first, create "Variables" that holds your source data. A variable is the central entity in Alkali and represents a value that may change and can be reacted to. Next, we can traverse or transform variables into other derived variables. Finally, we can use these transformations, or the orginal variables directly, in element constructors to create bindings to DOM elements. A simple example would look like:
 ```
 import { Variable, Div, Span } from 'alkali'
 
 // construct a variable
-let greeting = new Variable('Hello')
+let greeting = new Variable('Hi')
 // create a new variable based on the first
 let fullGreeting = greeting.to(greeting => greeting + ', World')
+// construct a div, with the fullGreeting variable bound as the content
 body.appendChild(new Div(fullGreeting))
 ```
 This would create a new `<div>` bound to our `greeting` variable with an initial value of `"Hello"`. From here we can make changes to variables, and changes will flow through:
 ```
-greeting.put(fullGreeting)
+greeting.put('Hello')
 ```
-This will notify derived variables and bound elements. This will result in the element binding queuing up a rendering, which will later execute and execute any necessary transforms.
+This will notify derived variables and bound elements. This will result in the element binding queuing up a rendering, which will later execute and execute any necessary transforms, showing "Hello, World" in our `<div>`.
 
 # Variables
 
@@ -59,7 +60,7 @@ The Variable is main API for creating variables and their derivative.
 
 ### Variable(initialValue)
 
-This is the constructor for a variable. You may create a variable with an initial value, provided as the argument.
+This is the constructor for a variable. You may create a variable with an initial value, provided as the optional argument.
 
 ### `valueOf()`
 
@@ -195,10 +196,6 @@ let sumOfAAndB = react(function*(){
 The resulting variable will reactively update in response to changes in the variable `a` or `b`.
 
 This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
-
-### `spawn()`
-
-Alkali also exports a `spawn` function, which waits for promises like `react`, but rather than returning a variable that will execute the provided transform generator/function on-demand, will immediately execute the generator, returning a promise (if there are promises yielded in the generator). This is effectively the same as task.js's `spawn` function.
 
 # Element Construction
 
@@ -600,6 +597,18 @@ new Div({
 });
 ```
 
+Another means of generating elements from list or array data is to use a `map` method:
+```
+new Select({
+	content: options.map(item =>
+		Option({
+			value: item.id,
+			content: item.name
+		}))
+})
+```
+This will also respond to changes (additions, removals) in the source array, if it is a variable.
+
 ## Metadata and Validation
 
 Alkali provides metadata/schema information, as well as validation functionality that can be associated with variables and their properties and derived variables. This can further facilitate the encapsulation of a property, allowing you variable-aware UI controls to interact with a variable or property's future value changes, as well as metadata and validation that further defines the property.
@@ -856,6 +865,10 @@ JavaScript `Map` objects can be used as the value for a variable, with the `Map`
 ```
 new VMap(new Map())
 ```
+
+### `spawn()`
+
+Alkali also exports a `spawn` function, which waits for promises like `react`, but rather than returning a variable that will execute the provided transform generator/function on-demand, will immediately execute the generator, returning a promise (if there are promises yielded in the generator). This is effectively the same as task.js's `spawn` function.
 
 ## Which Listener To Use?
 
