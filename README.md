@@ -427,7 +427,7 @@ Which would create a structure like:
 
 ### Render Methods
 
-With alkali, you can define custom rendering of properties on elements, providing similar functionality to native element properties. The easiest way to do this is with `render` methods, which will respond to property values and changes. To define a `render` method, simply define a method that begins with `render` suffixed with the property name capitalized. For example, we could define a `renderTitle` method, and any time we set the `title` property or provide a variable as the `title` and it is updated, the `renderTitle` method will be called.
+With alkali, you can define custom rendering of properties on elements, providing similar functionality to native element properties when defining new classes. The easiest way to do this is with `render` methods, which will respond to property values and changes. To define a `render` method, simply define a method that begins with `render` suffixed with the property name capitalized. For example, we could define a `renderTitle` method, and any time we set the `title` property or provide a variable as the `title` and it is updated, the `renderTitle` method will be called.
 
 The `render` methods are called with the new value as the first argument (and a boolean indicating if this update, as opposed to the first rendering) For example:
 
@@ -444,6 +444,7 @@ let myDiv = new MyDiv({name: nameVariable}) // renderName called with original v
 nameVariable.put('New name') // will trigger another renderName call
 myDiv.name = 'Another name' // will also trigger the renderName call
 ```
+Note that render methods can only be used as methods in classes, not in constructor arguments.
 
 #### Getters and Setters
 The render methods provide custom handling of a property, and will override any existing functionality for a given property. This basically provides it very simple way to define a getter/setter for a property. But, if you would like to define property handling that delegates to existing property handling, it is recommended that you define your own getters and setters with super calls to the native setters and getters:
