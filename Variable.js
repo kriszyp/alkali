@@ -678,7 +678,7 @@ define(['./util/lang'], function (lang) {
 			if (this.returnedVariable) {
 				return this.returnedVariable.validate(target, schema)
 			}
-			if (schema.type && (schema.type !== typeof target)) {
+			if (schema && schema.type && (schema.type !== typeof target)) {
 				return ['Target type of ' + typeof target + ' does not match schema type of ' + schema.type]
 			}
 			var valid = []
