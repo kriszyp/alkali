@@ -7,7 +7,7 @@
 # Alkali Basics
 
 The basic approach of using Alkali within your application, is to first, create "Variables" that holds your source data. A variable is the central entity in Alkali and represents a value that may change and can be reacted to. Next, we can traverse or transform variables into other derived variables. Finally, we can use these transformations, or the orginal variables directly, in element constructors to create bindings to DOM elements. A simple example would look like:
-```
+```javascript
 import { Variable, Div, Span } from 'alkali'
 
 // construct a variable
@@ -18,7 +18,7 @@ let fullGreeting = greeting.to(greeting => greeting + ', World')
 body.appendChild(new Div(fullGreeting))
 ```
 This would create a new `<div>` bound to our `greeting` variable with an initial value of `"Hello"`. From here we can make changes to variables, and changes will flow through:
-```
+```javascript
 greeting.put('Hello')
 ```
 This will notify derived variables and bound elements. This will result in the element binding queuing up a rendering, which will later execute and execute any necessary transforms, showing "Hello, World" in our `<div>`.
@@ -36,7 +36,7 @@ Alkali uses extendable element constructors and updaters that are designed to co
 The Variable class can be extended and variable classes can be used like variables, where the instance to be acted on, can be resolved as needed. This allows for categorical relationships between variable and element classes to be defined, and resolved based on context.
 
 The main/index module in alkali exports all of functionality in alkali. If you are using ES6 module format, you can import different constructors and utilities like:
-```
+```javascript
 import { Variable, Div } from 'alkali'
 ```
 Alkali uses UMD format, so it can be consumed by CommonJS or AMD module systems as well.
@@ -65,7 +65,7 @@ This is the constructor for a variable. You may create a variable with an initia
 ### `valueOf()`
 
 This returns the current value of the variable. This method also allows variables to be used directly in expressions in place of primitive values, where JavaScript coercion will automatically convert a value. For example a variable with the number 4 can be used:
-```
+```javascript
 import { Variable } from 'alkali' // assuming ES6 module transpilation
 let four = new Variable(4)
 four * four -> 16
@@ -83,7 +83,7 @@ If the `value` passed in is not different than the current value, no changes wil
 ### `property(propertyName)`
 
 This returns a variable representing the value of the property of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in a property variable will update the corresponding property on the parent object. For example:
-```
+```javascript
 let object = {foo: 1};
 let objectVar = new Variable(object);
 let foo = objectVar.property('foo');
@@ -95,7 +95,7 @@ object.foo -> 2
 ### `to(function)`
 
 This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be provided to the returned variable. For example:
-```
+```javascript
 let number = new Variable(3);
 number.valueOf() -> 3
 let doubled = number.to((value) => value * 2);
@@ -106,7 +106,7 @@ doubled.valueOf() -> 10
 ```
 
 A `to` function can return variables as well, in which case you can effectively chain variables together, merging their changes. For example:
-```
+```javascript
 let a = new Variable(1)
 let b = new Variable(2)
 let sum = a.to((aValue) => {
@@ -122,7 +122,7 @@ The `to` function will also wait for any promise values to resolve before execut
 
 This returns the value of the named property. The following are functionally equivalent:
 
-```
+```javascript
 variable.property(name).valueOf() === variable.get(name)
 ```
 
@@ -130,7 +130,7 @@ variable.property(name).valueOf() === variable.get(name)
 
 This sets the value of the named property.  The following are functionally equivalent:
 
-```
+```javascript
 variable.property(name).put(value)
 ```
 and
@@ -160,7 +160,7 @@ This static method will return a variable instance mapped to the target object. 
 
 This function allows you to compose a new variable from an array of input variables, where the resulting variable will update in response to changes from any of the input variables. The return variable will hold an array of values that represent the value of each of the input variable's values (in the same order as the variables were provided). This is intended to mirror the `Promise.all()` API. For example:
 
-```
+```javascript
 import { all, Variable } from 'alkali'
 let a = Variable(1);
 let b = Variable(2);
@@ -174,7 +174,7 @@ let sum = Variable.all(a, b).to(([a, b]) => a + b);
 Variables provide most of the array methods for when the value of a variable is an array, by using the `VArray` constructor. Methods including `push`, `splice`, `pop`, `filter`, and `forEach` are all available on these variables, and will act on the underlying array, and send out the proper update notifications for modifications. When arrays are modified through variables, the update notifications are incremental, and can be much more efficient for downstream listeners that support them (including alkali element lists).
 
 Also, variables with arrays can be used as iterables in for-of loops. For example:
-```
+```javascript
 var letters = new VArray(['a', 'b', 'c']);
 arrayVariable.push('d');
 let lettersAfterB = letters.filter(letter => letter > 'b');
@@ -186,7 +186,7 @@ for (let letter of lettersAfterB) {
 ## EcmaScript Generator Support (`react()`)
 
 EcmaScript's new generator functions provide an elegant way to define reactive variable-based functions. Alkali provides a `react()` function that will take a generator function that yields variables and execute the function reactively, inputting variable values, and re-executing in response to changes. For example, we could create a function that computes the maximum of two other variables by simply writing:
-```
+```javascript
 import { react } from 'alkali'
 
 let sumOfAAndB = react(function*(){
@@ -201,7 +201,7 @@ This reactive function will also properly wait for promises; it can be used with
 
 Alkali includes functionality for constructing and extending from native DOM elements, and binding these elements to variables for reactive UIs. The `alkali` module exports the full set of native element constructors (see the list at the end of the documentation), as properties, to use for streamlined creation of DOM elements. For example, using EcmaScript's module format to import:
 
-```
+```javascript
 import { Div, Span, Anchor, TextInput } from 'alkali';
 
 let divElement = new Div();
@@ -213,7 +213,7 @@ In addition, an element has a `create` method that may be alternately called to 
 
 These classes create native DOM elements that can be placed directly into the DOM (it is not a wrapper). All the standardized element types should be available from the module (they are all properties of the module, and if you are not using ES6, you can access them like `Element.Div`). These classes can take several arguments for constructing elements. The first argument is an optional string in CSS selector format that can be used to define the class, id, or tag. For example, to create a div with a class of `'my-class'` and id of `'my-id'`:
 
-```
+```javascript
 let divElement = new Div('.my-class#my-id');
 ```
 All remaining arguments can be in any order and be any of these types:
@@ -221,7 +221,7 @@ All remaining arguments can be in any order and be any of these types:
 ## Properties Argument
 
 An argument can be an object with properties that will be copied to the target element. For example, we could create `<a>` element with a link:
-```
+```javascript
 new Anchor({
 	href: 'a url',
 	textContent: 'click here'
@@ -230,7 +230,7 @@ new Anchor({
 Each of the property values will be assigned to the newly created element.
 
 If any of the values are alkali variables, they will be automatically bound to the element, reactively updating the element in response to any changes to the variable. For example:
-```
+```javascript
 let a = new Variable(1);
 document.body.appendChild(new Div({title: a}));
 a.put(2); // will update the title of the div
@@ -263,7 +263,7 @@ An argument can be an array that defines a set of elements to use as the content
 * Or nested arrays -  This will result in nested elements (within the last element before the array). Sub-array elements will be added as children of the preceding element.
 
 For example, we could create a table:
-```
+```javascript
 import { Table, TR, TD } from 'alkali/Element';
 let table = new Table([
 	TR, [
@@ -282,12 +282,12 @@ let table = new Table([
 ### Variable Argument
 
 A variable may be provided directly as an argument as well. This variable will be connected to the default `content` of the element. Again, for most elements, this variable will be mapped to the text content of the element. For example:
-```
+```javascript
 let greeting = new Variable('Hello');
 new Span(greeting);
 ```
 And for input elements, the `content` of the element is the value of the input. This makes it easy to setup bi-direction bindings from inputs to variables. For example:
-```
+```javascript
 let a = new Variable();
 new TextInput(a);
 ```
@@ -297,7 +297,7 @@ When an element is detached from the DOM, it will no longer listen for variable 
 
 ### String (and numbers, booleans) Argument
 You can also simply provide a string (or any primitive, including numbers or booleans), and this will also be directly inserted as a text node. For example:
-```
+```javascript
 new Div('Some text to put in the div');
 ```
 
@@ -306,7 +306,7 @@ Note that if you are using a string as the first argument, if it starts with a '
 ### `null` and `undefined`
 Any null or undefined argument will be ignored. This can be useful for conditional creating elements:
 
-```
+```javascript
 Div([
 	maybeIncludeChild ? Span : null
 ])
@@ -314,7 +314,7 @@ Div([
 
 ### Event Handlers
 The properties argument may also define event handlers. These event handlers are simply functions defined with the same event handler names as used by event attributes (however, these are not implemented using "DOM0" event registration, Alkali uses modern event registration to setup these handlers). For example, we could create a span that listens for clicks:
-```
+```javascript
 new Span({
 	onclick(event) {
 		// click event occurred
@@ -326,13 +326,13 @@ new Span({
 ## Extending Elements
 
 The Alkali element classes are designed to be extended or derived so that you can easily create your own custom components and constructors. Extended element classes can define default properties, bindings, and children elements as well. When you call a class with the `new` operator or call the `create` method, you are creating a new element instance. But, you can also derive new constructors or classes. The first way to do this is by creating an extended constructor. By calling a class without the `new` operator or if you use the `with` method, you will create a new constructor of the original element class (or constructor). Creating new constructors works much like creating new instances, taking the same types of arguments, and defines a set of properties or event handlers to be assigned to an element instance on instantiation. An extended constructor constructs true extended native DOM element. For example, we could create a custom div constructor with a pre-defined HTML class attribute:
-```
+```javascript
 let MyDiv = Div('.my-class')
 // and we can create new elements from this, just like with standard element classes
 let myDivElement = new MyDiv()
 ```
 We can also define default property values and define a children layout, to create our own complex components. For example, we could go further in extending a Div:
-```
+```javascript
 let MyComponent = Div({
 	title: 'a default title'
 }, [
@@ -341,7 +341,7 @@ let MyComponent = Div({
 ]);
 ```
 These resulting extended constructors can be used like any other element classes, including in child layouts, making it easy to create a hierarchy of layout:
-```
+```javascript
 let AnotherComponent = Div([
 	H2(someVariable),
 	MyComponent('.add-a-class', {
@@ -351,7 +351,7 @@ let AnotherComponent = Div([
 ]);
 ```
 And we can create element instances by using a new operator with nested constructors for a clean hierarchical syntax:
-```
+```javascript
 	new UList([
 		LI([Span('.a-class', 'first')]),
 		LI([Span('.a-class', 'second')]),
@@ -360,7 +360,7 @@ And we can create element instances by using a new operator with nested construc
 
 ## Creating/Extending Element Classes (Components)
 True custom element classes or components can also be created by using the native JavaScript class extension mechanism, or any transpilation or class emulation (like Babel). We can extend from an existing element class (or constructor), and create a real new class with its own prototype (that inherits the native methods and properties). This is appropriate to use when creating new components with their own behavior defined in methods and event handlers. For example, we could write:
-```
+```javascript
 class MyDiv extends Div {
 	onclick() {
 		this.doSomething();
@@ -371,18 +371,18 @@ class MyDiv extends Div {
 }
 ```
 One of the advantages of using classes is that it allows you to use the `super` operator to call super class methods, permitting more sophisticated element class composition. Note that there are some limitations to using native class syntax. EcmaScript does not currently support properties, nor does it support direct constructor calls, so if you want to create a new derived constructor from a natively constructed class, this must be done through the `with` method (instances can still be created with the `new` operator). Assigning default properties or children can be done by calling with properties before or after class extending:
-```
+```javascript
 class MyDiv extends Div({title: 'default title'}) {
 	// class methods
 }
 ```
 And we can create a constructor from MyDiv with properties to be assigned to the instances:
-```
+```javascript
 MyDivWithClass = MyDiv.with('.a-class', {title: 'a different title'});
 ```
 
 Note that if you are using TypeScript, event handlers must be defined as class property (with a function value):
-```
+```javascript
 	onclick = function() {
 		this.doSomething();
 	}
@@ -390,14 +390,14 @@ Note that if you are using TypeScript, event handlers must be defined as class p
 
 #### Children
 You can also define a set of children for by setting the static children property of a class:
-```
+```javascript
 MyDiv.children = [
 	Div,
 	Span
 ];
 ```
 or
-```
+```javascript
 class MyDiv extends Div {
 	static get children() {
 		return [Div, Span];
@@ -405,7 +405,7 @@ class MyDiv extends Div {
 }
 ```
 This is distinct from providing an array of elements or other values as the `content` (or as an argument) of an element. The `children` is more of the intrinsic structure of an element, and the `content` is inserted after the children are created. Consequently we could define a structure like:
-```
+```javascript
 import { Div, Span, content } from 'alkali'
 ...
 MyDiv.children = [
@@ -416,7 +416,7 @@ MyDiv.children = [
 new MyDiv([Span('.inner-span', 'World')])
 ```
 Which would create a structure like:
-```
+```html
 <div>
   <span>Hello</span>
   <div>
@@ -431,7 +431,7 @@ With alkali, you can define custom rendering of properties on elements, providin
 
 The `render` methods are called with the new value as the first argument (and a boolean indicating if this update, as opposed to the first rendering) For example:
 
-```
+```javascript
 class MyDiv extends Div {
 	renderName(name) {
 		this.textContent = 'Name: ' + name
@@ -448,7 +448,7 @@ Note that render methods can only be used as methods in classes, not in construc
 
 #### Getters and Setters
 The render methods provide custom handling of a property, and will override any existing functionality for a given property. This basically provides it very simple way to define a getter/setter for a property. But, if you would like to define property handling that delegates to existing property handling, it is recommended that you define your own getters and setters with super calls to the native setters and getters:
-```
+```javascript
 class MyDiv extends Div {
 	set title(newTitle) {
 		// set the title with the default behavior of the native setter
@@ -465,7 +465,7 @@ class MyDiv extends Div {
 
 If you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define a `*render` method as a generator, making it very simple to construct an element that reacts to known variables. This method can written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The method will be called when the element is first created, and again anytime any of the "yielded" variables changes. For example:
 
-```
+```javascript
 class MyLink extends Anchor {
 	*render(properties) {
 		this.href = baseUrl + yield someVariable;
@@ -475,7 +475,7 @@ class MyLink extends Anchor {
 ```
 
 The `*render` method can be used on classes, constructors, or element instantiation. For example, without even creating a class we can write:
-```
+```javascript
 new Div({
 	*render() {
 		this.title = yield titleVariable;
@@ -493,7 +493,7 @@ There are several methods that are called as part of the construction of an elem
 * `detached()` - This is called when an element is detached from the document tree. This can be a useful place to perform cleanup operations. However, elements may be reattached as well (and `attached` would be called again).
 
 For example:
-```
+```javascript
 class MyComponent extends Div {
 	created(properties) {
 		// we can interact with the properties that were passed in, and add to them
@@ -516,7 +516,7 @@ class MyComponent extends Div {
 
 Variables can be used in property or content values for element classes as well, but you may need more than a single instance for the different element instances. Variables classes can be used to provide variables within element constructors, with instances that are auto-generated for each different element context. One way to do this is to create a new `Variable` class, and use the element class's `hasOwn` property. This will define a relationship between an element class and a variable class. Variable classes have the same api as normal variables, and you can then use the variable class within properties of the defined element, or any child elements. For example:
 
-```
+```javascript
 let MyVariable = Variable.extend()
 let MyComponent = Div({
 	hasOwn: MyVariable, // define MyVariable as belonging to MyComponent
@@ -528,7 +528,7 @@ let MyComponent = Div({
 ])
 ```
 Now each instance of `MyComponent` that we create, will have a corresponding value/object for `MyVariable`, and those can even be accessed from child elements. We can also programmatically access the variable instance for a given element:
-```
+```javascript
 let myComponent = new MyComponent()
 var variableInstance = MyVariable.for(myComponent)
 // will update the element instance
@@ -540,7 +540,7 @@ Element classes themselves also act as variable classes. Element classes include
 
 Since a self-reference to element classes may not be immediately accessible, we can define the children after declaring a component class. In this example, we use the `title` property for the contents of a child, the `link` property for an href:
 
-```
+```javascript
 class MyComponent extends Div {
 }
 MyComponent.children = [
@@ -551,7 +551,7 @@ MyComponent.children = [
 ];
 ```
 And now we can create an instance with our new parameterized properties, and the constructor will map input properties to the corresponding child element values:
-```
+```javascript
 new MyComponent({
 	title: 'text for the span',
 	link: 'a link for a[href]'
@@ -562,7 +562,7 @@ new MyComponent({
 
 Often you may want to create a set of child elements, based on an array or list of values or objects. You can provide an array, or a variable with an array, as the `content` of an element, and then define a child element structure to be generated for item in the array with an `each` property. The child element structure can then access the current item in the array loop through the `Item` variable class. For example, we could create a `ul` element with `li` children by doing:
 
-```
+```javascript
 import {UL, LI, Item} from 'alkali/Element';
 
 new UL({
@@ -571,7 +571,7 @@ new UL({
 });
 ```
 Like any other variable class, we can access properties from the `Item` class as well, and create more sophisticated child structures. Here is how to create a select dropdown:
-```
+```javascript
 import {Select, Option, Item} from 'alkali/Element';
 new Select({
 	content: [{id: 1, name: 'One'}, {id: 2, name: 'Two'}],
@@ -585,13 +585,13 @@ new Select({
 Again, we can also use a variable that contains an array as the content to drive the list. When using a variable, the child elements will reactively be added, removed, or updated as the variable is modified in the future. If we use the array methods on the variable, the updates will be progressive or iterative, and will not require rerendering the whole list.
 
 The generic `Item` class can be limiting in that it offers no connection back to a collection for updates. However, classes can extend a `VArray` and define a relationship with the class of the items within the array/collection. This can done setting a static `collection` property on the item class to reference the collection class. For example:
-```
+```javascript
 class Widgets extends VArray {...}
 class Widget extends Variable {...}
 Widget.collection = Widgets
 ```
 One this has been the child class can be referenced in loops as well, and the changes can propagate to the collection:
-```
+```javascript
 new Div({
 	content: Widgets,
 	each: Input(Widget.property('selected'))
@@ -599,7 +599,7 @@ new Div({
 ```
 
 Another means of generating elements from list or array data is to use a `map` method:
-```
+```javascript
 new Select({
 	content: options.map(item =>
 		Option({
@@ -615,7 +615,7 @@ This will also respond to changes (additions, removals) in the source array, if 
 Alkali provides metadata/schema information, as well as validation functionality that can be associated with variables and their properties and derived variables. This can further facilitate the encapsulation of a property, allowing you variable-aware UI controls to interact with a variable or property's future value changes, as well as metadata and validation that further defines the property.
 
 You can define the schema for a variable by setting the `schema` property on a variable or defining a getter for the property. If you don't define a schema, the default schema is the variable's constructor. In any case, you can define metadata on your schema that is available for downstream use. A schema can also define metadata for properties, which is generally more useful. This is done by putting property definitions, in a `properties` object, with each property defining a schema for the corresponding property. For example, we could define a variable class that specifies that the `email` property should have a metadata property of `required: true`:
-```
+```javascript
 class ValidatedVariable extends Variable {
 	get schema() {
 		return {
@@ -630,7 +630,7 @@ class ValidatedVariable extends Variable {
 }
 ```
 Now we could define a UI control that makes use of this:
-```
+```javascript
 class FormField extends Label {
 	
 }
@@ -643,12 +643,12 @@ FormField.children = [
 ]
 ```
 This form field class only relies on the variable/property to construct the label, input, and required attribute. We could then use it:
-```
+```javascript
 var entry = new ValidatedVariable({})
 form.append(FormField(entry.property('email')))
 ```
 We could also add a `validate` method that will be called to determine the `validation` of the variable:
-```
+```javascript
 class ValidatedVariable extends Variable {
 	validate(value, schema) {
 		if (schema.pattern && !schema.pattern.test(value)) {
@@ -693,7 +693,7 @@ When added to elements their API is:
 * `parentElement.prepend(...elementArguments)` - This inserts new child elements in the parent element using standard alkali arguments for children (constructors, variables, elements, etc.), before other existing elements.
 
 Both of these methods are compatible with proposed DOM4 methods. While augmenting native objects isn't recommended for consumption by other libraries, it is recommended for application developers, and can be done:
-```
+```javascript
 import { append, prepend } from 'alkali'
 
 HTMLElement.prototype.append = append
@@ -773,7 +773,7 @@ Data objects are plain JS objects: Variables can be used on their own, or the Va
 ## Reverse Mappings
 
 Alkali supports assymetric, bi-directional bindings, which means that we can variables can no only pass data downstream, but data can flow back upstream. For examples, a variable can be bound to an input, but that input may be changed by the user, causing a new value flow back up into the variable. If this flow goes through variable function mappings, that transform data downstream, you may want to define a reverse transform for data flowing back upstream. This can be done by defining a `reverse` function attached to the primary mapping function. This takes two arguments, the incoming `output` variable with the change upstream, and the downstream `inputs` variables that may need to be updated in response to the change. For example:
-```
+```javascript
 function double(value) {
 	return value * 2
 }
@@ -796,7 +796,7 @@ The computations (and invalidations) can be all be executed with an optional con
 ## Variable Proxying
 
 Alkali variables can be assigned (with `put`) a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. A new copied object will be created if necessary to contain the changes of a downstream variable. For example:
-```
+```javascript
 let sourceVariable = new Variable({foo: 1})
 let containingVariable = new Variable(sourceVariable)
 sourceVariable.set('foo', 2) // this will propagate down to containingVariable
@@ -805,7 +805,7 @@ containingVariable.get('foo') -> 3
 sourceVariable.get('foo') -> 2
 ```
 However, there may be situations where you want to explicitly define a variable as a proxy, such that changes propagate to the source, as well as to the proxying variable. This can be done by using the `proxy` method to assign the variable:
-```
+```javascript
 let sourceVariable = new Variable({foo: 1})
 let containingVariable = new Variable()
 containingVariable.proxy(sourceVariable)
@@ -832,7 +832,7 @@ Alkali includes a variable Copy constructor, that allows you to maintain a copy 
 ## Creating Custom Tag Named Elements
 
 Custom elements can be registered with their own custom tag name as well. This can be done by extending the generic `Element` class, and calling `registerTag` on a class. This will set the tag name of the created elements. It will also attempt to call `document.registerElement` to register the element with the browser, if it is available in the browser. For example:
-```
+```javascript
 import { Element } from 'alkali'
 class MyCustomElement extends Element {
 	...
@@ -863,7 +863,7 @@ This will cause the variable to act as a proxy for the source variable, and chan
 
 ## Variables with Maps
 JavaScript `Map` objects can be used as the value for a variable, with the `Map` properties mapped to the variable properties. This can be done using the `VMap` constructor. The `Map` can be provided as a standard value as the argument or through `put`:
-```
+```javascript
 new VMap(new Map())
 ```
 
