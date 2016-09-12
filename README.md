@@ -304,7 +304,7 @@ new Div('Some text to put in the div');
 Note that if you are using a string as the first argument, if it starts with a '.' or '#', it will be interpreted as a selector. Only the first argument can be selector, so a string-as-text can be safely used with any starting character for subsequent arguments. You can safely output variable or user-provided strings by starting with an empty selector string (`Div('', someString)`), as explicit content (`Div({content: someString})`), or as an explicit child (`Div([someString])`).
 
 ### `null` and `undefined`
-Any null or undefined argument will be ignored. This can be useful for conditional creating elements:
+Any null or undefined argument will be ignored. This can be useful for conditionally creating elements:
 
 ```
 Div([
