@@ -1,4 +1,6 @@
 # Alkali
+
+[![Join the chat at https://gitter.im/alkali-js/Lobby](https://badges.gitter.im/alkali-js/Lobby.svg)](https://gitter.im/alkali-js/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/kriszyp/alkali.svg?branch=master)](https://travis-ci.org/kriszyp/alkali)
 [![devDependency status](https://david-dm.org/kriszyp/alkali/dev-status.svg)](https://david-dm.org/kriszyp/alkali#info=devDependencies)
 
