@@ -645,6 +645,32 @@ define([
 			assert.isFalse(oneGreaterThanFour.valueOf())
 		},
 
+		keyBy: function() {
+			var arrayVariable = new Variable([3, 5, 7])
+			var index = arrayVariable.keyBy(function (key) {
+				return key
+			}, function (value) {
+				return value * 2
+			})
+			assert.strictEqual(index.get(5), 10)
+			arrayVariable.push(9)
+			assert.strictEqual(index.get(9), 18)
+			assert.strictEqual(index.get(5), 10)
+		},
+
+		groupBy: function() {
+			var arrayVariable = new Variable([{even: false, n: 3}, {even: true, n: 4}, {even: false, n: 5}])
+			var index = arrayVariable.groupBy('even')
+			assert.strictEqual(index.get(false).length, 2)
+			assert.strictEqual(index.get(false)[0].n, 3)
+			assert.strictEqual(index.get(true).length, 1)
+			assert.strictEqual(index.get(true)[0].n, 4)
+			arrayVariable.push({even: true, n: 6})
+			assert.strictEqual(index.get(false).length, 2)
+			assert.strictEqual(index.get(true).length, 2)
+			assert.strictEqual(index.get(true)[1].n, 6)
+		},
+
 		contextualClassProperty: function() {
 			var TestVariable = Variable()
 			var TestSubject = Variable()

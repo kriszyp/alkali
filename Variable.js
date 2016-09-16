@@ -1326,21 +1326,6 @@ define(['./util/lang'], function (lang) {
 			return this.generic.put(value, subject.getContextualized ? subject : new Context(subject))
 		}
 	})
-
-
-	function iterateMethod(method) {
-		Variable.prototype[method] = function() {
-			return new IterativeMethod(this, method, arguments)
-		}
-	}
-
-	iterateMethod('filter')
-	iterateMethod('map')
-	iterateMethod('reduce')
-	iterateMethod('reduceRight')
-	iterateMethod('some')
-	iterateMethod('every')
-	iterateMethod('slice')
 	
 	var IterativeMethod = lang.compose(Composite, function(source, method, args) {
 		this.source = source
@@ -1379,24 +1364,45 @@ define(['./util/lang'], function (lang) {
 					}
 					// if not an array convert to an array
 					array = [array]
+				} 
+				if (typeof method === 'string') {
+					// apply method
+					return array[method].apply(array, args)
+				} else {
+					return method(array, args)
 				}
-				// apply method
-				return array[method].apply(array, args)
 			})
 		},
+		// TODO: Create specialized updated handlers for faster recomputation of other array derivatives
+		forDependencies: function(callback) {
+			// depend on the args
+			Composite.prototype.forDependencies.call(this, callback)
+			callback(this.source)
+		},
+		getVersion: function(context) {
+			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getVersion(context))
+		},
+		getCollectionOf: function(){
+			return this.source.getCollectionOf()
+		}
+	})
+
+	function defineArrayMethod(method, constructor, properties) {
+		var IterativeResults = lang.compose(IterativeMethod, constructor, properties)
+		IterativeResults.prototype.method || (IterativeResults.prototype.method = method)
+		Variable.prototype[method] = function() {
+			var results = new IterativeResults()
+			results.source = this
+			results.arguments = arguments
+			return results
+		}
+	}
+
+	defineArrayMethod('filter', function Filtered() {}, {
 		updated: function(event, by, context) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Composite.prototype.updated.call(this, event, by, context)
 			}
-			var propagatedEvent = event.type === 'refresh' ? event : // always propagate refreshes
-				this[this.method + 'Updated'] ? this[this.method + 'Updated'](event, context) : // if we have an updated handler, use it
-				new RefreshEvent() // else recompute the array method
-			// TODO: make sure we normalize the event structure
-			if (propagatedEvent) {
-				Composite.prototype.updated.call(this, propagatedEvent, by, context)
-			}
-		},
-		filterUpdated: function(event, context) {
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			if (event.type === 'delete') {
 				var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
@@ -1427,10 +1433,15 @@ define(['./util/lang'], function (lang) {
 				}
 				return
 			} else {
-				return event
+				return Composite.prototype.updated.call(this, event, by, context)
 			}
-		},
-		mapUpdated: function(event, context) {
+		}
+	})
+	defineArrayMethod('map', function Mapped() {}, {
+		updated: function(event, by, context) {
+			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
+				return Composite.prototype.updated.call(this, event, by, context)
+			}
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			if (event.type === 'delete') {
 				contextualizedVariable.splice(event.previousIndex, 1)
@@ -1444,23 +1455,62 @@ define(['./util/lang'], function (lang) {
 					var matches = [object].filter(this.arguments[0]).length > 0
 					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], event.value))
 				} else {
-					return event
+					return Composite.prototype.updated.call(this, event, by, context)
 				}
 			} else {
-				return event
+				return Composite.prototype.updated.call(this, event, by, context)
 			}
+		}
+	})
+	defineArrayMethod('reduce', function Reduced() {})
+	defineArrayMethod('reduceRight', function Reduced() {})
+	defineArrayMethod('some', function Aggregated() {})
+	defineArrayMethod('every', function Aggregated() {})
+	defineArrayMethod('slice', function Aggregated() {})
+	defineArrayMethod('keyBy', function UniqueIndex(source, args) {}, {
+		isMap: function () {
+			return true
 		},
-		// TODO: Create specialized updated handlers for faster recomputation of other array derivatives
-		forDependencies: function(callback) {
-			// depend on the args
-			Composite.prototype.forDependencies.call(this, callback)
-			callback(this.source)
+		method: function(array, args) {
+			var index = new Map()
+			var keyGenerator = args[0]
+			var valueGenerator = args[1]
+			var hasKeyFunction = typeof keyGenerator === 'function'
+			var hasValueFunction = typeof valueGenerator === 'function'
+			var hasKey = !!keyGenerator
+			for (var i = 0, l = array.length; i < l; i++) {
+				var element = array[i]
+				index.set(
+					hasKeyFunction ? keyGenerator(element) :
+						hasKey ? element[keyGenerator] : element,
+					hasValueFunction ? valueGenerator(element) : element)
+			}
+			return index
+		}
+	})
+
+	defineArrayMethod('groupBy', function UniqueIndex(source, args) {}, {
+		isMap: function () {
+			return true
 		},
-		getVersion: function(context) {
-			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getVersion(context))
-		},
-		getCollectionOf: function(){
-			return this.source.getCollectionOf()
+		method: function(array, args) {
+			var index = new Map()
+			var keyGenerator = args[0]
+			var valueGenerator = args[1]
+			var hasKeyFunction = typeof keyGenerator === 'function'
+			var hasValueFunction = typeof valueGenerator === 'function'
+			var hasKey = !!keyGenerator
+			for (var i = 0, l = array.length; i < l; i++) {
+				var element = array[i]
+				var key = hasKeyFunction ? keyGenerator(element) :
+						hasKey ? element[keyGenerator] : element
+				var group = index.get(key)
+				if (!group) {
+					index.set(key, group = [])
+				}
+				group.push(hasValueFunction ? valueGenerator(element) : element)
+			}
+			return index
 		}
 	})
 
