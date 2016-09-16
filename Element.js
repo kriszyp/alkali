@@ -141,9 +141,11 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			}
 		}
 	}
+	// TODO: Need to do some more testing to see if that would improve performance:
+	// var fragmentThresholdHeuristic = (typeof navigator !== 'undefined' && navigator.userAgent.indexOf('Chrome') > 0) ? 1 : 3
 
 	function layoutChildren(parent, children, container, prepend) {
-		var fragment = (children.length > 3 || prepend) ? doc.createDocumentFragment() : parent
+		var fragment = (children.length > 1 || prepend) ? doc.createDocumentFragment() : parent
 		for(var i = 0, l = children.length; i < l; i++) {
 			var child = children[i]
 			var childNode
