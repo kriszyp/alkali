@@ -386,21 +386,21 @@ define([
 			var b = new Variable('b')
 
 			var MyDiv = Div({
-				a: a,
-				b: a
+				textContent: a,
+				title: a
 			})
-			var div1 = new MyDiv({b: b})
+			var div1 = new MyDiv({title: b})
 			document.body.appendChild(div1)
-			assert.strictEqual(div1.a, 'a')
-			assert.strictEqual(div1.b, 'b')
+			assert.strictEqual(div1.textContent, 'a')
+			assert.strictEqual(div1.title, 'b')
 			a.put('A')
 			return new Promise(requestAnimationFrame).then(function(){
-				assert.strictEqual(div1.a, 'A')
-				assert.strictEqual(div1.b, 'b')
+				assert.strictEqual(div1.textContent, 'A')
+				assert.strictEqual(div1.title, 'b')
 				b.put('B')
 				return new Promise(requestAnimationFrame).then(function(){
-					assert.strictEqual(div1.a, 'A')
-					assert.strictEqual(div1.b, 'B')
+					assert.strictEqual(div1.textContent, 'A')
+					assert.strictEqual(div1.title, 'B')
 				})
 			})
 		},

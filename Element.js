@@ -1,8 +1,8 @@
 define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer, lang) {
-	var knownElementProperties = {};
-	['textContent', 'innerHTML', 'title', 'href', 'value', 'valueAsNumber', 'role', 'render'].forEach(function(property) {
-		knownElementProperties[property] = true
-	})
+	var knownElementProperties = [
+		'textContent', // Node
+		'id', 'className', 'innerHTML', // Element
+		'title', 'lang', 'translate', 'dir', 'tabIndex', 'accessKey', 'draggable', 'spellcheck', 'contentEditable', 'innerText', 'webkitdropzone'] // HTMLElement
 
 	var SELECTOR_REGEX = /(\.|#)([-\w]+)(.+)?/
 	var isGenerator = lang.isGenerator
@@ -235,10 +235,9 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 	function noop() {}
 	var propertyHandlers = {
-		content: noop, // content and children have special handling in create
+		content: noop,
 		children: noop,
 		tagName: noop,
-		each: noop, // just used by content, doesn't need to be recorded on the element
 		classes: function(element, classes) {
 			if (!(classes.length > -1)) {
 				// index the classes, if necessary
@@ -268,10 +267,10 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			}
 		},
 		class: applyAttribute,
-		for: applyAttribute,
+		for: applyAttribute, // TODO: move to label?
 		role: applyAttribute,
 		render: function(element, value, key, properties) {
-			// TODO: This doesn't need to be a property updater
+			// TODO: This doesn't need to be a property updater (is in place for *render())
 			// we should also verify it is a generator
 			// and maybe, at some point, find an optimization to eliminate the bind()
 			new PropertyRenderer({
@@ -280,10 +279,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				element: element
 			})
 		},
-		value: bidirectionalHandler,
-		valueAsNumber: bidirectionalHandler,
-		valueAsDate: bidirectionalHandler,
-		checked: bidirectionalHandler,
 		dataset: applySubProperties(function(newValue, element, key) {
 			element.dataset[key || this.name] = newValue
 		}),
@@ -304,6 +299,42 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			}
 		}
 	}
+
+	knownElementProperties.forEach(function(property) {
+		propertyHandlers[property] = true
+	})
+	HTMLElement.prototype._propertyHandlers = propertyHandlers // inherit this, at least for now
+	lang.copy(addExtensionHandlers(HTMLInputElement, ['accept', 'alt', 'autocomplete', 'autofocus', 'capture', 'defaultChecked', 'dirName', 'disabled', 'form', 'files', 'formAction', 'formEnctype', 'formMethod', 'formNoValidate', 'formTarget', 'indeterminate', 'inputMode', 'list', 'max', 'maxLength', 'min', 'minLength', 'multiple', 'name', 'pattern', 'placeholder', 'readOnly', 'required', 'size', 'src', 'step', 'type', 'defaultValue', 'willValidate', 'validity', 'validationMessage', 'useMap', 'autocapitalize', 'webkitdirectory', 'incremental', 'stepUp', 'stepDown']), {
+		value: bidirectionalHandler,
+		valueAsNumber: bidirectionalHandler,
+		valueAsDate: bidirectionalHandler,
+		checked: bidirectionalHandler
+	})
+	lang.copy(addExtensionHandlers(HTMLSelectElement, ['name', 'size', 'type', 'selectedIndex', 'validationMessage']), {
+		value: bidirectionalHandler
+	})
+	lang.copy(addExtensionHandlers(HTMLTextAreaElement, ['cols', 'dirName', 'maxLength', 'minLength', 'name', 'placeholder', 'rows', 'wrap', 'type', 'defaultValue', 'textLength', 'validationMessage', 'autocapitalize']), {
+		value: bidirectionalHandler
+	})
+	addExtensionHandlers(HTMLAnchorElement, ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'])
+	addExtensionHandlers(HTMLAreaElement, ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'])
+	addExtensionHandlers(HTMLButtonElement, ['formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'])
+	addExtensionHandlers(HTMLDialogElement, ['open'])
+	addExtensionHandlers(HTMLEmbedElement, ['src', 'type', 'name'])
+	addExtensionHandlers(HTMLFormElement, ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'])
+	addExtensionHandlers(HTMLFrameElement, ['name', 'scrolling', 'src', 'frameBorder'])
+	addExtensionHandlers(HTMLFrameSetElement, ['cols', 'rows'])
+	addExtensionHandlers(HTMLOptionElement, ['label', 'value', 'text', 'index'])
+	addExtensionHandlers(HTMLTableCellElement, ['colSpan', 'rowSpan'])
+
+	function addExtensionHandlers(constructor, props) {
+		var handlers = constructor.prototype._propertyHandlers = Object.create(propertyHandlers)
+		for (var i = 0, l = props.length; i < l; i++) {
+			handlers[props[i]] = true
+		}
+		return handlers
+	}
+
 	function applyAttribute(element, value, key) {
 		if (value && value.notifies) {
 			new AttributeRenderer({
@@ -346,10 +377,24 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	function assignProperties(element, properties) {
 		for (var key in properties) {
 			var value = properties[key]
-			var styleDefinition = styleDefinitions[key]
-			if (propertyHandlers[key]) {
-				propertyHandlers[key](element, value, key, properties)
-			} else if ((styleDefinition = styleDefinitions[key]) && element[key] === undefined) {
+			var styleDefinition
+			var propertyHandler = element._propertyHandlers[key]
+			if (propertyHandler) {
+				if (propertyHandler === true) {
+					// a standard, known element property
+					if (value && value.notifies) {
+						new PropertyRenderer({
+							name: key,
+							variable: value,
+							element: element
+						})
+					} else {
+						element[key] = value
+					}
+				} else {
+					propertyHandler(element, value, key, properties)
+				}
+			} else if ((styleDefinition = styleDefinitions[key])) {
 				if (value && value.notifies) {
 					new StyleRenderer({
 						name: key,
@@ -359,16 +404,21 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				} else {
 					styleDefinition(element, value, key)
 				}
-			} else if (value && value.notifies) {
-				new PropertyRenderer({
-					name: key,
-					variable: value,
-					element: element
-				})
+			} else if (element[key] == null) {
+				// we are working an unknown/unstandard property (or an event listener)
+				// undefined or null means we can safely set
+				element[key] = value
 			} else if (typeof value === 'function' && key.slice(0, 2) === 'on') {
+				// event listener with one already defined on the prototype
 				element.addEventListener(key.slice(2), value)
 			} else {
-				element[key] = value
+				// otherwise bypass/override the native getter/setter
+				Object.defineProperty(element, key, {
+					value: value,
+					enumerable: true,
+					configurable: true,
+					writable: true
+				})
 			}
 		}
 	}
@@ -537,13 +587,19 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			}
 			// we need to check the prototype for event handlers
 			var prototype = Class.prototype
+			var propertyHandlers
 			var keys = Object.getOwnPropertyNames(prototype)
 			for (var i = 0, l = keys.length; i < l; i++) {
 				var key = keys[i]
 				if (key.slice(0, 2) === 'on' || (key === 'render' && isGenerator(prototype[key]))) {
 					applyOnCreate[key] = prototype[key]
 				} else if (key.slice(0, 6) === 'render') {
-					Object.defineProperty(prototype, key[6].toLowerCase() + key.slice(7), renderDescriptor(key))
+					var propertyName = key[6].toLowerCase() + key.slice(7)
+					if (!propertyHandlers) {
+						propertyHandlers = prototype._propertyHandlers = Object.create(prototype._propertyHandlers)
+					}
+					propertyHandlers[propertyName] = true // TODO: is it better to implement this with property handlers?
+					Object.defineProperty(prototype, propertyName, renderDescriptor(key))
 				}
 			}
 			return applyOnCreate
@@ -696,9 +752,9 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 								applyOnCreate.className += ' ' + name
 							} else {
 								if (element.className) {
-								    element.className += ' ' + name
+										element.className += ' ' + name
 								} else {
-								    element.className = name
+										element.className = name
 								}
 							}
 						} else {
@@ -1207,19 +1263,19 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	lang.copy(Variable.Context.prototype, {
 		specify: function(Variable) {
 			var element = this.subject
-		  var distinctive = true
-		  ;(this.generics || (this.generics = [])).push(Variable)
-		  do {
-		    if (this.distinctSubject === element) {
-		      distinctive = false
-		    }
-		    var subjectMap = element.constructor.ownedClasses
-		    if (subjectMap) {
+			var distinctive = true
+			;(this.generics || (this.generics = [])).push(Variable)
+			do {
+				if (this.distinctSubject === element) {
+					distinctive = false
+				}
+				var subjectMap = element.constructor.ownedClasses
+				if (subjectMap) {
 					var instanceMap = subjectMap.get(Variable)
 					if (instanceMap) {
-			      if (distinctive) {
-			        this.distinctSubject = element
-			      }
+						if (distinctive) {
+							this.distinctSubject = element
+						}
 						specifiedInstance = instanceMap.get(element)
 						if (!specifiedInstance) {
 							instanceMap.set(element, specifiedInstance = instanceMap.createInstance ?
@@ -1227,8 +1283,8 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 						}
 						return specifiedInstance
 					}
-		    }
-		  } while ((element = element.parentNode || presumptiveParentMap.get(element)))
+				}
+			} while ((element = element.parentNode || presumptiveParentMap.get(element)))
 			// else if no specific context is found, return default instance
 			return Variable.defaultInstance
 		},
@@ -1255,21 +1311,21 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		},
 
 		merge: function(childContext) {
-		  if (!this.distinctSubject || this.distinctSubject.contains(childContext.distinctSubject)) {
-		    this.distinctSubject = childContext.distinctSubject
-		  }
-		  [].push.apply(this.generics || (this.generics = []), childContext.generics)
+			if (!this.distinctSubject || this.distinctSubject.contains(childContext.distinctSubject)) {
+				this.distinctSubject = childContext.distinctSubject
+			}
+			[].push.apply(this.generics || (this.generics = []), childContext.generics)
 		},
 		getDistinctElement: function(Variable, element) {
-		  do {
-		    var subjectMap = element.constructor.ownedClasses
-		    if (subjectMap) {
+			do {
+				var subjectMap = element.constructor.ownedClasses
+				if (subjectMap) {
 					var instanceMap = subjectMap.get(Variable)
 					if (instanceMap && instanceMap.has(element)) {
 						return element
 					}
-		    }
-		  } while ((element = element.parentNode || presumptiveParentMap.get(element)))
+				}
+			} while ((element = element.parentNode || presumptiveParentMap.get(element)))
 		},
 		matches: function(element) {
 			var generics = this.generics
