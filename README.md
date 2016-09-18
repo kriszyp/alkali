@@ -173,7 +173,9 @@ let sum = Variable.all(a, b).to(([a, b]) => a + b);
 
 ## Variables as Arrays (`VArray`)
 
-Variables provide most of the array methods for when the value of a variable is an array, by using the `VArray` constructor. Methods including `push`, `splice`, `pop`, `filter`, and `forEach` are all available on these variables, and will act on the underlying array, and send out the proper update notifications for modifications. When arrays are modified through variables, the update notifications are incremental, and can be much more efficient for downstream listeners that support them (including alkali element lists).
+Variables provide most of the array methods for when the value of a variable is an array, by using the `VArray` constructor. Methods including `push`, `splice`, `pop`, and `forEach` are all available on these variables, and will act on the underlying array, and send out the proper update notifications for modifications. When arrays are modified through variables, the update notifications are incremental, and can be much more efficient for downstream listeners that support them (including alkali element lists).
+
+Functional array methods can also be applied, which will return a new variable, which will stay updated with results synced to the source array. These include `filter`, `map`, `every`, `same`, `reduce`, and `reduceRight` which take the same arguments and behave according to the standard methods.
 
 Also, variables with arrays can be used as iterables in for-of loops. For example:
 ```javascript
@@ -184,6 +186,11 @@ for (let letter of lettersAfterB) {
 	...
 }
 ```
+
+In addition, `keyBy` and `groupBy` methods are also available:
+`keyBy(getKey?, getValue?)` - This will index the values in array using the provided key retrieval, `getKey`, which can be a string to indicate a property, or a function to retrieve the key from the object. If omitted, value itself will be the key. In addition `getValue` can also provided to retrieve the value, if something other than the original array element is desired. This will return a Map variable, which can be used to retrieve values by id.
+
+`groupBy(getKey?, getValue?)` - This behaves the same as `keyBy` but can be used when multiple elements may share the same key. This will put all the elements for a given in an array under the key. The returned Map variable will have array values.
 
 ## EcmaScript Generator Support (`react()`)
 
@@ -245,7 +252,7 @@ You can alse use variable classes for property values as well. These are describ
 Alkali uses an optimized strategy for updating elements, by waiting for the next animation frame to update, and only updating elements that are connected to the DOM.
 
 By default, properties are copied directly to the element that is being, or will be, created. However, Alkali also provides special handling for certain properties:
-* `href`, `id`, `innerHTML`, `src`, `tabIndex`, `title`, `textContent`, etc. - All the standard DOM element properties are copied to the target element, and any of these can contain a static value or a variable.
+* `href`, `id`, `innerHTML`, `src`, `tabIndex`, `title`, `textContent`, etc. - All the standard DOM element properties are copied to the target element, and any of these can contain a static value or a variable. A variable will auto-update the value of the property with the value of the variable.
 * `content` - This represents the main content of an element, and can depend on the type of element. For most elements, this represents the inner content of element. If it is a primitive, it will be the text content (inserted as a text node). If it is an array, it will generate a set of child elements. For inputs, the content corresponds to the `value` or `checked` property of the input, typed to the type of value that the input expects (numbers for number inputs), with bi-directional binding.
 * `class`, `for`, `role` - These are copied to their corresponding attributes.
 * `attributes` This can be an object, and the properties are copied to attributes on the element.
@@ -253,6 +260,7 @@ By default, properties are copied directly to the element that is being, or will
 * `style` - This can be an object, and the properties are copied to the elements `style` object to construct inline styles.
 * CSS style properties - Inline style properties can be defined directly in the properties argument as well, and will create inline styles. When used as direct properties, booleans will be converted to named values for certain properties (for `display`, `visibility`), and numbers will be appended with `px` for dimensional properties.
 * `render`, `classes` - These have special handling described below.
+* If a property is not recognized as one of these handled properties described above, the value will be copied to the target element (if the value is variable, the variable itself will be copied directly). To avoid any unexpected property collisions, Alkali keeps a whitelist of known/standard element and style properties, such that if an unknown property on an element exists, it will be overriden (and its behavior ignored).
 
 In addition, custom handling of properties can be defined creating render methods or getters and setters as described below.
 
