@@ -447,7 +447,6 @@ define(['./util/lang'], function (lang) {
 
 			this.lastUpdate = updateEvent */
 			this.updateVersion()
-			var value = this.value
 
 			var listeners = this.listeners
 			if (listeners) {
