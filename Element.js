@@ -235,7 +235,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 	function noop() {}
 	var propertyHandlers = {
-		content: noop,
 		children: noop,
 		tagName: noop,
 		classes: function(element, classes) {
@@ -407,6 +406,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			} else if (element[key] == null) {
 				// we are working an unknown/unstandard property (or an event listener)
 				// undefined or null means we can safely set
+				// TODO: we may want to do the event listener check first so we can handle oncustomevent (that needs an addEventListener call to work)
 				element[key] = value
 			} else if (typeof value === 'function' && key.slice(0, 2) === 'on') {
 				// event listener with one already defined on the prototype
