@@ -254,12 +254,13 @@ Alkali uses an optimized strategy for updating elements, by waiting for the next
 By default, properties are copied directly to the element that is being, or will be, created. However, Alkali also provides special handling for certain properties:
 * `href`, `id`, `innerHTML`, `src`, `tabIndex`, `title`, `textContent`, etc. - All the standard DOM element properties are copied to the target element, and any of these can contain a static value or a variable. A variable will auto-update the value of the property with the value of the variable.
 * `content` - This represents the main content of an element, and can depend on the type of element. For most elements, this represents the inner content of element. If it is a primitive, it will be the text content (inserted as a text node). If it is an array, it will generate a set of child elements. For inputs, the content corresponds to the `value` or `checked` property of the input, typed to the type of value that the input expects (numbers for number inputs), with bi-directional binding.
+* `classes` - This can be an object where each property corresponds to a class name that can be conditionally turned on or off for the element. For each property, the value can be a boolean or variable that returns a boolean (or anything that can be evaluated as truthy or falsy). This is typically the best way to enable and disable conditional styling for an element.
 * `class`, `for`, `role` - These are copied to their corresponding attributes.
 * `attributes` This can be an object, and the properties are copied to attributes on the element.
 * `dataset` - This can be an object, and the properties are copied to the elements `dataset` object to construct custom-user attributes.
 * `style` - This can be an object, and the properties are copied to the elements `style` object to construct inline styles.
 * CSS style properties - Inline style properties can be defined directly in the properties argument as well, and will create inline styles. When used as direct properties, booleans will be converted to named values for certain properties (for `display`, `visibility`), and numbers will be appended with `px` for dimensional properties.
-* `render`, `classes` - These have special handling described below.
+* `render` - This described below.
 * If a property is not recognized as one of these handled properties described above, the value will be copied to the target element (if the value is variable, the variable itself will be copied directly). To avoid any unexpected property collisions, Alkali keeps a whitelist of known/standard element and style properties, such that if an unknown property on an element exists, it will be overriden (and its behavior ignored).
 
 In addition, custom handling of properties can be defined creating render methods or getters and setters as described below.
