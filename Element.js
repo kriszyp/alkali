@@ -302,30 +302,31 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	knownElementProperties.forEach(function(property) {
 		propertyHandlers[property] = true
 	})
-	HTMLElement.prototype._propertyHandlers = propertyHandlers // inherit this, at least for now
-	lang.copy(addExtensionHandlers(HTMLInputElement, ['accept', 'alt', 'autocomplete', 'autofocus', 'capture', 'defaultChecked', 'dirName', 'disabled', 'form', 'files', 'formAction', 'formEnctype', 'formMethod', 'formNoValidate', 'formTarget', 'indeterminate', 'inputMode', 'list', 'max', 'maxLength', 'min', 'minLength', 'multiple', 'name', 'pattern', 'placeholder', 'readOnly', 'required', 'size', 'src', 'step', 'type', 'defaultValue', 'willValidate', 'validity', 'validationMessage', 'useMap', 'autocapitalize', 'webkitdirectory', 'incremental', 'stepUp', 'stepDown']), {
-		value: bidirectionalHandler,
-		valueAsNumber: bidirectionalHandler,
-		valueAsDate: bidirectionalHandler,
-		checked: bidirectionalHandler
-	})
-	lang.copy(addExtensionHandlers(HTMLSelectElement, ['name', 'size', 'type', 'selectedIndex', 'validationMessage']), {
-		value: bidirectionalHandler
-	})
-	lang.copy(addExtensionHandlers(HTMLTextAreaElement, ['cols', 'dirName', 'maxLength', 'minLength', 'name', 'placeholder', 'rows', 'wrap', 'type', 'defaultValue', 'textLength', 'validationMessage', 'autocapitalize']), {
-		value: bidirectionalHandler
-	})
-	addExtensionHandlers(HTMLAnchorElement, ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'])
-	addExtensionHandlers(HTMLAreaElement, ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'])
-	addExtensionHandlers(HTMLButtonElement, ['formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'])
-	addExtensionHandlers(HTMLDialogElement, ['open'])
-	addExtensionHandlers(HTMLEmbedElement, ['src', 'type', 'name'])
-	addExtensionHandlers(HTMLFormElement, ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'])
-	addExtensionHandlers(HTMLFrameElement, ['name', 'scrolling', 'src', 'frameBorder'])
-	addExtensionHandlers(HTMLFrameSetElement, ['cols', 'rows'])
-	addExtensionHandlers(HTMLOptionElement, ['label', 'value', 'text', 'index'])
-	addExtensionHandlers(HTMLTableCellElement, ['colSpan', 'rowSpan'])
-
+	if (typeof HTMLElement !== 'undefined') {
+		HTMLElement.prototype._propertyHandlers = propertyHandlers // inherit this, at least for now
+		lang.copy(addExtensionHandlers(HTMLInputElement, ['accept', 'alt', 'autocomplete', 'autofocus', 'capture', 'defaultChecked', 'dirName', 'disabled', 'form', 'files', 'formAction', 'formEnctype', 'formMethod', 'formNoValidate', 'formTarget', 'indeterminate', 'inputMode', 'list', 'max', 'maxLength', 'min', 'minLength', 'multiple', 'name', 'pattern', 'placeholder', 'readOnly', 'required', 'size', 'src', 'step', 'type', 'defaultValue', 'willValidate', 'validity', 'validationMessage', 'useMap', 'autocapitalize', 'webkitdirectory', 'incremental', 'stepUp', 'stepDown']), {
+			value: bidirectionalHandler,
+			valueAsNumber: bidirectionalHandler,
+			valueAsDate: bidirectionalHandler,
+			checked: bidirectionalHandler
+		})
+		lang.copy(addExtensionHandlers(HTMLSelectElement, ['name', 'size', 'type', 'selectedIndex', 'validationMessage']), {
+			value: bidirectionalHandler
+		})
+		lang.copy(addExtensionHandlers(HTMLTextAreaElement, ['cols', 'dirName', 'maxLength', 'minLength', 'name', 'placeholder', 'rows', 'wrap', 'type', 'defaultValue', 'textLength', 'validationMessage', 'autocapitalize']), {
+			value: bidirectionalHandler
+		})
+		addExtensionHandlers(HTMLAnchorElement, ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'])
+		addExtensionHandlers(HTMLAreaElement, ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'])
+		addExtensionHandlers(HTMLButtonElement, ['formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'])
+		addExtensionHandlers(HTMLDialogElement, ['open'])
+		addExtensionHandlers(HTMLEmbedElement, ['src', 'type', 'name'])
+		addExtensionHandlers(HTMLFormElement, ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'])
+		addExtensionHandlers(HTMLFrameElement, ['name', 'scrolling', 'src', 'frameBorder'])
+		addExtensionHandlers(HTMLFrameSetElement, ['cols', 'rows'])
+		addExtensionHandlers(HTMLOptionElement, ['label', 'value', 'text', 'index'])
+		addExtensionHandlers(HTMLTableCellElement, ['colSpan', 'rowSpan'])
+	}
 	function addExtensionHandlers(constructor, props) {
 		var handlers = constructor.prototype._propertyHandlers = Object.create(propertyHandlers)
 		for (var i = 0, l = props.length; i < l; i++) {

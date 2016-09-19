@@ -382,6 +382,7 @@ define([], function () {
 	function isGenerator(func) {
 		if (typeof func === 'function') {
 			var constructor = func.constructor
+			// this is used to handle both native generators and transpiled generators
 			return (constructor.displayName || constructor.name) === 'GeneratorFunction'
 		}
 	}
