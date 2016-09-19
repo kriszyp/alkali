@@ -8,7 +8,7 @@
 
 # Alkali Basics
 
-The basic approach of using Alkali within your application, is to first, create "Variables" that holds your source data. A variable is the central entity in Alkali and represents a value that may change and can be reacted to. Next, we can traverse or transform variables into other derived variables. Finally, we can use these transformations, or the orginal variables directly, in element constructors to create bindings to DOM elements. A simple example would look like:
+The basic approach of using Alkali within your application, is to first, create "Variables" that holds your source data. A variable is the central entity in Alkali and represents a value that may change and can be reacted to. Next, we can traverse or transform variables into other derived variables. These variables can be used in the browser or server-side (in Node). In the browser, we can use these transformations, or the orginal variables directly, in element constructors to create bindings to DOM elements. A simple example would look like:
 ```javascript
 import { Variable, Div, Span } from 'alkali'
 
@@ -24,6 +24,10 @@ This would create a new `<div>` bound to our `greeting` variable with an initial
 greeting.put('Hello')
 ```
 This will notify derived variables and bound elements. This will result in the element binding queuing up a rendering, which will later execute and execute any necessary transforms, showing "Hello, World" in our `<div>`.
+
+# Compatibility
+
+Alkali is tested and runs on IE11+ or any other modern browser, and can also on NodeJS (without DOM generation).
 
 # Variables
 
