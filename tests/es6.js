@@ -177,6 +177,26 @@ define([
 					})
 				})
 			})
-		}
+		},
+		getPropertyWithClass: function() {
+			class Foo extends Variable {
+				constructor() {
+					super(...arguments)
+					// prelude to class properties
+					this.baz = this.property('baz')
+				}
+			}
+			class Bar extends Variable {
+				constructor() {
+					super(...arguments)
+					this.foo = this.property('foo', Foo)
+				}
+			}
+			var obj = { foo: { baz: 3 } }
+			var bar = new Bar(obj)
+			assert.strictEqual(bar.foo.baz.valueOf(), 3)
+			bar.foo.baz.put(5)
+			assert.strictEqual(obj.foo.baz, 5)
+		},
 	})
 })

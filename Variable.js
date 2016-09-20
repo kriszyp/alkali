@@ -4,8 +4,8 @@ define(['./util/lang'], function (lang) {
 	var WeakMap = lang.WeakMap
 	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
+	var isGenerator = lang.isGenerator
 	// update types
-	var ToParent = 2
 	var RequestChange = 3
 	var RequestSet = 4
 	
@@ -228,6 +228,31 @@ define(['./util/lang'], function (lang) {
 		constructor: Variable,
 		valueOf: function(context) {
 			var valueContext
+			if (this.parent) {
+				if (context) {
+					valueContext = context.newContext()
+					valueContext.nextProperty = 'parent'
+				}
+				var key = this.key
+				var property = this
+				var object = this.parent.valueOf(valueContext)
+				var gotValueAndListen = function(object) {
+					var value = property.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key], context, valueContext)
+					if (property.listeners) {
+						var listeners = propertyListenersMap.get(object)
+						if (listeners && listeners.observer && listeners.observer.addKey) {
+							listeners.observer.addKey(key)
+						}
+					}
+					return value
+				}
+				if (object && object.then) {
+					// call it initially so the dependencies can be registered
+					this.gotValue(null, context, valueContext)
+					return when(object, gotValueAndListen)
+				}
+				return gotValueAndListen(object)
+			}
 			return this.gotValue(this.getValue ?
 				this.getValue(context && (valueContext = context.newContext())) :
 				this.value, context, valueContext)
@@ -312,13 +337,15 @@ define(['./util/lang'], function (lang) {
 		isMap: function() {
 			return this.value instanceof Map
 		},
-		property: function(key) {
+		property: function(key, PropertyClass) {
 			var isMap = this.isMap()
 			var properties = this._properties || (this._properties = isMap ? new Map() : {})
 			var propertyVariable = isMap ? properties.get(key) : properties[key]
 			if (!propertyVariable) {
 				// create the property variable
-				propertyVariable = new Property(this, key)
+				propertyVariable = new (PropertyClass || Variable)()
+				propertyVariable.key = key
+				propertyVariable.parent = this
 				if (isMap) {
 					properties.set(key, propertyVariable)
 				} else {
@@ -332,8 +359,64 @@ define(['./util/lang'], function (lang) {
 				// makes HTML events work
 				subject = subject.target
 			}
+			if (this.parent) {
+				return this.parent.for(subject).property(this.key)	
+			}
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
+		_changeValue: function(context, type, newValue) {
+			var key = this.key
+			var parent = this.parent
+			var variable = this
+			parent._willModify(context)
+			return when(parent.valueOf(context), function(object) {
+				if (object == null) {
+					// nothing there yet, create an object to hold the new property
+					var response = parent.put(object = typeof key == 'number' ? [] : {}, context)
+				} else if (typeof object != 'object') {
+					// if the parent is not an object, we can't set anything (that will be retained)
+					return deny
+				}
+				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
+				if (oldValue === newValue) {
+					// no actual change to make
+					return noChange
+				}
+				if (variable.__debug) {
+					// debug is on
+					console.log('Variable changed from', oldValue, newValue, 'at')
+					console.log((new Error().stack || '').replace(/Error/, ''))
+				}
+				if (typeof object.set === 'function') {
+					object.set(key, newValue)
+				} else {
+					if (type == RequestChange && oldValue && oldValue.put) {
+						// if a put and the property value is a variable, assign it to that.
+						oldValue.put(newValue)
+					} else {
+						object[key] = newValue
+						// or set the setter/getter
+					}
+				}
+				variable.updated(null, variable, context)
+
+				// now notify any object listeners
+				var listeners = propertyListenersMap.get(object)
+				// we need to do it before the other listeners, so we can update it before
+				// we trigger a full clobbering of the object
+				if (listeners) {
+					listeners = listeners.slice(0)
+					for (var i = 0, l = listeners.length; i < l; i++) {
+						var listener = listeners[i]
+						if (listener !== parent) {
+							// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
+							listener._propertyChange(key, object, context, type)
+						}
+					}
+				}
+			})
+		},
+
 		_propertyChange: function(propertyName, object, context, type) {
 			if (this.onPropertyChange) {
 				this.onPropertyChange(propertyName, object, context)
@@ -360,6 +443,9 @@ define(['./util/lang'], function (lang) {
 				if (properties) {
 					forPropertyNotifyingValues(properties, callback)
 				}
+			}
+			if (this.parent) {
+				callback(this.parent)
 			}
 		},
 		init: function() {
@@ -454,7 +540,7 @@ define(['./util/lang'], function (lang) {
 				// make a copy, in case they change
 				listeners.forEach(function(dependent) {
 					if ((updateEvent instanceof PropertyChangeEvent) &&
-							(dependent instanceof Property)) {
+							dependent.parent) {
 						if (dependent.key === updateEvent.key) {
 							dependent.updated(updateEvent.childEvent, variable, context)
 						}
@@ -470,6 +556,9 @@ define(['./util/lang'], function (lang) {
 				if (this.constructor.collection) {
 					this.constructor.collection.updated(updateEvent, this, context)
 				}
+			}
+			if (this.parent) {
+					this.parent.updated(new PropertyChangeEvent(this.key, updateEvent, this.parent), this, context)
 			}
 			return updateEvent
 		},
@@ -544,12 +633,15 @@ define(['./util/lang'], function (lang) {
 		},
 		put: function(value, context) {
 			var variable = this
+			if (this.parent) {
+				return this._changeValue(context, RequestChange, value)
+			}
 			if (this.ownObject) {
 				this.ownObject = false
-			}		
+			}
 			return when(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
 				if (variable.__debug) {
-					// _debug _debug is on
+					// debug is on
 					console.log('Variable changed from', oldValue, newValue, 'at')
 					console.log((new Error().stack || '').replace(/Error/, ''))
 				}
@@ -665,6 +757,10 @@ define(['./util/lang'], function (lang) {
 		},
 		get schema() {
 			// default schema is the constructor
+			if (this.parent) {
+				var parentSchemaProperties = this.parent.schema.properties
+				return parentSchemaProperties && parentSchemaProperties[this.key]
+			}
 			return this.returnedVariable ? this.returnedVariable.schema : this.constructor
 		},
 		set schema(schema) {
@@ -676,6 +772,9 @@ define(['./util/lang'], function (lang) {
 		validate: function(target, schema) {
 			if (this.returnedVariable) {
 				return this.returnedVariable.validate(target, schema)
+			}
+			if (this.parent) {
+				return this.parent.validate(target.valueOf(), schema)
 			}
 			if (schema && schema.type && (schema.type !== typeof target)) {
 				return ['Target type of ' + typeof target + ' does not match schema type of ' + schema.type]
@@ -768,6 +867,8 @@ define(['./util/lang'], function (lang) {
 						}
 					}
 				})
+			} else if (this.parent) {
+				this.parent._willModify()
 			}
 		},
 		_sN: function(name) {
@@ -908,7 +1009,9 @@ define(['./util/lang'], function (lang) {
 			var propertyVariable = properties.get(key)
 			if (!propertyVariable) {
 				// create the property variable
-				propertyVariable = new Property(this, key)
+				propertyVariable = new Variable()
+				propertyVariable.key = key
+				propertyVariable.parent = this
 				properties.set(key, propertyVariable)
 			}
 			return propertyVariable
@@ -972,127 +1075,6 @@ define(['./util/lang'], function (lang) {
 	function GetCache() {
 	}
 
-	var Property = lang.compose(Variable, function Property(parent, key) {
-		this.parent = parent
-		this.key = key
-	},
-	{
-		forDependencies: function(callback) {
-			Variable.prototype.forDependencies.call(this, callback)
-			callback(this.parent)
-		},
-		valueOf: function(context) {
-			if (context) {
-				var propertyContext = context.newContext()
-				propertyContext.nextProperty = 'parent'
-			}
-			var key = this.key
-			var property = this
-			var object = this.parent.valueOf(propertyContext)
-			function gotValueAndListen(object) {
-				var value = property.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key], context, propertyContext)
-				if (property.listeners) {
-					var listeners = propertyListenersMap.get(object)
-					if (listeners && listeners.observer && listeners.observer.addKey) {
-						listeners.observer.addKey(key)
-					}
-				}
-				return value
-			}
-			if (object && object.then) {
-				// call it initially so the dependencies can be registered
-				this.gotValue(null, context, propertyContext)
-				return when(object, gotValueAndListen)
-			}
-			return gotValueAndListen(object)
-		},
-		put: function(value, context) {
-			return this._changeValue(context, RequestChange, value)
-		},
-		parentUpdated: function(updateEvent, context) {
-			return Variable.prototype.updated.call(this, updateEvent, this.parent, context)
-		},
-		updated: function(updateEvent, by, context) {
-			if (updateEvent = Variable.prototype.updated.call(this, updateEvent, by, context)) {
-				this.parent.updated(new PropertyChangeEvent(this.key, updateEvent, this.parent), this, context)
-			}
-		},
-		for: function(subject) {
-			return this.parent.for(subject).property(this.key)
-		},
-		_changeValue: function(context, type, newValue) {
-			var key = this.key
-			var parent = this.parent
-			var variable = this
-			parent._willModify(context)
-			return when(parent.valueOf(context), function(object) {
-				if (object == null) {
-					// nothing there yet, create an object to hold the new property
-					var response = parent.put(object = typeof key == 'number' ? [] : {}, context)
-				} else if (typeof object != 'object') {
-					// if the parent is not an object, we can't set anything (that will be retained)
-					return deny
-				}
-				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-				if (oldValue === newValue) {
-					// no actual change to make
-					return noChange
-				}
-				if (variable.__debug) {
-					// debug is on
-					console.log('Variable changed from', oldValue, newValue, 'at')
-					console.log((new Error().stack || '').replace(/Error/, ''))
-				}
-				if (typeof object.set === 'function') {
-					object.set(key, newValue)
-				} else {
-					if (type == RequestChange && oldValue && oldValue.put) {
-						// if a put and the property value is a variable, assign it to that.
-						oldValue.put(newValue)
-					} else {
-						object[key] = newValue
-						// or set the setter/getter
-					}
-				}
-				variable.updated(null, variable, context)
-
-				// now notify any object listeners
-				var listeners = propertyListenersMap.get(object)
-				// we need to do it before the other listeners, so we can update it before
-				// we trigger a full clobbering of the object
-				if (listeners) {
-					listeners = listeners.slice(0)
-					for (var i = 0, l = listeners.length; i < l; i++) {
-						var listener = listeners[i]
-						if (listener !== parent) {
-							// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
-							listener._propertyChange(key, object, context, type)
-						}
-					}
-				}
-			})
-		},
-		_willModify: function() {
-			this.parent._willModify()
-			return Variable.prototype._willModify.call(this)
-		},
-		validate: function(target, schema) {
-			return this.parent.validate(target.valueOf(), schema)
-		}
-	})
-	Object.defineProperty(Property.prototype, 'schema', {
-		get: function() {
-			var parentSchemaProperties = this.parent.schema.properties
-			return parentSchemaProperties && parentSchemaProperties[this.key]
-		},
-		set: function(schema) {
-			// have to repeat the override
-			Object.defineProperty(this, 'schema', {
-				value: schema
-			})
-		}
-	})
-	Variable.Property = Property
 
 	var Item = Variable.Item = lang.compose(Variable, function Item(value, content) {
 		this.value = value
@@ -1554,11 +1536,21 @@ define(['./util/lang'], function (lang) {
 							nextVariable.notifies(this)
 						}
 						this[argumentName] = nextVariable
+					} else if (typeof nextVariable === 'function' && isGenerator(nextVariable)) {
+						var delegatedGenerator
+						getValue.call(this, context, delegatedGenerator = {
+							i: i,
+							iterator: nextVariable()
+						})
+						i = delegatedGenerator.i
 					} else {
 						this[argumentName] = null
 					}
 				}
 				i++
+				if (resuming) {
+					resuming.i = i
+				}
 				if (context) {
 					context.nextProperty = argumentName
 				}

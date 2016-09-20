@@ -3,10 +3,12 @@ declare module 'alkali' {
   interface Promise<T> {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
   }
+
   export class Variable<T> {
     constructor(value?: T)
     valueOf(): T
     property(key: KeyType): Variable<any>
+    property<U>(key: KeyType, PropertyClass: {new (): U}): U
     put(value: T | Variable<T>)
     get(key: KeyType): any
     set(key: KeyType, value: any)

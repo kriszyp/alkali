@@ -86,7 +86,7 @@ four == 4 -> true
 
 If the `value` passed in is not different than the current value, no changes will be made and this will return `Variable.noChange`. If the value can not be assigned, it will return `Variable.deny`.
 
-### `property(propertyName)`
+### `property(propertyName, PropertyClass?)`
 
 This returns a variable representing the value of the property of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in a property variable will update the corresponding property on the parent object. For example:
 ```javascript
@@ -97,6 +97,7 @@ foo.valueOf() -> 1
 foo.put(2);
 object.foo -> 2
 ```
+An optional class can be provided to define the class to use/instantiate for the property.
 
 ### `to(function)`
 

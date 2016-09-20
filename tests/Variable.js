@@ -735,6 +735,7 @@ define([
 			assert.isTrue(updated)
 			assert.strictEqual(bar.property('foo').valueOf(), '2')
 		},
+
 		JSON: function() {
 			var obj = new Variable({foo: new Variable('bar')})
 			assert.strictEqual(JSON.stringify(obj), '{"foo":"bar"}')
