@@ -21,7 +21,7 @@ declare module 'alkali' {
 
     schema: Variable<{}>
     validation: Variable<{}>
-    static extend({}): typeof Variable
+    static extend<U>(properties: U): typeof this & U
     static hasOwn(Target: () => any)
 
     static for(subject: any): Variable<any>
