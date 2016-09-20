@@ -28,9 +28,10 @@
   },
   "dojoBuild": "package.js",
   "devDependencies": {
+    "bluebird": "^3.3.3",
     "dojo": "^1.10.2",
-    "dojo-dstore": "^1.1.0",
+    "dojo-dstore": "^1.1.1",
     "intern-geezer": "^2",
-    "bluebird": "3.3.3"
+	"intern": "^2.2.2"
   }
 }
