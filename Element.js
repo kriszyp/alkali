@@ -1178,7 +1178,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		//}
 	}
 	if (typeof MutationObserver === 'function') {
-		var docBody = doc.body
 		var lifeStates = [{
 			name: 'detached',
 			nodes: 'removedNodes',
@@ -1198,7 +1197,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					return true
 				}
 			} else if (node.__alkaliAttached__) {
-				if (docBody.contains(node)) {
+				if (doc.body.contains(node)) {
 					// detached event, but it is actually still attached (will get attached in a later mutation record)
 					// so don't get through the detached/attached lifecycle
 					return false
@@ -1255,7 +1254,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				}
 			}
 		})
-		observer.observe(docBody, {
+		observer.observe(doc.body || doc, {
 			childList: true,
 			subtree: true
 		})
