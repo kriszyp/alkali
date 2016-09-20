@@ -1014,7 +1014,13 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	}
 
 	function hasOwn(From, Target, createInstance) {
-		if (typeof Target === 'object' && Target.Class) {
+		if (typeof Target === 'object') {
+			// we were given an actual instance, use that
+			var elementMap = From.ownedClasses || (From.ownedClasses = new WeakMap())
+			var instanceMap = {get: function () { 
+				return Target
+			}}
+			elementMap.set(Target.constructor, instanceMap)
 			return hasOwn(From, Target.Class, Target.createInstance)
 		}
 		if (Target instanceof Array) {
@@ -1025,6 +1031,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		var instanceMap = new WeakMap()
 		instanceMap.createInstance = createInstance
 		var elementMap = From.ownedClasses || (From.ownedClasses = new WeakMap())
+		// TODO: Go up through prototype chain of Target and set each one
 		elementMap.set(Target, instanceMap)
 		return From
 	}
