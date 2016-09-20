@@ -50,9 +50,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	// TODO: check for renderContent with text updater
 	var TextRenderer = Renderer.TextRenderer
 	var ListRenderer = Renderer.ListRenderer
-	
-	var toAddToElementPrototypes = []
-	var createdBaseElements = []
+
 	var doc = typeof document !== 'undefined' ? document : {
 		createElement: function(tag) {
 			return {}
@@ -61,15 +59,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		}
 	}
 
-	var testStyle = doc.createElement('div').style
-	var childTagForParent = {
-		TABLE: ['tr','td'],
-		TBODY: ['tr','td'],
-		TR: 'td',
-		UL: 'li',
-		OL: 'li',
-		SELECT: 'option'
-	}
 	var inputs = {
 		INPUT: 1,
 		TEXTAREA: 1
@@ -128,19 +117,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		var cssRules = styleSheet.cssRules || styleSheet.rules
 		return cssRules[styleSheet.addRule(selector, ' ', cssRules.length)]
 	}
-	var invalidatedElements = new WeakMap(null, 'invalidated')
-	var queued
 
-	var toRender = []
-	function flatten(target, part) {
-		var base = target.base
-		if (base) {
-			var basePart = base[part]
-			if (basePart) {
-				target[part] || target[part]
-			}
-		}
-	}
 	// TODO: Need to do some more testing to see if that would improve performance:
 	// var fragmentThresholdHeuristic = (typeof navigator !== 'undefined' && navigator.userAgent.indexOf('Chrome') > 0) ? 1 : 3
 
@@ -356,9 +333,8 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			PropertyRenderer.apply(this, arguments)
 		}, {
 			renderUpdate: renderer
-		})	
+		})
 		return function(element, value, key) {
-			var target = element[key]
 			for (var subKey in value) {
 				var subValue = value[subKey]
 				if (subValue && subValue.notifies) {
@@ -422,18 +398,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				})
 			}
 		}
-	}
-
-	function applySelector(element, selector) {
-		selector.replace(/(\.|#)?(\w+)/g, function(t, operator, name) {
-			if (operator == '.') {
-				element._class = (element._class ? element._class + ' ' : '') + name
-			} else if (operator == '#') {
-				element._id = name
-			} else {
-				element._tag = name
-			}
-		})
 	}
 
 	function buildContent(element, content, key, properties) {
@@ -546,7 +510,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 
 	function applyToClass(value, Element) {
 		var applyOnCreate = Element._applyOnCreate
-		var prototype = Element.prototype
 		if (value && typeof value === 'object') {
 			if (value instanceof Array || value.notifies) {
 				applyOnCreate.content = value
@@ -650,9 +613,8 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			// just copy this property
 			Element.children = this.children
 		}
-		var prototype = Element.prototype = this.prototype
+		Element.prototype = this.prototype
 
-		var hasOwnApplySet
 		var applyOnCreate = Element._applyOnCreate = {}
 		var parentApplySet = getApplySet(this)
 		// copy parent properties
@@ -1011,14 +973,14 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				get: function() {
 					return this[to]
 				}
-			})			
+			})
 		})(alias, aliases[alias])
 	}
 
 	Element.append = append
 	Element.prepend = prepend
 	Element.refresh = Renderer.refresh
-	var options = Element.options = {
+	Element.options = {
 		moveLiveElementsEnabled: true,
 	}
 	Element.content = function(element){
@@ -1067,7 +1029,6 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		return From
 	}
 
-	var globalInstances = {}
 	function getForClass(element, Target) {
 		var createInstance
 		while (element && !(createInstance = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
@@ -1259,7 +1220,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			subtree: true
 		})
 	}
-	
+
 	lang.copy(Variable.Context.prototype, {
 		specify: function(Variable) {
 			var element = this.subject
@@ -1339,7 +1300,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			return true
 		}
 	})
-	
+
 
 
 	return Element
