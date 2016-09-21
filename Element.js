@@ -991,10 +991,11 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		}
 	}
 
+	Element.ElementClass = function() {}
 	if (typeof Symbol !== 'undefined') {
 		// make instanceof work for Element
-		Object.defineProperty(Element, Symbol.hasInstance, { value: function(target) {
-			return target && ((target.create && target.with) || target.nodeType)
+		Object.defineProperty(Element.ElementClass, Symbol.hasInstance, { value: function(target) {
+			return target && (target.create && target.with)
 		}})
 	}
 

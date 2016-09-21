@@ -8,7 +8,6 @@ declare module 'alkali' {
     constructor(value?: T)
     valueOf(): T
     property(key: KeyType): Variable<any>
-    property<U>(key: KeyType, PropertyClass: {new (): U}): U
     put(value: T | Variable<T>)
     get(key: KeyType): any
     set(key: KeyType, value: any)
@@ -473,7 +472,7 @@ declare module 'alkali' {
   type ElementChild2 = string | Variable<any> | ElementClass<Node> | VariableClass | Array<ElementChild3> | Node | number
   type ElementChild3 = string | Variable<any> | ElementClass<Node> | VariableClass | Array<any> | Node | number
 
-  interface ElementClass<Element> {
+  export interface ElementClass<Element> {
     new (selector?: string): Element
     new (content: ElementChild): Element
     new (properties: ElementProperties, content?: ElementChild): Element
