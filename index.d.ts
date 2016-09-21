@@ -469,9 +469,9 @@ declare module 'alkali' {
     [name: string]: any
   }
 
-  type ElementChild = string | Variable<any> | ElementClass<HTMLElement> | VariableClass | Array<ElementChild2> | HTMLElement | number
-  type ElementChild2 = string | Variable<any> | ElementClass<HTMLElement> | VariableClass | Array<ElementChild3> | HTMLElement | number
-  type ElementChild3 = string | Variable<any> | ElementClass<HTMLElement> | VariableClass | Array<any> | HTMLElement | number
+  type ElementChild = string | Variable<any> | ElementClass<Node> | VariableClass | Array<ElementChild2> | Node | number
+  type ElementChild2 = string | Variable<any> | ElementClass<Node> | VariableClass | Array<ElementChild3> | Node | number
+  type ElementChild3 = string | Variable<any> | ElementClass<Node> | VariableClass | Array<any> | Node | number
 
   interface ElementClass<Element> {
     new (selector?: string): Element
