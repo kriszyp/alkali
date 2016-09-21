@@ -990,6 +990,14 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			create: element.create.bind(element)
 		}
 	}
+
+	if (typeof Symbol !== 'undefined') {
+		// make instanceof work for Element
+		Object.defineProperty(Element, Symbol.hasInstance, { value: function(target) {
+			return target && ((target.create && target.with) || target.nodeType)
+		}})
+	}
+
 	// TODO: unify this in lang
 	Element.extend = function(Class, properties) {
 		function ExtendedElement() {
