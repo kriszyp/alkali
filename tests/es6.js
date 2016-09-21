@@ -178,18 +178,20 @@ define([
 				})
 			})
 		},
-		getPropertyWithClass: function() {
+		structuredClass: function() {
 			class Foo extends Variable {
 				constructor() {
 					super(...arguments)
 					// prelude to class properties
-					this.baz = this.property('baz')
+					this.baz = new Variable()
+					this.structured = true
 				}
 			}
 			class Bar extends Variable {
 				constructor() {
 					super(...arguments)
-					this.foo = this.property('foo', Foo)
+					this.foo = new Foo()
+					this.structured = true
 				}
 			}
 			var obj = { foo: { baz: 3 } }
@@ -197,6 +199,11 @@ define([
 			assert.strictEqual(bar.foo.baz.valueOf(), 3)
 			bar.foo.baz.put(5)
 			assert.strictEqual(obj.foo.baz, 5)
+			assert.strictEqual(bar.property('foo').get('baz'), 5)
 		},
+		instanceofElementClass: function() {
+			var MyDiv = Div('.test')
+			assert.isTrue(MyDiv instanceof Element.ElementClass)
+		}
 	})
 })

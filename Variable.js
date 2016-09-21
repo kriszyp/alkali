@@ -343,13 +343,13 @@ define(['./util/lang'], function (lang) {
 		isMap: function() {
 			return this.value instanceof Map
 		},
-		property: function(key, PropertyClass) {
+		property: function(key) {
 			var isMap = this.isMap()
 			var properties = this._properties || (this._properties = isMap ? new Map() : {})
 			var propertyVariable = isMap ? properties.get(key) : properties[key]
 			if (!propertyVariable) {
 				// create the property variable
-				propertyVariable = new (PropertyClass || Variable)()
+				propertyVariable = new Variable()
 				propertyVariable.key = key
 				propertyVariable.parent = this
 				if (isMap) {
@@ -802,6 +802,26 @@ define(['./util/lang'], function (lang) {
 			Object.defineProperty(this, 'validation', {
 				value: validation
 			})
+		},
+		set structured(structure) {
+			// find any variable properties and attaches them as a property
+			var keys = Object.keys(this)
+			for(var i = 0, l = keys.length; i < l; i++) {
+				var key = keys[i]
+				var value = this[key]
+				if (value instanceof Variable) {
+					if (value.parent) {
+						// already parented, make a proxy
+						var newValue = new Variable()
+						newValue.proxy(value)
+						value = newValue
+					}
+					value.key = key
+					value.parent = this
+					var properties = value._properties || (value._properties = {})
+					properties[key] = value
+				}
+			}
 		},
 		getId: function() {
 			return this.id || (this.id = nextId++)
@@ -1854,6 +1874,7 @@ define(['./util/lang'], function (lang) {
 		var subjectMap = this.ownedClasses || (this.ownedClasses = new WeakMap())
 		subjectMap.set(Target, instanceMap)
 	}
+
 	Variable.all = all
 	Variable.objectUpdated = objectUpdated
 	
