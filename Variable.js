@@ -212,7 +212,13 @@ define(['./util/lang'], function (lang) {
 	function Variable(value) {
 		if (this instanceof Variable) {
 			// new call, may eventually use new.target
-			this.value = typeof value === 'undefined' ? this.default : value
+			if (value === undefined) {
+				if (this.default !== undefined) {
+					this.value = this.default
+				}
+			} else {
+				this.value = value
+			}
 		} else {
 			return Variable.extend(value)
 		}
