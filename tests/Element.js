@@ -27,6 +27,7 @@ define([
 	var append = Element.append
 	var prepend = Element.prepend
 	var extend = Element.extend
+	var VArray = Variable.VArray
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {
@@ -264,13 +265,23 @@ define([
 			assert.strictEqual(middle.className, 'middle-1')
 		},
 
+		childrenDOMOrderWithVariables: function(){
+			const Vars = [1, 2, 3].map(v => new Variable(v));
+			const children = [
+			  'First node ', new VArray(Vars).map(v => Span([v]))
+			];
+			const div = new Div(children);
+			document.body.appendChild(div)
+			assert.strictEqual(div.firstChild.nodeType, 3)
+		},
+
 		append: function() {
 			var top = new Div('.top')
 			append(top, Span, Span('.second'))
 			assert.strictEqual(top.firstChild.tagName, 'SPAN')
 			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
 		},
-		
+
 		appendAsMethod: function() {
 			HTMLElement.prototype.append = append
 			var top = new Div('.top')
@@ -289,7 +300,7 @@ define([
 			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
 			assert.strictEqual(top.firstChild.nextSibling.nextSibling.className, 'last')
 		},
-		
+
 		list: function() {
 			var arrayVariable = new Variable(['a', 'b', 'c'])
 			var listElement = new UL({

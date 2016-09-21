@@ -137,7 +137,8 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					}
 				} else if (child.notifies) {
 					// a variable
-					fragment.appendChild(childNode = variableAsContent(parent, child))
+					var ref = child.isIterable ? fragment : parent
+					fragment.appendChild(childNode = variableAsContent(ref, child))
 				} else if (typeof child == 'object') {
 					if (child instanceof Array) {
 						// array of sub-children
@@ -1026,7 +1027,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		if (typeof Target === 'object') {
 			// we were given an actual instance, use that
 			var elementMap = From.ownedClasses || (From.ownedClasses = new WeakMap())
-			var instanceMap = {get: function () { 
+			var instanceMap = {get: function () {
 				return Target
 			}}
 			elementMap.set(Target.constructor, instanceMap)
