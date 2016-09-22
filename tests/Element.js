@@ -620,7 +620,7 @@ define([
 
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
-			for (var i = 0; i < 10000; i++) {
+			for (var i = 0; i < 100; i++) {
 				var childDiv = container.appendChild(document.createElement('div'))
 				childDiv.appendChild(document.createElement('span'))
 				childDiv.appendChild(document.createElement('input')).className = 'test'
@@ -630,7 +630,7 @@ define([
 		},
 		performance: function() {
 			var container = document.body.appendChild(document.createElement('div'))
-			for (var i = 0; i < 10000; i++) {
+			for (var i = 0; i < 100; i++) {
 				var a = new Variable('a')
 				container.appendChild(new Div([
 					Span(a),
