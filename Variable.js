@@ -9,9 +9,6 @@ define(['./util/lang'], function (lang) {
 	var RequestChange = 3
 	var RequestSet = 4
 
-	var ToChild = Object.freeze({
-		type: 'refresh'
-	})
 	var nextId = 1
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap')
 
@@ -378,7 +375,7 @@ define(['./util/lang'], function (lang) {
 			return when(parent.valueOf(context), function(object) {
 				if (object == null) {
 					// nothing there yet, create an object to hold the new property
-					var response = parent.put(object = typeof key == 'number' ? [] : {}, context)
+					parent.put(object = typeof key == 'number' ? [] : {}, context)
 				} else if (typeof object != 'object') {
 					// if the parent is not an object, we can't set anything (that will be retained)
 					return deny
@@ -730,7 +727,6 @@ define(['./util/lang'], function (lang) {
 		forEach: function(callbackOrItemClass, callbackOrContext, context) {
 			// iterate through current value of variable
 			if (callbackOrItemClass.notifies) {
-				var collectionVariable = this
 				return this.forEach(function(item) {
 					var itemVariable = callbackOrItemClass.from(item)
 					callbackOrContext.call(this, itemVariable)
@@ -1057,7 +1053,6 @@ define(['./util/lang'], function (lang) {
 		}
 	})
 
-	var cacheNotFound = {}
 	var Caching = Variable.Caching = lang.compose(Variable, function(getValue, setValue) {
 		if (getValue) {
 			this.getValue = getValue
@@ -1110,10 +1105,6 @@ define(['./util/lang'], function (lang) {
 			}
 		}
 	})
-
-	function GetCache() {
-	}
-
 
 	var Item = Variable.Item = lang.compose(Variable, function Item(value, content) {
 		this.value = value
@@ -1473,7 +1464,6 @@ define(['./util/lang'], function (lang) {
 				var array = contextualizedVariable.cachedValue
 				if (array && array.map) {
 					var index = array.indexOf(object)
-					var matches = [object].filter(this.arguments[0]).length > 0
 					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], event.value))
 				} else {
 					return Composite.prototype.updated.call(this, event, by, context)
@@ -1637,10 +1627,6 @@ define(['./util/lang'], function (lang) {
 		}
 	})
 
-	function validate(target) {
-		var schemaForObject = schema(target)
-		return new Validating(target, schemaForObject)
-	}
 	Variable.VArray = Variable
 	Variable.VPromised = Variable
 	Variable.deny = deny
@@ -1699,18 +1685,6 @@ define(['./util/lang'], function (lang) {
 		var Class = this
 		ownedClasses.set(Target, createForInstance || function() { return new Target() })
 		return this
-	}
-	function getForClass(subject, Target) {
-		var createInstance = subject.constructor.ownedClasses && subject.constructor.ownedClasses.get(Target)
-		if (createInstance) {
-			var ownedInstances = subject.ownedInstances || (subject.ownedInstances = new WeakMap())
-			var instance = ownedInstances.get(Target)
-			if (!instance) {
-				ownedInstances.set(Target, instance = createInstance(subject))
-				instance.subject = subject
-			}
-			return instance
-		}
 	}
 	function generalizeClass() {
 		var prototype = this.prototype
