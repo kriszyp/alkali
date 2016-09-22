@@ -25,6 +25,10 @@ greeting.put('Hello')
 ```
 This will notify derived variables and bound elements. This will result in the element binding queuing up a rendering, which will later execute and execute any necessary transforms, showing "Hello, World" in our `<div>`.
 
+## Installation
+
+Alkali can be installed with standard package managers, `npm install alkali` or `bower install alkali`, or cloned from the github. Alkali works with ES6, CommonJS, or AMD modules bundlers/loaders. Or, you can load `dist/index.js` (from the package or from [github CDN](http://rawgit.com/kriszyp/alkali/master/dist/index.js)) as a script and use the `alkali` global. Also, here is a [codepen with a basic example to start trying out Alkali](http://codepen.io/kriszyp/pen/xEEBKY?editors=1111).
+
 # Compatibility
 
 Alkali is tested and runs on IE11+ or any other modern browser, and can also on NodeJS (without DOM generation).
