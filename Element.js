@@ -137,7 +137,8 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					}
 				} else if (child.notifies) {
 					// a variable
-					fragment.appendChild(childNode = variableAsContent(parent, child))
+					var ref = child.isIterable ? fragment : parent
+					fragment.appendChild(childNode = variableAsContent(ref, child))
 				} else if (typeof child == 'object') {
 					if (child instanceof Array) {
 						// array of sub-children
@@ -268,7 +269,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				new AttributeRenderer({
 					name: 'style',
 					variable: value,
-					elment: element
+					element: element
 				})
 			} else {
 				styleObjectHandler(element, value, key)
@@ -296,7 +297,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		addExtensionHandlers(HTMLAnchorElement, ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'])
 		addExtensionHandlers(HTMLAreaElement, ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'])
 		addExtensionHandlers(HTMLButtonElement, ['formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'])
-		addExtensionHandlers(HTMLDialogElement, ['open'])
+		//addExtensionHandlers(HTMLDialogElement, ['open'])
 		addExtensionHandlers(HTMLEmbedElement, ['src', 'type', 'name'])
 		addExtensionHandlers(HTMLFormElement, ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'])
 		addExtensionHandlers(HTMLFrameElement, ['name', 'scrolling', 'src', 'frameBorder'])
@@ -1026,7 +1027,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		if (typeof Target === 'object') {
 			// we were given an actual instance, use that
 			var elementMap = From.ownedClasses || (From.ownedClasses = new WeakMap())
-			var instanceMap = {get: function () { 
+			var instanceMap = {get: function () {
 				return Target
 			}}
 			elementMap.set(Target.constructor, instanceMap)

@@ -8,7 +8,7 @@ define(['./util/lang'], function (lang) {
 	// update types
 	var RequestChange = 3
 	var RequestSet = 4
-	
+
 	var ToChild = Object.freeze({
 		type: 'refresh'
 	})
@@ -331,7 +331,7 @@ define(['./util/lang'], function (lang) {
 
 				if (!context) {
 					parentContext.addInput(this)
-				}				
+				}
 			}
 			if (value && value.then) {
 				return when(value, function(value) {
@@ -366,7 +366,7 @@ define(['./util/lang'], function (lang) {
 				subject = subject.target
 			}
 			if (this.parent) {
-				return this.parent.for(subject).property(this.key)	
+				return this.parent.for(subject).property(this.key)
 			}
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
@@ -1080,7 +1080,7 @@ define(['./util/lang'], function (lang) {
 					context.addInput(contextualizedVariable)
 				}
 				return contextualizedVariable.cachedValue
-			}			
+			}
 
 			var variable = this
 			function withComputedValue(computedValue) {
@@ -1255,7 +1255,7 @@ define(['./util/lang'], function (lang) {
 							return deny
 						}
 					}, context)
-				});				
+				});
 			})
 		},
 		invoke: function(functionValue, context, observeArguments) {
@@ -1346,7 +1346,7 @@ define(['./util/lang'], function (lang) {
 			return this.generic.put(value, subject.getContextualized ? subject : new Context(subject))
 		}
 	})
-	
+
 	var IterativeMethod = lang.compose(Composite, function(source, method, args) {
 		this.source = source
 		// source.interestWithin = true
@@ -1384,7 +1384,7 @@ define(['./util/lang'], function (lang) {
 					}
 					// if not an array convert to an array
 					array = [array]
-				} 
+				}
 				if (typeof method === 'string') {
 					// apply method
 					return array[method].apply(array, args)
@@ -1410,6 +1410,7 @@ define(['./util/lang'], function (lang) {
 	function defineArrayMethod(method, constructor, properties) {
 		var IterativeResults = lang.compose(IterativeMethod, constructor, properties)
 		IterativeResults.prototype.method || (IterativeResults.prototype.method = method)
+		Object.defineProperty(IterativeResults.prototype, 'isIterable', {value: true});
 		Variable.prototype[method] = function() {
 			var results = new IterativeResults()
 			results.source = this
@@ -1553,7 +1554,7 @@ define(['./util/lang'], function (lang) {
 			} else {
 				// a fresh start
 				i = 0
-				generatorIterator = this.generator()				
+				generatorIterator = this.generator()
 			}
 
 			do {
@@ -1890,6 +1891,6 @@ define(['./util/lang'], function (lang) {
 
 	Variable.all = all
 	Variable.objectUpdated = objectUpdated
-	
+
 	return Variable
 })
