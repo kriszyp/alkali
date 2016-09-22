@@ -282,7 +282,9 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	})
 	if (typeof HTMLElement !== 'undefined') {
 		HTMLElement.prototype._propertyHandlers = propertyHandlers // inherit this, at least for now
-		lang.copy(addExtensionHandlers(HTMLInputElement, ['accept', 'alt', 'autocomplete', 'autofocus', 'capture', 'defaultChecked', 'dirName', 'disabled', 'form', 'files', 'formAction', 'formEnctype', 'formMethod', 'formNoValidate', 'formTarget', 'indeterminate', 'inputMode', 'list', 'max', 'maxLength', 'min', 'minLength', 'multiple', 'name', 'pattern', 'placeholder', 'readOnly', 'required', 'size', 'src', 'step', 'type', 'defaultValue', 'willValidate', 'validity', 'validationMessage', 'useMap', 'autocapitalize', 'webkitdirectory', 'incremental', 'stepUp', 'stepDown']), {
+	}
+	var elementPropertyHandlers = {
+		input: lang.copy(['accept', 'alt', 'autocomplete', 'autofocus', 'capture', 'defaultChecked', 'dirName', 'disabled', 'form', 'files', 'formAction', 'formEnctype', 'formMethod', 'formNoValidate', 'formTarget', 'indeterminate', 'inputMode', 'list', 'max', 'maxLength', 'min', 'minLength', 'multiple', 'name', 'pattern', 'placeholder', 'readOnly', 'required', 'size', 'src', 'step', 'type', 'defaultValue', 'willValidate', 'validity', 'validationMessage', 'useMap', 'autocapitalize', 'webkitdirectory', 'incremental', 'stepUp', 'stepDown'], {
 			value: bidirectionalHandler,
 			valueAsNumber: bidirectionalHandler,
 			valueAsDate: bidirectionalHandler,
@@ -294,30 +296,42 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 					// IE 11 will throw an error here
 				}
 			}
-		})
-		lang.copy(addExtensionHandlers(HTMLSelectElement, ['name', 'size', 'type', 'selectedIndex', 'validationMessage']), {
+		}),
+		select: lang.copy(['name', 'size', 'type', 'selectedIndex', 'validationMessage'], {
 			value: bidirectionalHandler
-		})
-		lang.copy(addExtensionHandlers(HTMLTextAreaElement, ['cols', 'dirName', 'maxLength', 'minLength', 'name', 'placeholder', 'rows', 'wrap', 'type', 'defaultValue', 'textLength', 'validationMessage', 'autocapitalize']), {
+		}),
+		textarea: lang.copy(['cols', 'dirName', 'maxLength', 'minLength', 'name', 'placeholder', 'rows', 'wrap', 'type', 'defaultValue', 'textLength', 'validationMessage', 'autocapitalize'], {
 			value: bidirectionalHandler
-		})
-		addExtensionHandlers(HTMLAnchorElement, ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'])
-		addExtensionHandlers(HTMLAreaElement, ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'])
-		addExtensionHandlers(HTMLButtonElement, ['formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'])
-		//addExtensionHandlers(HTMLDialogElement, ['open'])
-		addExtensionHandlers(HTMLEmbedElement, ['src', 'type', 'name'])
-		addExtensionHandlers(HTMLFormElement, ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'])
-		addExtensionHandlers(HTMLFrameElement, ['name', 'scrolling', 'src', 'frameBorder'])
-		addExtensionHandlers(HTMLFrameSetElement, ['cols', 'rows'])
-		addExtensionHandlers(HTMLOptionElement, ['label', 'value', 'text', 'index'])
-		addExtensionHandlers(HTMLTableCellElement, ['colSpan', 'rowSpan'])
-	}
-	function addExtensionHandlers(constructor, props) {
-		var handlers = constructor.prototype._propertyHandlers = Object.create(propertyHandlers)
-		for (var i = 0, l = props.length; i < l; i++) {
-			handlers[props[i]] = true
-		}
-		return handlers
+		}),
+		a: ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'],
+		area: ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'],
+		button: ['formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'],
+		dialog: ['open'],
+		embed: ['src', 'type', 'name'],
+		form: ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'],
+		frame: ['name', 'scrolling', 'src', 'frameBorder'],
+		frameset: ['cols', 'rows'],
+    iframe: ['src', 'srcdoc', 'name', 'referrerPolicy', 'align', 'scrolling', 'frameBorder', 'longDesc'],
+    option: ['label', 'value', 'text', 'index'],
+    optgroup: ['label'],
+    output: ['name', 'type', 'defaultValue', 'value', 'validationMessage'],
+    label: ['htmlFor'],
+    td: ['colSpan', 'rowSpan'],
+    th: ['colSpan', 'rowSpan'],
+    script: ['src', 'type', 'charset', 'text', 'event', 'htmlFor', 'integrity'],
+    style: ['media', 'type'],
+    track: ['kind', 'src', 'srclang', 'label'],
+    link: ['href', 'rel', 'media', 'hreflang', 'type', 'charset', 'rev', 'target', 'integrity', 'as'],
+    meta: ['name', 'httpEquiv', 'content', 'scheme'],
+    meter: ['value', 'min', 'max', 'low', 'high', 'optimum'],
+    progress: ['value', 'max', 'position'],
+    del: ['cite', 'dateTime'],
+    ins: ['cite', 'dateTime'],
+    source: ['src', 'type', 'srcset', 'sizes', 'media'],
+    video: ['videoWidth', 'videoHeight', 'poster', 'webkitDecodedFrameCount', 'webkitDroppedFrameCount'],
+    keygen: ['challenge', 'keytype', 'name', 'type', 'validationMessage'],
+    object: ['data', 'type', 'name', 'useMap', 'validationMessage', 'archive', 'code', 'hspace', 'standby', 'vspace', 'codeBase', 'codeType'],
+    param: ['name', 'value', 'type', 'valueType']
 	}
 
 	function applyAttribute(element, value, key) {
@@ -922,10 +936,25 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		tagName = tagName.toLowerCase()
 		return tags[tagName] ||
 			(tags[tagName] =
-				setTag(withProperties.call(doc.createElement(tagName).constructor), tagName))
+				setupElement(withProperties.call(doc.createElement(tagName).constructor), tagName))
 	}
 
-	function setTag(Element, tagName) {
+	function setupElement(Element, tagName) {
+		var props = elementPropertyHandlers[tagName]
+		if (props && !props.assigned) {
+			var handlers = Element.prototype._propertyHandlers = Object.create(propertyHandlers)
+			for (var i = 0, l = props.length; i < l; i++) {
+				handlers[props[i]] = true
+			}
+			if (props.value) {
+				for (var i in props) {
+					if (!(i > -1)) { // assign any string properties if necessary
+						handlers[i] = props[i]
+					}
+				}
+			}
+			props.assigned = true
+		}
 		Element.tagName = tagName
 		return Element
 	}
@@ -945,7 +974,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			Object.defineProperty(Element, inputType, {
 				get: function() {
 					// TODO: make all inputs extend from input generated from generate
-					return ElementClass || (ElementClass = setTag(withProperties.call(HTMLInputElement, {
+					return ElementClass || (ElementClass = setupElement(withProperties.call(HTMLInputElement, {
 						type: inputType.toLowerCase()
 					}), 'input'))
 				}
