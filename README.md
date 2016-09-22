@@ -86,7 +86,7 @@ four == 4 -> true
 
 If the `value` passed in is not different than the current value, no changes will be made and this will return `Variable.noChange`. If the value can not be assigned, it will return `Variable.deny`.
 
-### `property(propertyName)`
+### `property(propertyName, PropertyClass?)`
 
 This returns a variable representing the value of the property of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in a property variable will update the corresponding property on the parent object. For example:
 ```javascript
@@ -97,6 +97,8 @@ foo.valueOf() -> 1
 foo.put(2);
 object.foo -> 2
 ```
+An optional class can be provided to define the class to use/instantiate for the property.
+
 
 ### `to(function)`
 
@@ -195,6 +197,50 @@ In addition, `keyBy` and `groupBy` methods are also available:
 `keyBy(getKey?, getValue?)` - This will index the values in array using the provided key retrieval, `getKey`, which can be a string to indicate a property, or a function to retrieve the key from the object. If omitted, value itself will be the key. In addition `getValue` can also provided to retrieve the value, if something other than the original array element is desired. This will return a Map variable, which can be used to retrieve values by id.
 
 `groupBy(getKey?, getValue?)` - This behaves the same as `keyBy` but can be used when multiple elements may share the same key. This will put all the elements for a given in an array under the key. The returned Map variable will have array values.
+
+## Structured Variables
+
+A recommended pattern for defining structured data with variables is to subclass `Variable` and then add variables as child properties. This can be done by adding variables as properties to your variable, and then setting the `structured` property. Setting the `structured` property will tell your variable to define all the added properties as child property variables. Using newer class property syntax, this would look like:
+```
+class MyVariable extends Variable {
+  name = new Variable()
+  // we can subclass and define structures and use these in properties
+  subObject = new OtherCustomVariable()
+  // this *must* come last, this indicates to the variable that the previously add variables are properties
+  structured = true
+}
+```
+This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API).
+
+We could go further and define list structures as well (here we demonstrate inline class definitions):
+```
+class MyVariable extends Variable {
+  myList = new (class extends VArray {
+    collectionOf: class extends Variable {
+      foo = new Variable()
+      structured = true
+    }
+  })()
+  // this *must* come last, this indicates to the variable that the previously add variables are properties
+  structured: true
+}
+```
+Property variables can also be defined by getting a named property variable (with a `property` call) and assigned it as an object property (this can be useful for avoiding/handling name collisions):
+```
+  foo = this.property('foo')
+```
+
+If you are not using a compiler with class property syntax, this can be done in a constructor:
+```
+class MyVariable extends Variable {
+  constructor() {
+    super(..arguments)
+    this.name = new Variable()
+    ...
+    this.structured = true
+  }
+}
+```
 
 ## EcmaScript Generator Support (`react()`)
 
@@ -612,6 +658,7 @@ new Div({
 	each: Input(Widget.property('selected'))
 });
 ```
+Alternately, you can define this relationship with `Widgets.collectionOf = Widget`
 
 Another means of generating elements from list or array data is to use a `map` method:
 ```javascript
@@ -768,9 +815,9 @@ Alternately, you may set `alwaysUpdate` to true on the Renderer options to force
 
 If your variables use promises, alkali will wait for the promise to resolve before calling `renderUpdate` (and it will be called with the resolution of the promise). You may define a `renderLoading` to render something while a promise is waiting to be resolved.
 
-## Data Objects
+## Object Monitoring
 
-Data objects are plain JS objects: Variables can be used on their own, or the Variable interface is designed to provide an enhanced interface to objects without requiring any special properties or prototypes on the data objects themselves. Objects can be used in conjunction with property variables to receive notification of object changes using the consistent variable interface. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observeObject` method on a variable. For example:
+The plain JavaScript objects in a variable can be observed by the variable for changes. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observeObject` method on a variable. For example:
 
 	var myObject = {name: 'simple property'};
 	var myVariable = new Variable(myObject);

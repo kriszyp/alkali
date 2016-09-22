@@ -8,6 +8,7 @@ declare namespace alkali {
     constructor(value?: T)
     valueOf(): T
     property(key: KeyType): Variable<any>
+    property<U>(key: KeyType, PropertyClass: {new (): U}): U
     put(value: T | Variable<T>)
     get(key: KeyType): any
     set(key: KeyType, value: any)
@@ -28,6 +29,7 @@ declare namespace alkali {
     static for(subject: any): Variable<any>
     static to<U>(transform: (T) => U | Variable<U>): VariableClass
     static property(key: KeyType): VariableClass
+    collection: VariableClass
   }
   export type Reacts<T> = T & Variable<T>
 
@@ -46,6 +48,7 @@ declare namespace alkali {
     pop(): T
     shift(): T
     splice(start: number, end: number, ...items: T[])
+    collectionOf: VariableClass
   }
   export class VMap<T> extends Variable<T> {
   }

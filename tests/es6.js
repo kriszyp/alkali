@@ -178,12 +178,36 @@ define([
 				})
 			})
 		},
+		getPropertyWithClass: function() {
+			class Foo extends Variable {
+				constructor() {
+					super(...arguments)
+					// prelude to class properties
+					this.baz = this.property('baz')
+					this.baz2 = this.property('baz')
+					this.structured = true // make sure this doesn't change anything
+				}
+			}
+			class Bar extends Variable {
+				constructor() {
+					super(...arguments)
+					this.foo = this.property('foo', Foo)
+				}
+			}
+			var obj = { foo: { baz: 3 } }
+			var bar = new Bar(obj)
+			assert.strictEqual(bar.foo.baz.valueOf(), 3)
+			assert.strictEqual(bar.foo.baz2.valueOf(), 3)
+			bar.foo.baz.put(5)
+			assert.strictEqual(obj.foo.baz, 5)
+		},
 		structuredClass: function() {
 			class Foo extends Variable {
 				constructor() {
 					super(...arguments)
 					// prelude to class properties
 					this.baz = new Variable()
+					this.bazDerived = this.baz.to(baz => baz * 2)
 					this.structured = true
 				}
 			}
@@ -197,9 +221,11 @@ define([
 			var obj = { foo: { baz: 3 } }
 			var bar = new Bar(obj)
 			assert.strictEqual(bar.foo.baz.valueOf(), 3)
+			assert.strictEqual(bar.foo.bazDerived.valueOf(), 6)
 			bar.foo.baz.put(5)
 			assert.strictEqual(obj.foo.baz, 5)
 			assert.strictEqual(bar.property('foo').get('baz'), 5)
+			assert.strictEqual(bar.property('foo').get('bazDerived'), 10)
 		},
 		instanceofElementClass: function() {
 			var MyDiv = Div('.test')

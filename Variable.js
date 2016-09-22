@@ -343,13 +343,13 @@ define(['./util/lang'], function (lang) {
 		isMap: function() {
 			return this.value instanceof Map
 		},
-		property: function(key) {
+		property: function(key, PropertyClass) {
 			var isMap = this.isMap()
 			var properties = this._properties || (this._properties = isMap ? new Map() : {})
 			var propertyVariable = isMap ? properties.get(key) : properties[key]
 			if (!propertyVariable) {
 				// create the property variable
-				propertyVariable = new Variable()
+				propertyVariable = new (PropertyClass || Variable)()
 				propertyVariable.key = key
 				propertyVariable.parent = this
 				if (isMap) {
@@ -689,6 +689,7 @@ define(['./util/lang'], function (lang) {
 			this.fixed = true
 			return when(this.setValue(proxiedVariable), function(value) {
 				thisVariable.updated(new RefreshEvent(), thisVariable)
+				return thisVariable
 			})
 		},
 		next: function(value) {
@@ -806,20 +807,32 @@ define(['./util/lang'], function (lang) {
 		set structured(structure) {
 			// find any variable properties and attaches them as a property
 			var keys = Object.keys(this)
+			var properties = keys.length > 1 && this._properties || (this._properties = {})
 			for(var i = 0, l = keys.length; i < l; i++) {
 				var key = keys[i]
 				var value = this[key]
 				if (value instanceof Variable) {
-					if (value.parent) {
-						// already parented, make a proxy
-						var newValue = new Variable()
-						newValue.proxy(value)
-						value = newValue
+					var existing = properties[key]
+					if (existing) {
+						if (existing !== value) {
+							// an existing property exists, put in it
+							existing.put(value)
+						}
+					} else {
+						if (value.parent) {
+							if (value.parent === this) {
+								continue // just being assigned to another property
+							} else {
+								// property already exists with different parent, make a proxy
+								var newValue = new Variable()
+								newValue.proxy(value)
+								value = newValue
+							}
+						}
+						value.key = key
+						value.parent = this
+						properties[key] = value
 					}
-					value.key = key
-					value.parent = this
-					var properties = value._properties || (value._properties = {})
-					properties[key] = value
 				}
 			}
 		},
