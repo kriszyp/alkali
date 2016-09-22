@@ -269,7 +269,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 				new AttributeRenderer({
 					name: 'style',
 					variable: value,
-					elment: element
+					element: element
 				})
 			} else {
 				styleObjectHandler(element, value, key)
@@ -297,7 +297,7 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 		addExtensionHandlers(HTMLAnchorElement, ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'])
 		addExtensionHandlers(HTMLAreaElement, ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'])
 		addExtensionHandlers(HTMLButtonElement, ['formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'])
-		addExtensionHandlers(HTMLDialogElement, ['open'])
+		//addExtensionHandlers(HTMLDialogElement, ['open'])
 		addExtensionHandlers(HTMLEmbedElement, ['src', 'type', 'name'])
 		addExtensionHandlers(HTMLFormElement, ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'])
 		addExtensionHandlers(HTMLFrameElement, ['name', 'scrolling', 'src', 'frameBorder'])
