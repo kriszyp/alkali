@@ -266,11 +266,11 @@ define([
 		},
 
 		childrenDOMOrderWithVariables: function(){
-			const Vars = [1, 2, 3].map(v => new Variable(v));
-			const children = [
-			  'First node ', new VArray(Vars).map(v => Span([v]))
+			var Vars = [1, 2, 3].map(function(v) { return new Variable(v) });
+			var children = [
+			  'First node ', new VArray(Vars).map(function(v) { return Span([v]) })
 			];
-			const div = new Div(children);
+			var div = new Div(children);
 			document.body.appendChild(div)
 			assert.strictEqual(div.firstChild.nodeType, 3)
 		},
