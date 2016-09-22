@@ -1,4 +1,4 @@
-declare module 'alkali' {
+declare namespace alkali {
   type KeyType = string | number
   interface Promise<T> {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
@@ -22,7 +22,7 @@ declare module 'alkali' {
 
     schema: Variable<{}>
     validation: Variable<{}>
-    static extend<U>(properties: U): typeof this & U
+
     static hasOwn(Target: () => any)
 
     static for(subject: any): Variable<any>
@@ -415,7 +415,6 @@ declare module 'alkali' {
     shapeRendering?: Vstyle
     size?: Vstyle
     speak?: Vstyle
-    src?: Vstyle
     stopColor?: Vstyle
     stopOpacity?: Vstyle
     stroke?: Vstyle
@@ -630,4 +629,7 @@ declare module 'alkali' {
   export function assign(element: HTMLElement, properties: ElementProperties)
   export function append(...args: Array<ElementChild>): HTMLElement
   export function prepend(...args: Array<ElementChild>): HTMLElement
+}
+declare module 'alkali' {
+    export = alkali
 }
