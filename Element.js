@@ -286,7 +286,14 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 			value: bidirectionalHandler,
 			valueAsNumber: bidirectionalHandler,
 			valueAsDate: bidirectionalHandler,
-			checked: bidirectionalHandler
+			checked: bidirectionalHandler,
+			type: function(element, value) {
+				try {
+					element.type = value
+				} catch(e) {
+					// IE 11 will throw an error here
+				}
+			}
 		})
 		lang.copy(addExtensionHandlers(HTMLSelectElement, ['name', 'size', 'type', 'selectedIndex', 'validationMessage']), {
 			value: bidirectionalHandler
