@@ -39,12 +39,7 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 		if (options.alwaysUpdate) {
 			this.alwaysUpdate = options.alwaysUpdate
 		}
-		if (variable.updated) {
-			// if it has update, we don't need to instantiate a closure
-			if (options.updateOnStart === false) {
-				variable.notifies(this)
-			}
-		} else {
+		if (!variable.updated) {
 			// baconjs-esqe API
 			var renderer = this
 			variable.subscribe(function (event) {
@@ -58,7 +53,13 @@ define(['./util/lang', './Variable'], function (lang, Variable) {
 				renderer.updated()
 			})
 		}
-		if (options.updateOnStart !== false){
+		if (options.updateOnStart === false){
+			// even if we don't render on start, we still need to compute the value so we can depend on the computed variables
+			this.variable.valueOf(this)
+			var contextualized = this.contextualized || this.variable
+			// TODO: we may need to handle recontextualization if it returns a promise
+			contextualized.notifies(this)
+		} else {
 			this.updateRendering(true)
 		}
 	}
