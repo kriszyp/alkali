@@ -269,7 +269,7 @@ define([
 		childrenDOMOrderWithVariables: function(){
 			var Vars = [1, 2, 3].map(function(v) { return new Variable(v) });
 			var children = [
-			  'First node ', new VArray(Vars).map(function(v) { return Span([v]) })
+				'First node ', new VArray(Vars).map(function(v) { return Span([v]) })
 			];
 			var div = new Div(children);
 			document.body.appendChild(div)
@@ -440,7 +440,7 @@ define([
 					b: b
 				}
 			})
-                        var div2 = new Div('.one.two')
+			var div2 = new Div('.one.two')
 			var divWithoutInitialClass = new Div({ classes: { dynamicclass: b }})
 			document.body.appendChild(div)
 			return new Promise(requestAnimationFrame).then(function() {
