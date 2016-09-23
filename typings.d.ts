@@ -90,6 +90,9 @@ declare namespace alkali {
   export class Renderer<T> {
     constructor(properties: RendererProperties<T>)
   }
+  export class ElementRenderer<T> {
+    constructor(properties: RendererProperties<T>)
+  }
   export class AttributeRenderer<T> {
     constructor(properties: NamedRendererProperties<T>)
   }
