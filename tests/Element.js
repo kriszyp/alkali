@@ -27,6 +27,7 @@ define([
 	var append = Element.append
 	var prepend = Element.prepend
 	var extend = Element.extend
+	var assign = Element.assign
 	var VArray = Variable.VArray
 	registerSuite({
 		name: 'Element',
@@ -604,6 +605,27 @@ define([
 					assert.equal(detached, 1, 'expected a single detach event')
 				})
 			})
+		},
+
+		assignElement: function() {
+			var div = document.body.appendChild(new Div())
+			var v = new Variable()
+			assign(div, {
+				title: v
+			})
+			v.put('foo')
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.equal(div.title, 'foo')
+			})
+		},
+
+		assignConstructor: function() {
+			var MyDiv = Div()
+			assign(MyDiv, {
+				title: 'foo'
+			})
+			var div = document.body.appendChild(new MyDiv())
+			assert.equal(div.title, 'foo')
 		},
 
 		registerTag: function() {

@@ -820,7 +820,17 @@ define(['./Variable', './Renderer', './util/lang'], function (Variable, Renderer
 	var Element = withProperties.call(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
 
 	Element.registerTag = registerTag
-	Element.assign = assignProperties
+	Element.assign = function(target, properties) {
+		if (typeof target === 'function') {
+			// assign properties to an existing constructor/class
+			getApplySet(target) // make sure we have our own applyOnCreate first
+			applyToClass(properties, target)
+		} else {
+			// assign to an element
+			// TODO: Handle content property separately
+			return assignProperties(target, properties)
+		}
+	}
 
 	Element.within = function(element){
 		// find closest child
