@@ -198,9 +198,9 @@ for (let letter of lettersAfterB) {
 ```
 
 In addition, `keyBy` and `groupBy` methods are also available:
-`keyBy(getKey?, getValue?)` - This will index the values in array using the provided key retrieval, `getKey`, which can be a string to indicate a property, or a function to retrieve the key from the object. If omitted, value itself will be the key. In addition `getValue` can also provided to retrieve the value, if something other than the original array element is desired. This will return a Map variable, which can be used to retrieve values by id.
+`keyBy(getKey(element, emit(key, value))?, getValue(element)?)` - This will index the values in array using the provided key retrieval, `getKey`, which can be a string to indicate a property, or a function to retrieve the key from the element. The `getKey` receives the `element` and can return the appropriate key. It also has an `emit` function that can optionally be used to add additional entries to the index. If omitted, value itself will be the key. In addition `getValue` can also provided to retrieve the value, if something other than the original array element is desired. This will return a Map variable, which can be used to retrieve values by id.
 
-`groupBy(getKey?, getValue?)` - This behaves the same as `keyBy` but can be used when multiple elements may share the same key. This will put all the elements for a given in an array under the key. The returned Map variable will have array values.
+`groupBy(getKey(element, emit), ?, getValue(element)?)` - This behaves the same as `keyBy` but can be used when multiple elements may share the same key. This will put all the elements for a given in an array under the key. The returned Map variable will have array values.
 
 ## Structured Variables
 

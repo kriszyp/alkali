@@ -340,13 +340,14 @@ define(['./util/lang'], function (lang) {
 		isMap: function() {
 			return this.value instanceof Map
 		},
+		PropertyClass: Variable,
 		property: function(key, PropertyClass) {
 			var isMap = this.isMap()
 			var properties = this._properties || (this._properties = isMap ? new Map() : {})
 			var propertyVariable = isMap ? properties.get(key) : properties[key]
 			if (!propertyVariable) {
 				// create the property variable
-				propertyVariable = new (PropertyClass || Variable)()
+				propertyVariable = new (PropertyClass || this.PropertyClass)()
 				propertyVariable.key = key
 				propertyVariable.parent = this
 				if (isMap) {
@@ -1492,9 +1493,12 @@ define(['./util/lang'], function (lang) {
 			for (var i = 0, l = array.length; i < l; i++) {
 				var element = array[i]
 				index.set(
-					hasKeyFunction ? keyGenerator(element) :
+					hasKeyFunction ? keyGenerator(element, emit) :
 						hasKey ? element[keyGenerator] : element,
 					hasValueFunction ? valueGenerator(element) : element)
+			}
+			function emit(key, value) {
+				index.set(key, value)
 			}
 			return index
 		}
@@ -1520,6 +1524,13 @@ define(['./util/lang'], function (lang) {
 					index.set(key, group = [])
 				}
 				group.push(hasValueFunction ? valueGenerator(element) : element)
+			}
+			function emit(key, value) {
+				var group = index.get(key)
+				if (!group) {
+					index.set(key, group = [])
+				}
+				group.push(value)
 			}
 			return index
 		}
