@@ -93,6 +93,9 @@ declare namespace alkali {
   export class ElementRenderer<T> {
     constructor(properties: RendererProperties<T>)
   }
+  export class ContentRenderer<T> {
+    constructor(properties: RendererProperties<T>)
+  }
   export class AttributeRenderer<T> {
     constructor(properties: NamedRendererProperties<T>)
   }
@@ -635,6 +638,8 @@ declare namespace alkali {
   export function assign(element: HTMLElement, properties: ElementProperties)
   export function append(...args: Array<ElementChild>): HTMLElement
   export function prepend(...args: Array<ElementChild>): HTMLElement
+  export function onShowElement(element: Node)
+  export function onElementRemoval(element: Node, onlyChildren?: boolean)
 }
 declare module 'alkali' {
     export = alkali
