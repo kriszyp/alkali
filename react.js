@@ -1,4 +1,7 @@
-define(['./util/lang', './Variable', './operators'], function (lang, Variable, operators) {
+(function (root, factory) { if (typeof define === 'function' && define.amd) {
+  define(['./util/lang', './operators', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
+  module.exports = factory(require('./util/lang'), require('./operators'), require('./Variable')) // Node
+}}(this, function (lang, operators, Variable) {
 
   var isGenerator = lang.isGenerator
   var ObjectTransform = lang.compose(Variable.Call, function ObjectTransform(transform, inputs) {
@@ -80,4 +83,4 @@ define(['./util/lang', './Variable', './operators'], function (lang, Variable, o
   }
 
 	return react
-})
+}))

@@ -1,4 +1,8 @@
-define(['./Variable'], function (Variable) {
+(function (root, factory) { if (typeof define === 'function' && define.amd) {
+	define(['./Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
+  module.exports = factory(require('./Variable')) // Node
+}}(this, function (Variable) {
+
 	var deny = Variable.deny;
 	var operatingFunctions = {};
 	var operators = {};
@@ -71,4 +75,4 @@ define(['./Variable'], function (Variable) {
 	operator('|', 'or', 8, 'a||b');
 	operator('round', 'round', 8, 'Math.round(a*Math.pow(10,b||1))/Math.pow(10,b||1)', 'a', 'a');
 	return operators;
-})
+}))

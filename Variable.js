@@ -1,4 +1,7 @@
-define(['./util/lang'], function (lang) {
+(function (root, factory) { if (typeof define === 'function' && define.amd) {
+	define(['./util/lang'], factory) } else if (typeof module === 'object' && module.exports) {        
+  module.exports = factory(require('./util/lang')) // Node
+}}(this, function (lang) {
 	var deny = {}
 	var noChange = {}
 	var WeakMap = lang.WeakMap
@@ -1114,14 +1117,14 @@ define(['./util/lang'], function (lang) {
 
 	var Composite = Variable.Composite = lang.compose(Caching, function Composite(args) {
 		for (var i = 0, l = args.length; i < l; i++) {
-			this['argument' + i] = args[i]
+			this[i > 0 ? 'input' + i : 'input'] = args[i]
 		}
 	}, {
 		forDependencies: function(callback) {
 			// depend on the args
 			Caching.prototype.forDependencies.call(this, callback)
 			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = 'argument' + i]) || argumentName in this; i++) {
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
 				if (argument && argument.notifies) {
 					callback(argument)
 				}
@@ -1132,7 +1135,7 @@ define(['./util/lang'], function (lang) {
 			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
 				// search for the output in the inputs
 				var argument, argumentName
-				for (var i = 0; (argument = this[argumentName = 'argument' + i]) || argumentName in this; i++) {
+				for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
 					if (argument === by) {
 						// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
 						updateEvent = new RefreshEvent()
@@ -1153,7 +1156,7 @@ define(['./util/lang'], function (lang) {
 		getVersion: function(context) {
 			var version = Variable.prototype.getVersion.call(this, context)
 			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = 'argument' + i]) || argumentName in this; i++) {
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
 				if (argument && argument.getVersion) {
 					version = Math.max(version, argument.getVersion(context))
 				}
@@ -1164,7 +1167,7 @@ define(['./util/lang'], function (lang) {
 		getValue: function(context) {
 			var results = []
 			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = 'argument' + i]) || argumentName in this; i++) {
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
 				if (context) {
 					context.nextProperty = argumentName
 				}
@@ -1177,7 +1180,7 @@ define(['./util/lang'], function (lang) {
 		getArguments: function() {
 			var args = []
 			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = 'argument' + i]) || argumentName in this; i++) {
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
 				args.push(argument)
 			}
 			return args
@@ -1188,7 +1191,7 @@ define(['./util/lang'], function (lang) {
 	var Call = lang.compose(Composite, function Transform(transform, args) {
 		this.transform = transform
 		for (var i = 0, l = args.length; i < l; i++) {
-			this['argument' + i] = args[i]
+			this[i > 0 ? 'input' + i : 'input'] = args[i]
 		}
 	}, {
 		fixed: true,
@@ -1257,7 +1260,7 @@ define(['./util/lang'], function (lang) {
 			}else{
 				var results = []
 				var argument, argumentName
-				for (var i = 0; (argument = this[argumentName = 'argument' + i]) || argumentName in this; i++) {
+				for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
 					if (context) {
 						context.nextProperty = argumentName
 					}
@@ -1566,7 +1569,7 @@ define(['./util/lang'], function (lang) {
 				var nextVariable = stepReturn.value
 				// compare with the arguments from the last
 				// execution to see if they are the same
-				var argumentName = 'argument' + i
+				var argumentName = i > 0 ? 'input' + i : 'input'
 				if (this[argumentName] !== nextVariable) {
 					if (this[argumentName]) {
 						this[argumentName].stopNotifies(this)
@@ -1878,4 +1881,4 @@ define(['./util/lang'], function (lang) {
 	Variable.objectUpdated = objectUpdated
 
 	return Variable
-})
+}))
