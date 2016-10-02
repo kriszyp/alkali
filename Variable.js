@@ -405,7 +405,10 @@
 						// or set the setter/getter
 					}
 				}
-				variable.updated(null, variable, context)
+				var event = new RefreshEvent()
+				event.oldValue = oldValue
+				event.target = variable
+				variable.updated(event, variable, context)
 
 				// now notify any object listeners
 				var listeners = propertyListenersMap.get(object)
@@ -661,7 +664,10 @@
 					return oldValue.put(value)
 				}
 				return when(variable.setValue(value, context), function(value) {
-					variable.updated(new RefreshEvent(), variable, context)
+					var event = new RefreshEvent()
+					event.oldValue = oldValue
+					event.target = variable
+					variable.updated(event, variable, context)
 				})
 			})
 		},
