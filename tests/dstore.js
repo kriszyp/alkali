@@ -1,6 +1,6 @@
 define([
 	'../Variable',
-	'../dstore',
+	'../extensions/dstore',
 	'dstore/Memory',
 	'intern!object',
 	'intern/chai!assert'
