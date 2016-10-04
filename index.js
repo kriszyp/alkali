@@ -13,6 +13,7 @@
 	main.VPromised = Variable.VPromised
 	main.all = Variable.all
 	main.Transform = Variable.Call
+	main.Caching = Variable.Caching
 	main.react = react
 	main.spawn = function(func) {
 		return react(func).valueOf()

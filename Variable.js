@@ -1049,12 +1049,12 @@
 		this.value = typeof value === 'undefined' ? this.default : value
 	}, {
 		// TODO: Move all the get and set functionality for maps out of Variable
-		property: function(key) {
+		property: function(key, PropertyClass) {
 			var properties = this._properties || (this._properties = new Map())
 			var propertyVariable = properties.get(key)
 			if (!propertyVariable) {
 				// create the property variable
-				propertyVariable = new Variable()
+				propertyVariable = new (PropertyClass || this.PropertyClass)()
 				propertyVariable.key = key
 				propertyVariable.parent = this
 				properties.set(key, propertyVariable)
@@ -1063,7 +1063,7 @@
 		}
 	})
 
-	var Caching = Variable.Caching = lang.compose(Variable, function(getValue, setValue) {
+	var Caching = Variable.Caching = lang.compose(Variable, function Caching(getValue, setValue) {
 		if (getValue) {
 			this.getValue = getValue
 		}
@@ -1195,9 +1195,11 @@
 
 	// a call variable is the result of a call
 	var Call = lang.compose(Composite, function Transform(transform, args) {
-		this.transform = transform
-		for (var i = 0, l = args.length; i < l; i++) {
-			this[i > 0 ? 'input' + i : 'input'] = args[i]
+		if (transform) {
+			this.transform = transform
+			for (var i = 0, l = args.length; i < l; i++) {
+				this[i > 0 ? 'input' + i : 'input'] = args[i]
+			}
 		}
 	}, {
 		fixed: true,
@@ -1261,6 +1263,7 @@
 		},
 		invoke: function(functionValue, context, observeArguments) {
 			var instance = this.transform.parent
+			var variable = this
 			if (functionValue.handlesVariables || functionValue.property) {
 				return functionValue.apply(instance, this.getArguments(), context)
 			}else{
@@ -1290,7 +1293,7 @@
 							}
 							var instance = inputs.pop()
 							try{
-								var result = functionValue.apply(instance, inputs, context)
+								var result = functionValue.apply(instance || variable, inputs, context)
 							}finally{
 								when(result, function() {
 									for (var i = 0; i < l; i++) {
@@ -1301,7 +1304,7 @@
 							return result
 						}
 						var instance = inputs.pop()
-						return functionValue.apply(instance, inputs, context)
+						return functionValue.apply(instance || variable, inputs, context)
 					})
 				}
 			}
