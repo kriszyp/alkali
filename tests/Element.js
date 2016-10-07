@@ -331,6 +331,21 @@ define([
 				})
 			})
 		},
+		simplePropertyAccess: function() {
+			var MyComponent = extend(Div, {})
+			MyComponent.children = [
+			    Span(MyComponent.property('title')),
+			]
+
+			// init
+			var el = new MyComponent({
+			    title: 'text for the span',
+			    link: 'a link for a[href]'
+			})
+
+			document.body.appendChild( el )
+			assert.strictEqual(el.firstChild.textContent, 'text for the span')
+		},
 		applyPropertyToChild: function() {
 			var MyComponent = extend(Div, {})
 			MyComponent.children = [

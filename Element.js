@@ -1133,15 +1133,19 @@
 
 			hasOwn(this, ThisElementVariable, function(element) {
 				// TODO: we might want to do this in init instead
-				var variableProperties = {}
-				for (var i = 0; i < element.alkaliRenderers.length; i++){
-					var renderer = element.alkaliRenderers[i]
-					if (renderer.name) {
-						variableProperties[renderer.name] = {value: renderer.variable}
+				var elementOverlay
+				if (element.alkaliRenderers) {
+					var variableProperties = {}
+					for (var i = 0; i < element.alkaliRenderers.length; i++){
+						var renderer = element.alkaliRenderers[i]
+						if (renderer.name) {
+							variableProperties[renderer.name] = {value: renderer.variable}
+						}
 					}
+					elementOverlay = Object.create(element, variableProperties)
+				} else {
+					elementOverlay = element
 				}
-
-				var elementOverlay = Object.create(element, variableProperties)
 				var instance = new ThisElementVariable(elementOverlay)
 				// we are not observing, because you can't delegate getters and setters in safari
 				// instance.observeObject()
