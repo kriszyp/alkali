@@ -18,7 +18,7 @@
 	main.spawn = function(func) {
 		return react(func).valueOf()
 	}
-	main.Renderer = Renderer
+	main.Renderer = Renderer.ElementRenderer
 	Object.assign(main, Renderer)
 	Object.assign(main, operators)
 	return main

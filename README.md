@@ -775,15 +775,9 @@ Alkali also exports an options object. It has the following properties:
 
 ## Renderers
 
-Renderers are an additional mechanism for making UI components react to data changes. Renderers allow us to add reactive capabilities to existing components with minimal change. Renderers are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an updater's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. The `Renderer` module includes several specific updaters, for updating attributes and the text of an element. The following Renderers are available from `alkali/Renderer`:
+Renderers are an additional mechanism for making UI components react to data changes. Renderers allow us to add reactive capabilities to existing components with minimal change. Renderers are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an updater's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. A `Renderer` can be constructed with an options object that defines the source `variable`, the associated DOM `element`, and an `renderUpdate` method that will perform the rerender with the latest value from the variable.
 
-Renderer - This should be constructed with an options object that defines the source `variable`, the associated DOM `element`, and an `renderUpdate` method that will perform the rerender with the latest value from the variable.
-
-Renderer.AttributeRenderer - This perform updates on an element's attribute. This should be constructed with an options object that defines the source `variable`, the associated DOM `element`, and the `name` of the attribute to be updated when the variable changes.
-
-Renderer.ContentRenderer - This perform updates on an element's text content. This should be constructed with an options object that defines the source `variable` and the associated DOM `element` to be updated when the variable changes.
-
- For example, we could create a simple variable:
+For example, we could create a simple variable:
 
 	var Variable = require('alkali/Variable');
 
@@ -791,29 +785,16 @@ Renderer.ContentRenderer - This perform updates on an element's text content. Th
 
 And then define an updater:
 
-	var AttributeRenderer = require('alkali/Renderer').AttributeRenderer;
-	new AttributeRenderer({
-		variable: myNumber,
-		element: someElement,
-		name: 'title' // update the title attribute with the variable value
-	})
-
-This will immediately assign the string 'Hi' to the title attribute of the element. If later we change the variable:
-
-	greeting.put('Hello World');
-
-This will schedule an update to the title. However, we change the variable again before the rendering phase (usually through `requestAnimationFrame`), we do not have to worry about multiple renderings taking place, it will simply render once, with the latest value.
-
-We can also create custom updaters:
+  import { Renderer } from 'alkali'
 
 	var greeting = new Variable('Hi');
 	new Renderer({
-			variable: myNumber,
-			element: someElement,
-			renderUpdate: function (newValue) {
-				element.innerHTML = newValue + '.';
-			}
-		})
+	  variable: myNumber,
+		element: someElement,
+		renderUpdate: function (newValue) {
+			element.innerHTML = newValue + '.';
+		}
+	})
 
 An Renderer will only update an element if it is visible, and will mark it as needing rerendering. If a hidden element is made visible again, you can trigger the rerendering by calling `Renderer.onShowElement(element)` on a parent element. You can also provide a custom definition for what constitutes a visible element that should be immediately rendered by defining a `shouldRender(element)` method, which should return true or false indicating if the element needs to be rendered.
 
