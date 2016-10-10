@@ -920,6 +920,26 @@ new VMap(new Map())
 
 Alkali also exports a `spawn` function, which waits for promises like `react`, but rather than returning a variable that will execute the provided transform generator/function on-demand, will immediately execute the generator, returning a promise (if there are promises yielded in the generator). This is effectively the same as task.js's `spawn` function.
 
+## Operator Functions
+
+Alkali includes several operator functions for combining variables with operators, corresponding to JavaScript operators. These functions take variables or static values as arguments, and return a variable that is result of this operation. These operator functions are also reversible, the returned variable can be modified, triggering a change in input variable. These operators include:
+
+* `add(a, b)` - The `add` function returns a variable that is the sum of two input variables or values, corresponding to a + b.
+* `subtract(a, b)` - Returns a variable corresponding to a - b
+* `multiply(a, b)` - Returns a variable corresponding to a * b
+* `divide(a, b)` - Returns a variable corresponding to a / b
+* `not(a)` - Returns a variable corresponding to !a
+* `remainder(a, b)` - Returns a variable corresponding to a % b
+* `greater(a, b)` - Returns a variable with a boolean corresponding to a > b
+* `greaterOrEqual(a, b)` - Returns a variable with a boolean corresponding to a > b
+* `less(a, b)` - Returns a variable with a boolean corresponding to a > b
+* `lessOrEqual(a, b)` - Returns a variable with a boolean corresponding to a > b
+* `strictEqual(a, b)` - Returns a variable corresponding to a === b
+* `equal(a, b)` - Returns a variable corresponding to a == b
+* `and(a, b)` - Returns a variable corresponding to a && b
+* `or(a, b)` - Returns a variable corresponding to a || b
+* `round(a, decimals)` - Returns a variable corresponding to rounded a, optionally to provided decimal points
+
 ## Which Listener To Use?
 
 There are several ways to listen for variable updates with Alkali, and which are designed and optimized for different situations. Here are a list of the main ways to listen for changes, and which is preferred (starting with the most preferred):
