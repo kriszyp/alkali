@@ -69,7 +69,7 @@
 	operator('>=', 'greaterOrEqual', 8, 'a>=b');
 	operator('<', 'less', 8, 'a<b');
 	operator('<=', 'lessOrEqual', 8, 'a<=b');
-	operator('===', 'looseEqual', 9, 'a===b');
+	operator('===', 'strictEqual', 9, 'a===b');
 	operator('==', 'equal', 9, 'a==b');
 	operator('&', 'and', 8, 'a&&b');
 	operator('|', 'or', 8, 'a||b');
