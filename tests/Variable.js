@@ -728,12 +728,43 @@ define([
 
 			assert.strictEqual(bar.get('foo'), 'foo')
 			var updated = false
+			var objectUpdated = false
 			assert.strictEqual(valueOfAndNotify(bar.property('foo'), function(updateEvent) {
 				updated = true
 			}), 'foo')
+			valueOfAndNotify(bar, function(updateEvent) {
+				objectUpdated = true
+			})
 			foo.put('2')
 			assert.isTrue(updated)
+			assert.isTrue(objectUpdated)
 			assert.strictEqual(bar.property('foo').valueOf(), '2')
+		},
+		objectWithPropertyVariable: function() {
+			var foo = new Variable('foo')
+			var bar = new Variable()
+
+			var objectUpdated = false
+			bar.set('foo', foo)
+			valueOfAndNotify(bar, function(updateEvent) {
+				objectUpdated = true
+			})
+			foo.put('2')
+			assert.isTrue(objectUpdated)
+		},
+		objectWithPropertyVariableReverse: function() {
+			var foo = new Variable('foo')
+			var bar = new Variable()
+
+			var objectUpdated = false
+			valueOfAndNotify(bar, function(updateEvent) {
+				objectUpdated = true
+			})
+			bar.property('foo').put(foo)
+			assert.isTrue(objectUpdated)
+			objectUpdated = false
+			foo.put('2')
+			assert.isTrue(objectUpdated)
 		},
 
 		JSON: function() {
