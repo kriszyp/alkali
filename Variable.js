@@ -389,11 +389,6 @@
 					// no actual change to make
 					return noChange
 				}
-				if (variable.__debug) {
-					// debug is on
-					console.log('Variable changed from', oldValue, newValue, 'at')
-					console.log((new Error().stack || '').replace(/Error/, ''))
-				}
 				if (typeof object.set === 'function') {
 					object.set(key, newValue)
 				} else {
@@ -526,6 +521,12 @@
 				return
 			}
 			updateEvent.visited.add(this)
+			if (this.__debug) {
+				// debug is on
+				console.log('Variable changed at')
+				console.log((new Error().stack || '').replace(/Error/, ''))
+			}
+
 			var contextualInstance = context ? context.getContextualized(this) : this
 			if (contextualInstance) {
 				contextualInstance.updated(updateEvent, this, context)
@@ -650,11 +651,6 @@
 				this.ownObject = false
 			}
 			return when(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
-				if (variable.__debug) {
-					// debug is on
-					console.log('Variable changed from', oldValue, newValue, 'at')
-					console.log((new Error().stack || '').replace(/Error/, ''))
-				}
 				if (oldValue === value) {
 					return noChange
 				}
