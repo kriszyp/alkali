@@ -7,7 +7,7 @@
 		'id', 'className', 'innerHTML', // Element
 		'title', 'lang', 'translate', 'dir', 'tabIndex', 'accessKey', 'draggable', 'spellcheck', 'contentEditable', 'innerText', 'webkitdropzone'] // HTMLElement
 
-	var SELECTOR_REGEX = /(\.|#)([-\w]+)(.+)?/
+	var SELECTOR_REGEX = /^(\.|#)([-\w]+)(.+)?/
 	var isGenerator = lang.isGenerator
 	var Context = Variable.Context
 	var PropertyRenderer = Renderer.PropertyRenderer
