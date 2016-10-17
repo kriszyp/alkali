@@ -183,7 +183,7 @@ let sum = Variable.all(a, b).to(([a, b]) => a + b);
 
 You can also provide an optional `transform` argument that will do a transform of the input values, which is essentially shorthand for `all(...).to(...)`:
 ```
-let sum = Variable.all(a, b, ([a, b]) => a + b);
+let sum = Variable.all([a, b], ([a, b]) => a + b);
 ```
 
 ## Variables as Arrays (`VArray`)
