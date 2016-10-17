@@ -168,7 +168,7 @@ This method will return an object with an `unsubscribe` method, which you can ca
 
 This static method will return a variable instance mapped to the target object. This will return a stable reference to a variable instance, the first call for a given target object will create a new instance, and subsequently calls with return the same variable. This can be very useful if independent code will access the same object(s) and make changes to the object and ensure that the changes are communicated through the same variable.
 
-### `all(array)`
+### `all(array, transform?)`
 
 This function allows you to compose a new variable from an array of input variables, where the resulting variable will update in response to changes from any of the input variables. The return variable will hold an array of values that represent the value of each of the input variable's values (in the same order as the variables were provided). This is intended to mirror the `Promise.all()` API. For example:
 
@@ -180,6 +180,11 @@ let sum = Variable.all(a, b).to(([a, b]) => a + b);
 ```
 
 `all` will also work with a set of arguments, instead of an array. It was will also work with an object, in which case each property value will be resolved, and the result will resolved to an object with the resolved values.
+
+You can also provide an optional `transform` argument that will do a transform of the input values, which is essentially shorthand for `all(...).to(...)`:
+```
+let sum = Variable.all(a, b, ([a, b]) => a + b);
+```
 
 ## Variables as Arrays (`VArray`)
 

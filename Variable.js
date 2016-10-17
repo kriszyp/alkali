@@ -1668,11 +1668,11 @@
 		}
 	}
 
-	function all(array) {
+	function all(array, transform) {
 		// This is intended to mirror Promise.all. It actually takes
 		// an iterable, but for now we are just looking for array-like
 		if (array.length > -1) {
-			return new Composite(array)
+			return typeof transform === 'function' ? new Call(transform, array) : new Composite(array)
 		}
 		if (arguments.length > 1) {
 			// support multiple arguments as an array
