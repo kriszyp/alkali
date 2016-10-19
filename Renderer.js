@@ -87,11 +87,13 @@
 		newContext: function() {
 			return new Variable.Context(this.element)
 		},
-		addInput: function(variable) {
-			this.contextualized = variable
+		addInput: function(contextualized) {
+			if (this.variable !== contextualized) {
+				this.contextualized = contextualized
+			}
 		},
 		getContextualized: function() {
-			return this.contextualized
+			return this.contextualized || this.variable
 		},
 		specify: function(Variable) {
 			// a new context to get thsi
