@@ -14,6 +14,7 @@
 
 	var nextId = 1
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap')
+	var isStructureChecked = new WeakMap()
 
 	var CacheEntry = lang.compose(WeakMap, function() {
 	},{
@@ -839,8 +840,8 @@
 			}
 			var proto = this
 			while (proto = getPrototypeOf(proto)) {
-				if (!proto.hasOwnProperty('__isStructureChecked')) {
-					proto.__isStructureChecked = true
+				if (!isStructureChecked.has(proto)) {
+					isStructureChecked.set(proto, true)
 					var keys = Object.getOwnPropertyNames(proto)
 					for(var i = 0, l = keys.length; i < l; i++) {
 						var key = keys[i]
