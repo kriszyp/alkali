@@ -267,9 +267,9 @@ This reactive function will also properly wait for promises; it can be used with
 
 ### Generator Getters (`*get_`)
 
-Reactive generators can also be defined as a computed property variable getter. A computed variable property be defined by prefixing the the property name with `*get_` and then defining the generator method used to calculate the variable value. This will generate a getter for the property that will return a variable based on the generator method. The generator method has access to `this`. For example:
+Reactive generators can also be defined as a computed property variable getter. A computed variable property be defined by prefixing the property name with `*get_` and then defining the generator method used to calculate the variable value. This will generate a getter for the property that will return a variable based on the generator method. This method can be written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The generator method also has access to `this`. Generator getters can be defined on variable classes or element classes. For example:
 
-```
+```javascript
 class MyVariable extends Variable {
   *get_name() { // this will create a getter for "name"
     return `${yield this.firstName} ${yield this.lastName}`
@@ -286,7 +286,7 @@ let name = v.name // the name property will return a variable
 name.valueOf() -> 'John Doe'
 v.lastName.put('Smith') // this will update "name" to have a value of "John Smith"
 ```
-The getter methods must be used with the `structured` property to initialize the getters.
+The getter methods must be used with the `structured` property to initialize the getters when used in a variable class.
 
 # Element Construction
 
@@ -518,56 +518,34 @@ Which would create a structure like:
 </div>
 ```
 
-### Render Methods
+### Generator getter methods
 
-With alkali, you can define custom rendering of properties on elements, providing similar functionality to native element properties when defining new classes. The easiest way to do this is with `render` methods, which will respond to property values and changes. To define a `render` method, simply define a method that begins with `render` suffixed with the property name capitalized. For example, we could define a `renderTitle` method, and any time we set the `title` property or provide a variable as the `title` and it is updated, the `renderTitle` method will be called.
 
-The `render` methods are called with the new value as the first argument (and a boolean indicating if this update, as opposed to the first rendering) For example:
-
-```javascript
-class MyDiv extends Div {
-	renderName(name) {
-		this.textContent = 'Name: ' + name
-	}
-}
-let myDiv = new MyDiv({name: 'Mine'}) // renderName will be called with 'Mine'
-
-let nameVariable = new Variable('Starting name')
-let myDiv = new MyDiv({name: nameVariable}) // renderName called with original value
-nameVariable.put('New name') // will trigger another renderName call
-myDiv.name = 'Another name' // will also trigger the renderName call
-```
-Note that render methods can only be used as methods in classes, not in constructor arguments.
-
-#### Getters and Setters
-The render methods provide custom handling of a property, and will override any existing functionality for a given property. This basically provides it very simple way to define a getter/setter for a property. But, if you would like to define property handling that delegates to existing property handling, it is recommended that you define your own getters and setters with super calls to the native setters and getters:
-```javascript
-class MyDiv extends Div {
-	set title(newTitle) {
-		// set the title with the default behavior of the native setter
-		super.title = newTitle;
-		// do our own thing with title
-	}
-	get title() {
-		return super.title;
-	}
-}
-```
-
-### Generator `*render` Method
-
-If you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define a `*render` method as a generator, making it very simple to construct an element that reacts to known variables. This method can be written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The method will be called when the element is first created, and again anytime any of the "yielded" variables changes. For example:
+Again, if you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define generator getters, making it very simple to construct element properties that reacts to other properties and variables. A generator getter will result a property variable for custom properties. For standard/native element properties, the generator getter will reactively assign its output to the standard element property. For example:
 
 ```javascript
 class MyLink extends Anchor {
-	*render(properties) {
-		this.href = baseUrl + yield someVariable;
-		this.textContent = yield properties.someProperty;
+  *get_path() { // custom property
+    return `${yield this.owner}/${this.repo}`
+  }
+	*get_href() { // defines the href for the <a> element
+    return `https://${yield this.domain}/${yield this.path}`
 	}
+  *get_content() { // defines the contents of the <a> element
+    return 'Link to ' + (yield this.path)
+  }
 }
+let alkali = new Variable('alkali')
+new MyLink({
+  domain: 'github.com', // these can be variables or static values
+  owner: 'kriszyp',
+  repo: alkali
+})
 ```
 
-The `*render` method can be used on classes, constructors, or element instantiation. For example, without even creating a class we can write:
+#### Generator `*render` Method
+
+In addition to getter generators, you can define a singular `*render` method to modify an element in response to variables. The `*render` method can be used on classes, constructors, or element instantiation. For example, without even creating a class we can write:
 ```javascript
 new Div({
 	*render() {
