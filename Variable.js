@@ -837,6 +837,24 @@
 					}
 				}
 			}
+			var proto = this
+			while (proto = getPrototypeOf(proto)) {
+				if (!proto.hasOwnProperty('__isStructureChecked')) {
+					proto.__isStructureChecked = true
+					var keys = Object.getOwnPropertyNames(proto)
+					for(var i = 0, l = keys.length; i < l; i++) {
+						var key = keys[i]
+						if (key.slice(0, 4) === 'get_') {
+							var value = this[key]
+							if (isGenerator(value)) {
+								defineGeneratorGetter(proto, key.slice(4), value)
+							} else {
+								console.warn(key + ' getter generator defined, but is not a generator')
+							}
+						}
+					}
+				}
+			}
 		},
 		getId: function() {
 			return this.id || (this.id = nextId++)
@@ -1880,6 +1898,23 @@
 		instanceMap.createInstance = createInstance
 		var subjectMap = this.ownedClasses || (this.ownedClasses = new WeakMap())
 		subjectMap.set(Target, instanceMap)
+	}
+
+	var defineGeneratorGetter = Variable.defineGeneratorGetter = function(target, key, value) {
+		var variables
+		Object.defineProperty(target, key, {
+			get: function() {
+				if (!variables) {
+					 variables = new WeakMap()
+				}
+				var variable = variables.get(this)
+				if (!variable) {
+					variables.set(this, variable = new Variable.GeneratorVariable(value.bind(this)))
+				}
+				return variable
+			},
+			enumerable: true
+		})
 	}
 
 	Variable.all = all

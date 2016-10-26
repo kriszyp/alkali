@@ -265,6 +265,29 @@ The resulting variable will reactively update in response to changes in the vari
 
 This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
 
+### Generator Getters (`*get_`)
+
+Reactive generators can also be defined as a computed property variable getter. A computed variable property be defined by prefixing the the property name with `*get_` and then defining the generator method used to calculate the variable value. This will generate a getter for the property that will return a variable based on the generator method. The generator method has access to `this`. For example:
+
+```
+class MyVariable extends Variable {
+  *get_name() { // this will create a getter for "name"
+    return `${yield this.firstName} ${yield this.lastName}`
+  }
+  firstName = new Variable()
+  lastName = new Variable()
+  structured = true
+}
+let v = new MyVariable({
+  firstName: 'John',
+  lastName: 'Doe'
+})
+let name = v.name // the name property will return a variable
+name.valueOf() -> 'John Doe'
+v.lastName.put('Smith') // this will update "name" to have a value of "John Smith"
+```
+The getter methods must be used with the `structured` property to initialize the getters.
+
 # Element Construction
 
 Alkali includes functionality for constructing and extending from native DOM elements, and binding these elements to variables for reactive UIs. The `alkali` module exports the full set of native element constructors (see the list at the end of the documentation), as properties, to use for streamlined creation of DOM elements. For example, using EcmaScript's module format to import:

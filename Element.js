@@ -9,6 +9,7 @@
 
 	var SELECTOR_REGEX = /^(\.|#)([-\w]+)(.+)?/
 	var isGenerator = lang.isGenerator
+	var defineGeneratorGetter = Variable.defineGeneratorGetter
 	var Context = Variable.Context
 	var PropertyRenderer = Renderer.PropertyRenderer
 	var InputPropertyRenderer = Renderer.InputPropertyRenderer
@@ -376,32 +377,43 @@
 	}
 
 	function assignProperties(element, properties) {
+		var delayedProperties
 		for (var key in properties) {
 			var value = properties[key]
 			var styleDefinition
 			var propertyHandler = element._propertyHandlers[key]
 			if (propertyHandler) {
-				if (propertyHandler === true) {
+				if (value && value.notifies) {
+					if (value._lateBind) {
+						(delayedProperties || (delayedProperties = {}))[key] = value._lateBind(element)
+					} else if (propertyHandler === true) {
 					// a standard, known element property
-					if (value && value.notifies) {
 						new PropertyRenderer({
 							name: key,
 							variable: value,
 							element: element
 						})
 					} else {
-						element[key] = value
+						propertyHandler(element, value, key, properties)
 					}
 				} else {
-					propertyHandler(element, value, key, properties)
+					if (propertyHandler === true) {
+						element[key] = value
+					} else {
+						propertyHandler(element, value, key, properties)
+					}
 				}
 			} else if ((styleDefinition = styleDefinitions[key])) {
 				if (value && value.notifies) {
-					new StyleRenderer({
-						name: key,
-						variable: value,
-						element: element
-					})
+					if (value._lateBind) {
+						(delayedProperties || (delayedProperties = {}))[key] = value._lateBind(element)
+					} else {
+						new StyleRenderer({
+							name: key,
+							variable: value,
+							element: element
+						})
+					}
 				} else {
 					styleDefinition(element, value, key)
 				}
@@ -422,6 +434,10 @@
 					writable: true
 				})
 			}
+		}
+		if (delayedProperties) {
+			// if any of these are delayed, run again
+			assignProperties(element, delayedProperties)
 		}
 	}
 
@@ -561,6 +577,14 @@
 		}
 	}
 
+	function GeneratorProperty(generator) {
+		this.generator = generator
+	}
+	GeneratorProperty.prototype.notifies = true
+	GeneratorProperty.prototype._lateBind = function(target) {
+		return new Variable.GeneratorVariable(this.generator.bind(target))
+	}
+
 	function getApplySet(Class) {
 		if (Class.hasOwnProperty('_applyOnCreate')) {
 			return Class._applyOnCreate
@@ -582,6 +606,19 @@
 				var key = keys[i]
 				if (key.slice(0, 2) === 'on' || (key === 'render' && isGenerator(prototype[key]))) {
 					applyOnCreate[key] = prototype[key]
+				} else if (key.slice(0, 4) === 'get_') {
+					var value = prototype[key]
+					if (isGenerator(value)) {
+						var getterKey = key.slice(4)
+						if (prototype._propertyHandlers[getterKey] || styleDefinitions[getterKey]) {
+							// if there is a handler
+							applyOnCreate[getterKey] = new GeneratorProperty(value)
+						} else {
+							defineGeneratorGetter(prototype, getterKey, value)
+						}
+					} else {
+						console.warn(key + ' getter generator defined, but is not a generator')
+					}
 				} else if (key.slice(0, 6) === 'render') {
 					var propertyName = key[6].toLowerCase() + key.slice(7)
 					if (!propertyHandlers) {
@@ -793,8 +830,8 @@
 			layoutChildren(element, this.children, element)
 		}
 		// always do this last, so it can be properly inserted inside the children
-		if (applyOnCreate.content) {
-			buildContent(element, applyOnCreate.content, 'content', applyOnCreate)
+		if (element.content) {
+			buildContent(element, element.content, 'content', applyOnCreate)
 		}
 		element.ready && element.ready(applyOnCreate)
 		return element

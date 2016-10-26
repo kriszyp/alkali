@@ -1,7 +1,7 @@
 define([
 	'./unit',
 	'./Renderer',
-	'./Element'/*,
-  './es6'*/
+	'./Element',
+  './es6'
 ], function () {
 });

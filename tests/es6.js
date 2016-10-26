@@ -231,6 +231,73 @@ define([
 			var MyDiv = Div('.test')
 			// only do this if the language supports Symbol.hasInstance
 			//assert.isTrue(MyDiv instanceof Element.ElementClass)
+		},
+		getterGeneratorOnVariable() {
+			class Foo extends Variable {
+				constructor() {
+					super({
+						planet: 'World'
+					})
+					this.planet = new Variable()
+					this.structured = true
+				}
+				*get_recipient() {
+					return yield this.planet
+				}
+				*get_greeting() {
+					return 'Hello, ' + (yield this.recipient)
+				}
+			}
+			var foo = new Foo()
+			var greeting = foo.greeting
+			var updated
+			assert.strictEqual(valueOfAndNotify(greeting, function() {
+				updated = true
+			}), 'Hello, World')
+			foo.planet.put('Saturn')
+			assert.isTrue(updated)
+			assert.strictEqual(greeting.valueOf(), 'Hello, Saturn')
+		},
+		getterGeneratorOnElement() {
+			class Foo extends Div {
+				*get_title() {
+					return yield this.name
+				}
+				*get_greeting() {
+					return 'Hello, ' + (yield this.name)
+				}
+				*get_content() {
+					return (yield this.greeting) + '.'
+				}
+			}
+
+			class SubFoo extends Foo {
+				*get_name() {
+					return `${yield this.firstName} ${yield this.lastName}`
+				}
+			}
+
+			var name = new Variable('World')
+			var foo = new Foo({name: name})
+			document.body.appendChild(foo)
+			var lastName = new Variable('Doe')
+			var subFoo = new SubFoo({firstName: 'John', lastName: lastName})
+			document.body.appendChild(subFoo)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(foo.textContent, 'Hello, World.')
+				assert.strictEqual(foo.title, 'World')
+				assert.strictEqual(subFoo.textContent, 'Hello, John Doe.')
+				assert.strictEqual(subFoo.title, 'John Doe')
+				name.put('Moon')
+				lastName.put('Smith')
+				return new Promise(requestAnimationFrame).then(function(){
+					assert.strictEqual(foo.textContent, 'Hello, Moon.')
+					assert.strictEqual(foo.title, 'Moon')
+					assert.strictEqual(subFoo.textContent, 'Hello, John Smith.')
+					assert.strictEqual(subFoo.title, 'John Smith')
+				})
+			})
+		
 		}
 	})
 })
