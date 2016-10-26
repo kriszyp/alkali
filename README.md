@@ -140,7 +140,7 @@ variable.property(name).valueOf() === variable.get(name)
 
 ### `set(propertyName, value)`
 
-This sets the value of the named property.  The following are functionally equivalent:
+This sets the value of the named property. The following are functionally equivalent:
 
 ```javascript
 variable.property(name).put(value)
@@ -160,7 +160,7 @@ This is a property that provides a variable representing the validation of this 
 
 ### `subscribe(listener)`
 
-This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using  alkali's optimized resource management. It is preferred to propagate changes through Variables to Elements and Renderers, as they provide more efficient resource management and avoid unnecessary computations.
+This adds a listener for any changes to the variable. If you provide a function, this will be called with an event object that has a `value()` method that can be called to get the current value. You can also use a subscriber object with a `next(value)` method, based on the proposed ES7 Observable API. However, use of `subscribe` to immediately access the value is generally discouraged, because it require immediate recomputation, rather than using alkali's optimized resource management. It is preferred to propagate changes through Variables to Elements and Renderers, as they provide more efficient resource management and avoid unnecessary computations.
 
 This method will return an object with an `unsubscribe` method, which you can call to stop a subscription.
 
@@ -212,11 +212,11 @@ In addition, `keyBy` and `groupBy` methods are also available:
 A recommended pattern for defining structured data with variables is to subclass `Variable` and then add variables as child properties. This can be done by adding variables as properties to your variable, and then setting the `structured` property. Setting the `structured` property will tell your variable to define all the added properties as child property variables. Using newer class property syntax, this would look like:
 ```
 class MyVariable extends Variable {
-  name = new Variable()
-  // we can subclass and define structures and use these in properties
-  subObject = new OtherCustomVariable()
-  // this *must* come last, this indicates to the variable that the previously add variables are properties
-  structured = true
+	name = new Variable()
+	// we can subclass and define structures and use these in properties
+	subObject = new OtherCustomVariable()
+	// this *must* come last, this indicates to the variable that the previously add variables are properties
+	structured = true
 }
 ```
 This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API).
@@ -224,30 +224,30 @@ This is a useful pattern because it defines a structure for your data, and these
 We could go further and define list structures as well (here we demonstrate inline class definitions):
 ```
 class MyVariable extends Variable {
-  myList = new (class extends VArray {
-    collectionOf: class extends Variable {
-      foo = new Variable()
-      structured = true
-    }
-  })()
-  // this *must* come last, this indicates to the variable that the previously add variables are properties
-  structured: true
+	myList = new (class extends VArray {
+		collectionOf: class extends Variable {
+			foo = new Variable()
+			structured = true
+		}
+	})()
+	// this *must* come last, this indicates to the variable that the previously add variables are properties
+	structured: true
 }
 ```
 Property variables can also be defined by getting a named property variable (with a `property` call) and assigned it as an object property (this can be useful for avoiding/handling name collisions):
 ```
-  foo = this.property('foo')
+	foo = this.property('foo')
 ```
 
 If you are not using a compiler with class property syntax, this can be done in a constructor:
 ```
 class MyVariable extends Variable {
-  constructor() {
-    super(..arguments)
-    this.name = new Variable()
-    ...
-    this.structured = true
-  }
+	constructor() {
+		super(..arguments)
+		this.name = new Variable()
+		...
+		this.structured = true
+	}
 }
 ```
 
@@ -271,16 +271,16 @@ Reactive generators can also be defined as a computed property variable getter. 
 
 ```javascript
 class MyVariable extends Variable {
-  *get_name() { // this will create a getter for "name"
-    return `${yield this.firstName} ${yield this.lastName}`
-  }
-  firstName = new Variable()
-  lastName = new Variable()
-  structured = true
+	*get_name() { // this will create a getter for "name"
+		return `${yield this.firstName} ${yield this.lastName}`
+	}
+	firstName = new Variable()
+	lastName = new Variable()
+	structured = true
 }
 let v = new MyVariable({
-  firstName: 'John',
-  lastName: 'Doe'
+	firstName: 'John',
+	lastName: 'Doe'
 })
 let name = v.name // the name property will return a variable
 name.valueOf() -> 'John Doe'
@@ -353,7 +353,7 @@ An argument can be an array that defines a set of elements to use as the content
 * Element classes - These will generate new elements
 * Element instances - This is will be directly inserted
 * Variables or primitives - These will be converted to text nodes
-* Or nested arrays -  This will result in nested elements (within the last element before the array). Sub-array elements will be added as children of the preceding element.
+* Or nested arrays -	This will result in nested elements (within the last element before the array). Sub-array elements will be added as children of the preceding element.
 
 For example, we could create a table:
 ```javascript
@@ -511,10 +511,10 @@ new MyDiv([Span('.inner-span', 'World')])
 Which would create a structure like:
 ```html
 <div>
-  <span>Hello</span>
-  <div>
-  	<span class="inner-span">World</span>
-  </div>
+	<span>Hello</span>
+	<div>
+		<span class="inner-span">World</span>
+	</div>
 </div>
 ```
 
@@ -525,21 +525,21 @@ Again, if you are developing in an ES6 compatible environment (Babel or restrict
 
 ```javascript
 class MyLink extends Anchor {
-  *get_path() { // custom property
-    return `${yield this.owner}/${this.repo}`
-  }
-	*get_href() { // defines the href for the <a> element
-    return `https://${yield this.domain}/${yield this.path}`
+	*get_path() { // custom property
+		return `${yield this.owner}/${this.repo}`
 	}
-  *get_content() { // defines the contents of the <a> element
-    return 'Link to ' + (yield this.path)
-  }
+	*get_href() { // defines the href for the <a> element
+		return `https://${yield this.domain}/${yield this.path}`
+	}
+	*get_content() { // defines the contents of the <a> element
+		return 'Link to ' + (yield this.path)
+	}
 }
 let alkali = new Variable('alkali')
 new MyLink({
-  domain: 'github.com', // these can be variables or static values
-  owner: 'kriszyp',
-  repo: alkali
+	domain: 'github.com', // these can be variables or static values
+	owner: 'kriszyp',
+	repo: alkali
 })
 ```
 
@@ -736,7 +736,7 @@ class ValidatedVariable extends Variable {
 }
 ...
 FormField.children = [
-  ...
+	...
 	Input(content),
 	Span('.errors', content.validation, {
 		each: errors
@@ -791,11 +791,11 @@ For example, we could create a simple variable:
 
 And then define an updater:
 
-  import { Renderer } from 'alkali'
+	import { Renderer } from 'alkali'
 
 	var greeting = new Variable('Hi');
 	new Renderer({
-	  variable: myNumber,
+		variable: myNumber,
 		element: someElement,
 		renderUpdate: function (newValue) {
 			element.innerHTML = newValue + '.';
@@ -1110,7 +1110,7 @@ Week (also WeekInput)
 
 ## Testing
 
-This package uses the [Intern test framework](https://theintern.github.io/intern/#what-is-intern) installed via `npm`.  To run tests, after installing intern-geezer dependency, serve the project directory and open the url in a browser:
+This package uses the [Intern test framework](https://theintern.github.io/intern/#what-is-intern) installed via `npm`. To run tests, after installing intern-geezer dependency, serve the project directory and open the url in a browser:
 
 `http://localhost:<port>/node_modules/intern-geezer/client.html?config=tests/intern` (add `&grep=...` to filter tests)
 
