@@ -233,22 +233,16 @@ define([
 			//assert.isTrue(MyDiv instanceof Element.ElementClass)
 		},
 		getterGeneratorOnVariable() {
-			class Foo extends Variable {
-				constructor() {
-					super({
-						planet: 'World'
-					})
-					this.planet = new Variable()
-					this.structured = true
-				}
-				*get_recipient() {
+			var Foo = Variable({
+				planet: Variable,
+				*recipient() {
 					return yield this.planet
-				}
-				*get_greeting() {
+				},
+				*greeting() {
 					return 'Hello, ' + (yield this.recipient)
 				}
-			}
-			var foo = new Foo()
+			})
+			var foo = new Foo({planet: 'World'})
 			var greeting = foo.greeting
 			var updated
 			assert.strictEqual(valueOfAndNotify(greeting, function() {
@@ -259,23 +253,24 @@ define([
 			assert.strictEqual(greeting.valueOf(), 'Hello, Saturn')
 		},
 		getterGeneratorOnElement() {
-			class Foo extends Div {
-				*get_title() {
+			var Foo = Div({
+				name: Variable,
+				*title() {
 					return yield this.name
-				}
-				*get_greeting() {
+				},
+				*greeting() {
 					return 'Hello, ' + (yield this.name)
-				}
-				*get_content() {
+				},
+				*content() {
 					return (yield this.greeting) + '.'
 				}
-			}
+			})
 
-			class SubFoo extends Foo {
-				*get_name() {
+			var SubFoo = Foo({
+				*name() {
 					return `${yield this.firstName} ${yield this.lastName}`
 				}
-			}
+			})
 
 			var name = new Variable('World')
 			var foo = new Foo({name: name})

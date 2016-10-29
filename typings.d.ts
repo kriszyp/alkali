@@ -33,6 +33,11 @@ declare namespace alkali {
   }
   export type Reacts<T> = T & Variable<T>
 
+  interface VC<U> {
+    <T>(properties: T): T & U & VC<T & U>
+    new (properties: U): Variable<U>
+  }
+
   type VariableClass = typeof Variable
 
   export class VArray<T> extends Variable<Array<T>> {

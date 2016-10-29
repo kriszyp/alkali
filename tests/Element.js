@@ -377,6 +377,43 @@ define([
 				})
 			})
 		},
+		applyVariableToChild: function() {
+			var Link, Body, Title
+			var MyComponent = Div({
+				title: Title = Variable(),
+				link: Link = Variable(),
+				body: Body = Variable(),
+				children: [
+					Anchor(Title, {
+						href: Link
+					}),
+					P(Title.to(function(title) {
+						return Body.to(function(body) {
+							return title + ', ' + body
+						})
+					}))
+				]
+			})
+			assert.isTrue(MyComponent.link === Link)
+			var greeting = new Variable('Hello')
+			var myComponent = new MyComponent({
+				title: greeting,
+				link: 'https://github.com/kriszyp/alkali',
+				body: 'World'
+			})
+			document.body.appendChild(myComponent)
+			assert.strictEqual(myComponent.firstChild.textContent, 'Hello')
+			assert.strictEqual(myComponent.firstChild.href, 'https://github.com/kriszyp/alkali')
+			assert.strictEqual(myComponent.lastChild.textContent, 'Hello, World')
+			greeting.put('New Title')
+			return new Promise(requestAnimationFrame).then(function(){
+				return new Promise(requestAnimationFrame).then(function(){
+					assert.strictEqual(MyComponent.property('title').for(myComponent).valueOf(), 'New Title')
+					assert.strictEqual(myComponent.firstChild.textContent, 'New Title')
+					assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
+				})
+			})
+		},
 		lookupForSingleInstanceVariable: function() {
 			var MyVariable = Variable.extend()
 			var MyDiv = Div(MyVariable)

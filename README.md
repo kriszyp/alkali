@@ -209,47 +209,26 @@ In addition, `keyBy` and `groupBy` methods are also available:
 
 ## Structured Variables
 
-A recommended pattern for defining structured data with variables is to subclass `Variable` and then add variables as child properties. This can be done by adding variables as properties to your variable, and then setting the `structured` property. Setting the `structured` property will tell your variable to define all the added properties as child property variables. Using newer class property syntax, this would look like:
-```
-class MyVariable extends Variable {
-	name = new Variable()
+A recommended pattern for defining structured data with variables is to generate `Variable` with a structure argument. This can be done by adding variables as properties to your variable, and then setting the `structured` property. Setting the `structured` property will tell your variable to define all the added properties as child property variables. Using newer class property syntax, this would look like:
+```javascript
+let MyVariable = Variable({
+	name: Variable
 	// we can subclass and define structures and use these in properties
-	subObject = new OtherCustomVariable()
-	// this *must* come last, this indicates to the variable that the previously add variables are properties
-	structured = true
-}
+	subObject: OtherCustomVariable
+})
 ```
 This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API).
 
 We could go further and define list structures as well (here we demonstrate inline class definitions):
-```
-class MyVariable extends Variable {
-	myList = new (class extends VArray {
-		collectionOf: class extends Variable {
-			foo = new Variable()
+```javascript
+let MyVariable = Variable({
+	myList: VArray({
+		collectionOf: Variable({
+			foo: Variable()
 			structured = true
-		}
-	})()
-	// this *must* come last, this indicates to the variable that the previously add variables are properties
-	structured: true
+		})
+	})
 }
-```
-Property variables can also be defined by getting a named property variable (with a `property` call) and assigned it as an object property (this can be useful for avoiding/handling name collisions):
-```
-	foo = this.property('foo')
-```
-
-If you are not using a compiler with class property syntax, this can be done in a constructor:
-```
-class MyVariable extends Variable {
-	constructor() {
-		super(..arguments)
-		this.name = new Variable()
-		...
-		this.structured = true
-	}
-}
-```
 
 ## EcmaScript Generator Support (`react()`)
 
@@ -265,18 +244,17 @@ The resulting variable will reactively update in response to changes in the vari
 
 This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
 
-### Generator Getters (`*get_`)
+### Generator Getters
 
-Reactive generators can also be defined as a computed property variable getter. A computed variable property be defined by prefixing the property name with `*get_` and then defining the generator method used to calculate the variable value. This will generate a getter for the property that will return a variable based on the generator method. This method can be written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The generator method also has access to `this`. Generator getters can be defined on variable classes or element classes. For example:
+Reactive generators can also be directly defined in the variable structures. A computed variable property be assigned by providing a generator method used to calculate the variable value. This will generate a getter for the property that will return a variable based on the generator method. This method can be written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The generator method also has access to `this`. Generator getters can be defined on variable classes or element classes. For example:
 
 ```javascript
-class MyVariable extends Variable {
-	*get_name() { // this will create a getter for "name"
+let MyVariable = Variable({
+	*name() { // this will create a getter for "name"
 		return `${yield this.firstName} ${yield this.lastName}`
-	}
-	firstName = new Variable()
-	lastName = new Variable()
-	structured = true
+	},
+	firstName: Variable,
+	lastName: Variable
 }
 let v = new MyVariable({
 	firstName: 'John',
@@ -286,7 +264,6 @@ let name = v.name // the name property will return a variable
 name.valueOf() -> 'John Doe'
 v.lastName.put('Smith') // this will update "name" to have a value of "John Smith"
 ```
-The getter methods must be used with the `structured` property to initialize the getters when used in a variable class.
 
 # Element Construction
 
@@ -517,24 +494,55 @@ Which would create a structure like:
 	</div>
 </div>
 ```
+### Property Declaration
+
+We can also declare properties on our elements through a constructor call, just as we would with a variable. When we define a property with a variable, this will make the property consistently available as a variable statically on the element and on the element instance. For example, we can declare that an element expects a `title` and `body` properties that we expect to be passed in on creation:
+```javascript
+let MyDiv = Div({
+  title: Variable,
+  body: Variable,
+  created(properties) {
+    properties.title // this will always be a variable, if a title is provided it will be initialized that value
+    // properties.body will be a variable as well
+    properties.content = properties.body.to(body => 'Body: ' + body)
+  }
+})
+let myDiv = new MyDiv({title: 3})
+myDiv.title // this will be a variable that has been initialized to 3
+myDiv.title.put(4) // we can update the variable
+myDiv.body.put('new body') // this will be a variable as well, and we can update it
+```
+This variables will also be statically available, which can be useful for statically defining the element children/structure:
+```javascript
+let MyDiv = Div({
+  title: Variable,
+  body: Variable
+})
+```
+We can then easily reference those properties:
+```javascript
+MyDiv.children = [
+  H1(MyDiv.title),
+  Div('.body', MyDiv.body),
+]
+```
 
 ### Generator getter methods
 
-
-Again, if you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define generator getters, making it very simple to construct element properties that reacts to other properties and variables. A generator getter will result a property variable for custom properties. For standard/native element properties, the generator getter will reactively assign its output to the standard element property. For example:
+Again, if you are developing in an ES6 compatible environment (Babel or restricted set of modern browsers), you can define generator getters in constructor arguments, making it very simple to construct element properties that react to other properties and variables. A generator getter will result a property variable for custom properties. For standard/native element properties, the generator getter will reactively assign its output to the standard element property. For example:
 
 ```javascript
-class MyLink extends Anchor {
-	*get_path() { // custom property
+let MyLink = Anchor({
+	*path() { // custom property
 		return `${yield this.owner}/${this.repo}`
-	}
-	*get_href() { // defines the href for the <a> element
+	},
+	*href() { // defines the href for the <a> element
 		return `https://${yield this.domain}/${yield this.path}`
-	}
-	*get_content() { // defines the contents of the <a> element
+	},
+	*content() { // defines the contents of the <a> element
 		return 'Link to ' + (yield this.path)
 	}
-}
+})
 let alkali = new Variable('alkali')
 new MyLink({
 	domain: 'github.com', // these can be variables or static values
@@ -585,48 +593,27 @@ class MyComponent extends Div {
 
 ## Variable Classes
 
-Variables can be used in property or content values for element classes as well, but you may need more than a single instance for the different element instances. Variables classes can be used to provide variables within element constructors, with instances that are auto-generated for each different element context. One way to do this is to create a new `Variable` class, and use the element class's `hasOwn` property. This will define a relationship between an element class and a variable class. Variable classes have the same api as normal variables, and you can then use the variable class within properties of the defined element, or any child elements. For example:
+We can create our own variable classes that can be used to define properties and be referenced as well. When we use our own variable classes in property declarations, this will define a relationship between an element class and a variable class. Variable classes have the same api as normal variables, and you can then use the variable class within properties of the defined element, or any child elements. For example:
 
 ```javascript
-let MyVariable = Variable.extend()
+let Title = Variable()
 let MyComponent = Div({
-	hasOwn: MyVariable, // define MyVariable as belonging to MyComponent
-	title: MyVariable.property('title') // use the variable class, just like a variable
+	title: Title // Define title to be our own variable type
 }, [
 	Span('.some-child-element', [
-		MyVariable.property('body') // can even reference the variable class in child elements
+		Title // can even reference the variable class in child elements
 	])
 ])
 ```
 Now each instance of `MyComponent` that we create, will have a corresponding value/object for `MyVariable`, and those can even be accessed from child elements. We can also programmatically access the variable instance for a given element:
 ```javascript
 let myComponent = new MyComponent()
-var variableInstance = MyVariable.for(myComponent)
+var title = Title.for(myComponent)
 // will update the element instance
-variableInstance.set('title', 'Hello')
-variableInstance.set('body', 'World')
+title.put('Hello')
 ```
 
 Element classes themselves also act as variable classes. Element classes include a static `property` method, like variables, which maps to the properties of the elements themselves. This makes it convenient to declaratively use element properties in child elements.
-
-Since a self-reference to element classes may not be immediately accessible, we can define the children after declaring a component class. In this example, we use the `title` property for the contents of a child, the `link` property for an href:
-
-```javascript
-class MyComponent extends Div {
-}
-MyComponent.children = [
-	Span(MyComponent.property('title')),
-	A({
-		href: MyComponent.property('link')
-	})
-];
-```
-And now we can create an instance with our new parameterized properties, and the constructor will map input properties to the corresponding child element values:
-```javascript
-new MyComponent({
-	title: 'text for the span',
-	link: 'a link for a[href]'
-});
 ```
 
 ## Element Lists/Loops

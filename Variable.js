@@ -838,24 +838,6 @@
 					}
 				}
 			}
-			var proto = this
-			while (proto = getPrototypeOf(proto)) {
-				if (!isStructureChecked.has(proto)) {
-					isStructureChecked.set(proto, true)
-					var keys = Object.getOwnPropertyNames(proto)
-					for(var i = 0, l = keys.length; i < l; i++) {
-						var key = keys[i]
-						if (key.slice(0, 4) === 'get_') {
-							var value = this[key]
-							if (isGenerator(value)) {
-								defineGeneratorGetter(proto, key.slice(4), value)
-							} else {
-								console.warn(key + ' getter generator defined, but is not a generator')
-							}
-						}
-					}
-				}
-			}
 		},
 		getId: function() {
 			return this.id || (this.id = nextId++)
@@ -1877,8 +1859,30 @@
 		setPrototypeOf(ExtendedVariable, this)
 		for (var key in properties) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
+			var value = descriptor.value
+			if (typeof value === 'function') {
+				if (value.notifies) {
+					// variable class
+					descriptor = (function(key, Class) {
+						return {
+							get: function() {
+								return this.property(key, Class)
+							},
+							enumerable: true
+						}
+					})(key, value)
+				} else if (isGenerator(value)) {
+					descriptor = getGeneratorDescriptor(value)
+				} else {
+					value = generalizeMethod(value, name)
+				}
+			}
 			Object.defineProperty(prototype, key, descriptor)
-			Object.defineProperty(ExtendedVariable, key, getGeneralizedDescriptor(descriptor, key, ExtendedVariable))
+			if (value) {
+				ExtendedVariable[key] = value
+			} else {
+				Object.defineProperty(ExtendedVariable, key, descriptor)
+			}
 		}
 		if (properties && properties.hasOwn) {
 			hasOwn.call(ExtendedVariable, properties.hasOwn)
@@ -1901,9 +1905,9 @@
 		subjectMap.set(Target, instanceMap)
 	}
 
-	var defineGeneratorGetter = Variable.defineGeneratorGetter = function(target, key, value) {
+	var getGeneratorDescriptor = Variable.getGeneratorDescriptor = function(value) {
 		var variables
-		Object.defineProperty(target, key, {
+		return {
 			get: function() {
 				if (!variables) {
 					 variables = new WeakMap()
@@ -1915,7 +1919,7 @@
 				return variable
 			},
 			enumerable: true
-		})
+		}
 	}
 
 	Variable.all = all

@@ -9,7 +9,6 @@
 
 	var SELECTOR_REGEX = /^(\.|#)([-\w]+)(.+)?/
 	var isGenerator = lang.isGenerator
-	var defineGeneratorGetter = Variable.defineGeneratorGetter
 	var Context = Variable.Context
 	var PropertyRenderer = Renderer.PropertyRenderer
 	var InputPropertyRenderer = Renderer.InputPropertyRenderer
@@ -219,6 +218,7 @@
 	var propertyHandlers = {
 		children: noop,
 		tagName: noop,
+		_generators: noop,
 		classes: function(element, classes) {
 			if (!(classes.length > -1)) {
 				// index the classes, if necessary
@@ -377,16 +377,21 @@
 	}
 
 	function assignProperties(element, properties) {
-		var delayedProperties
+		var propertyHandlers = element._propertyHandlers
+		var Element = element.constructor
 		for (var key in properties) {
 			var value = properties[key]
+			var VariableClass = Element[key]
+			if (typeof VariableClass === 'function' && VariableClass.notifies && VariableClass !== value) {
+				hasOwn(Element, VariableClass)
+				// if (value instanceof VariableClass) { TODO: assign the value as the owned instance
+				VariableClass.for(element).put(value)
+			}
 			var styleDefinition
-			var propertyHandler = element._propertyHandlers[key]
+			var propertyHandler = propertyHandlers[key]
 			if (propertyHandler) {
-				if (value && value.notifies) {
-					if (value._lateBind) {
-						(delayedProperties || (delayedProperties = {}))[key] = value._lateBind(element)
-					} else if (propertyHandler === true) {
+				if (propertyHandler === true) {
+					if (value && value.notifies) {
 					// a standard, known element property
 						new PropertyRenderer({
 							name: key,
@@ -394,26 +399,18 @@
 							element: element
 						})
 					} else {
-						propertyHandler(element, value, key, properties)
+						element[key] = value
 					}
 				} else {
-					if (propertyHandler === true) {
-						element[key] = value
-					} else {
-						propertyHandler(element, value, key, properties)
-					}
+					propertyHandler(element, value, key, properties)
 				}
 			} else if ((styleDefinition = styleDefinitions[key])) {
 				if (value && value.notifies) {
-					if (value._lateBind) {
-						(delayedProperties || (delayedProperties = {}))[key] = value._lateBind(element)
-					} else {
-						new StyleRenderer({
-							name: key,
-							variable: value,
-							element: element
-						})
-					}
+					new StyleRenderer({
+						name: key,
+						variable: value,
+						element: element
+					})
 				} else {
 					styleDefinition(element, value, key)
 				}
@@ -435,9 +432,34 @@
 				})
 			}
 		}
-		if (delayedProperties) {
-			// if any of these are delayed, run again
-			assignProperties(element, delayedProperties)
+	}
+
+	function assignGenerators(element, properties) {
+		var generators = properties._generators
+		var customGenerators
+		var styleGenerators
+		var nativeGenerators
+		var propertyHandlers = element._propertyHandlers
+		for (var key in generators) {
+			var variable = new Variable.GeneratorVariable(generators[key].bind(element, properties))
+			if (propertyHandlers[key]) {
+				(nativeGenerators || (nativeGenerators = {}))[key] = variable
+			} else if (styleDefinitions[key]) {
+				(styleGenerators || (styleGenerators = {}))[key] = variable
+			} else {
+				(customGenerators || (customGenerators = {}))[key] = variable
+			}
+		}
+		if (customGenerators) {
+			// custom ones must go first
+			assignProperties(element, customGenerators)
+		}
+		if (styleGenerators) {
+			assignProperties(element, styleGenerators)
+		}
+		if (nativeGenerators) {
+			// native ones must come last so they can access custom ones
+			assignProperties(element, nativeGenerators)
 		}
 	}
 
@@ -543,46 +565,78 @@
 			element[inputProperty] = content
 		}
 	}
-	var classHandlers = {
-		hasOwn: function(Element, value) {
-			hasOwn(Element, value)
+
+	function mergeObject(Element, value, key, properties) {
+		var existing = properties[key]
+		if (existing) {
+			for (var subKey in value) {
+				existing[subKey] = value[subKey]
+			}
+		} else {
+			properties[key] = value
 		}
 	}
 
-	function applyToClass(value, Element) {
+	var classHandlers = {
+		classes: mergeObject,
+		_generators: mergeObject,
+		dataset: mergeObject,
+		attributes: mergeObject,
+		style: mergeObject,
+		hasOwn: function(Element, value) {
+			hasOwn(Element, value)
+		},
+		children: function(Element, value) {
+			Element.children = value
+		}
+	}
+
+	function applyToConstructor(argument, Element) {
 		var applyOnCreate = Element._applyOnCreate
-		if (value && typeof value === 'object') {
-			if (value instanceof Array || value.notifies) {
-				applyOnCreate.content = value
+		if (argument && typeof argument === 'object') {
+			if (argument instanceof Array || argument.notifies) {
+				applyOnCreate.content = argument
 			} else {
-				for (var key in value) {
+				for (var key in argument) {
 				// TODO: eventually we want to be able to set these as rules statically per element
 				/*if (styleDefinitions[key]) {
 					var styles = Element.styles || (Element.styles = [])
 					styles.push(key)
 					styles[key] = descriptor.value
 				} else {*/
-					if (classHandlers[key]) {
-						hasOwn(Element, value[key])
+					var value = argument[key]
+					var VariableClass = Element[key]
+					if (typeof value === 'function') {
+						if (value.notifies) {
+							if (value === Variable) {
+								value = Variable() // create a branded variable if we are using a generic one
+							}
+							// for Variable classes we make them statically available on the element
+							Element[key] = value
+						} else if (isGenerator(value)) {
+							if (key.slice(0, 4) === 'get_') {
+								key = key.slice(4)
+							}
+							(applyOnCreate._generators || (applyOnCreate._generators = {}))[key] = value
+						}
+					} else if (value && value.notifies) {
+						// also store any variables as statically available properties
+						Element[key] = value
+					}
+					if (classHandlers[key]) { // Could eliminate this if we got rid of hasOwn
+						classHandlers[key](Element, value, applyOnCreate, key)
+					} else if (typeof VariableClass === 'function' && VariableClass.notifies) {
+						applyOnCreate[key] = new VariableClass(value)
 					} else {
-						// TODO: do deep merging of styles and classes, but not variables
-						applyOnCreate[key] = value[key]
+						applyOnCreate[key] = value
 					}
 				}
 			}
-		} else if (typeof value === 'function' && !value.for) {
+		} else if (typeof argument === 'function' && !argument.for) {
 			throw new TypeError('Function as argument not supported')
 		} else {
-			applyOnCreate.content = value
+			applyOnCreate.content = argument
 		}
-	}
-
-	function GeneratorProperty(generator) {
-		this.generator = generator
-	}
-	GeneratorProperty.prototype.notifies = true
-	GeneratorProperty.prototype._lateBind = function(target) {
-		return new Variable.GeneratorVariable(this.generator.bind(target))
 	}
 
 	function getApplySet(Class) {
@@ -596,7 +650,7 @@
 			applyOnCreate = Class._applyOnCreate = {}
 			var parentApplySet = getApplySet(getPrototypeOf(Class))
 			for (var key in parentApplySet) {
-				applyOnCreate[key] = parentApplySet[key]
+				applyOnCreate[key] = classHandlers[key] ? Object.create(parentApplySet[key]) : parentApplySet[key]
 			}
 			// we need to check the prototype for event handlers
 			var prototype = Class.prototype
@@ -606,19 +660,6 @@
 				var key = keys[i]
 				if (key.slice(0, 2) === 'on' || (key === 'render' && isGenerator(prototype[key]))) {
 					applyOnCreate[key] = prototype[key]
-				} else if (key.slice(0, 4) === 'get_') {
-					var value = prototype[key]
-					if (isGenerator(value)) {
-						var getterKey = key.slice(4)
-						if (prototype._propertyHandlers[getterKey] || styleDefinitions[getterKey]) {
-							// if there is a handler
-							applyOnCreate[getterKey] = new GeneratorProperty(value)
-						} else {
-							defineGeneratorGetter(prototype, getterKey, value)
-						}
-					} else {
-						console.warn(key + ' getter generator defined, but is not a generator')
-					}
 				} else if (key.slice(0, 6) === 'render') {
 					var propertyName = key[6].toLowerCase() + key.slice(7)
 					if (!propertyHandlers) {
@@ -681,7 +722,7 @@
 		var parentApplySet = getApplySet(this)
 		// copy parent properties
 		for (var key in parentApplySet) {
-			applyOnCreate[key] = parentApplySet[key]
+			applyOnCreate[key] = classHandlers[key] ? Object.create(parentApplySet[key]) : parentApplySet[key]
 		}
 
 		var i = 0 // for arguments
@@ -710,7 +751,7 @@
 		}
 
 		for (var l = arguments.length; i < l; i++) {
-			applyToClass(arguments[i], Element)
+			applyToConstructor(arguments[i], Element)
 		}
 		return Element
 	}
@@ -762,7 +803,7 @@
 			var ElementApplyOnCreate = applyOnCreate
 			applyOnCreate = {}
 			for (var key in ElementApplyOnCreate) {
-				applyOnCreate[key] = ElementApplyOnCreate[key]
+				applyOnCreate[key] = classHandlers[key] ? Object.create(ElementApplyOnCreate[key]) : ElementApplyOnCreate[key]
 			}
 			var i = 0
 			if (typeof selector == 'string') {
@@ -826,6 +867,11 @@
 		}
 		// TODO: inline this for better performance, possibly
 		assignProperties(element, applyOnCreate)
+
+		if (applyOnCreate._generators) {
+			assignGenerators(element, applyOnCreate)
+		}
+
 		if (this.children) {
 			layoutChildren(element, this.children, element)
 		}
@@ -864,7 +910,7 @@
 		if (typeof target === 'function') {
 			// assign properties to an existing constructor/class
 			getApplySet(target) // make sure we have our own applyOnCreate first
-			applyToClass(properties, target)
+			applyToConstructor(properties, target)
 		} else {
 			// assign to an element
 			// TODO: Handle content property separately
@@ -1137,11 +1183,13 @@
 				hasOwn(From, Target)
 			})
 		}
-		var instanceMap = new WeakMap()
-		instanceMap.createInstance = createInstance
 		var elementMap = From.ownedClasses || (From.ownedClasses = new WeakMap())
 		// TODO: Go up through prototype chain of Target and set each one
-		elementMap.set(Target, instanceMap)
+		if (!elementMap.has(Target)) {
+			var instanceMap = new WeakMap()
+			instanceMap.createInstance = createInstance
+			elementMap.set(Target, instanceMap)
+		}
 		return From
 	}
 
