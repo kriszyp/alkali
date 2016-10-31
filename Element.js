@@ -700,23 +700,21 @@
 				return withProperties.apply(Element, arguments)
 			}
 		}
-		Element.create = create
-		Element.with = withProperties
-		Element.for = forTarget
-		Element.property = propertyForElement
-		Element.getForClass = getForClass
 		return Element
 	}
 
 	function withProperties(selector, properties) {
 		var Element = makeElementConstructor()
-		Element.superConstructor = this
-		Element.tagName = this.tagName
-		if (this.children) {
-			// just copy this property
-			Element.children = this.children
-		}
+		setPrototypeOf(Element, this)
+		Element.ownedClasses = null
 		Element.prototype = this.prototype
+		if (!Element.with) {
+			Element.create = create
+			Element.with = withProperties
+			Element.for = forTarget
+			Element.property = propertyForElement
+			Element.getForClass = getForClass
+		}
 
 		var applyOnCreate = Element._applyOnCreate = {}
 		var parentApplySet = getApplySet(this)
