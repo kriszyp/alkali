@@ -182,6 +182,11 @@
 	}
 	Hidden.prototype.toJSON = toJSONHidden
 
+	var extendClass
+	try {
+		extendClass = eval('(function(Base){ return class extends Base {}})')
+	} catch(e) {}
+
 	var lang = {
 		requestAnimationFrame: has('requestAnimationFrame') ? requestAnimationFrame :
 			(function() {
@@ -295,6 +300,7 @@
 
 		observe: observe,
 		unobserve: unobserve,
+		extendClass: extendClass,
 		when: function(value, callback, errorHandler) {
 			return value && value.then ?
 				(value.then(callback, errorHandler) || value) : callback(value)

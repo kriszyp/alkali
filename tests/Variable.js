@@ -510,7 +510,7 @@ define([
 				a: 1,
 				b: 'foo'
 			}
-			var TypedVariable = Variable.extend({
+			var TypedVariable = Variable.with({
 				schema: {
 					properties: {
 						a: {type: 'number'},

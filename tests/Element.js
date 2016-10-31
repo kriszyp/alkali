@@ -415,7 +415,7 @@ define([
 			})
 		},
 		lookupForSingleInstanceVariable: function() {
-			var MyVariable = Variable.extend()
+			var MyVariable = Variable()
 			var MyDiv = Div(MyVariable)
 			var div1 = new MyDiv()
 			document.body.appendChild(div1)
@@ -428,7 +428,7 @@ define([
 			})
 		},
 		lookupForMultipleInstanceVariable: function() {
-			var MyVariable = Variable.extend()
+			var MyVariable = Variable.with()
 			var MyDiv = Div(MyVariable, {
 				hasOwn: MyVariable
 			})

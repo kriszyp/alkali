@@ -221,7 +221,7 @@
 				this.value = value
 			}
 		} else {
-			return Variable.extend(value)
+			return Variable.with(value)
 		}
 	}
 	var VariablePrototype = Variable.prototype = {
@@ -351,13 +351,18 @@
 			var propertyVariable = isMap ? properties.get(key) : properties[key]
 			if (!propertyVariable) {
 				// create the property variable
-				propertyVariable = new (PropertyClass || this.PropertyClass)()
+				var Class = PropertyClass || this.constructor[key]
+				propertyVariable = new (Class && typeof Class === 'function' && Class.notifies ? Class : this.PropertyClass)()
 				propertyVariable.key = key
 				propertyVariable.parent = this
 				if (isMap) {
 					properties.set(key, propertyVariable)
 				} else {
 					properties[key] = propertyVariable
+				}
+			} else if (PropertyClass) {
+				if (!(propertyVariable instanceof PropertyClass)) {
+					throw new TypeError('Existing property variable does not match requested variable type')
 				}
 			}
 			return propertyVariable
@@ -1844,19 +1849,27 @@
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply
-	Variable.extend = function(properties) {
+	Variable.with = function(properties) {
 		// TODO: handle arguments
 		var Base = this
-		function ExtendedVariable() {
-			if (this instanceof ExtendedVariable) {
-				Base.apply(this, arguments)
-			} else {
-				return ExtendedVariable.extend(properties)
+		var ExtendedVariable, prototype
+		if (Object.getOwnPropertyDescriptor(this, 'prototype').writable === false) {
+			// extending native class
+			ExtendedVariable = lang.extendClass(this)
+			prototype = ExtendedVariable.prototype
+		} else {
+			// extending function/constructor
+			ExtendedVariable = function() {
+				if (this instanceof ExtendedVariable) {
+					Variable.apply(this, arguments)
+				} else {
+					return ExtendedVariable.with(properties)
+				}
 			}
+			prototype = ExtendedVariable.prototype = Object.create(this.prototype)
+			ExtendedVariable.prototype.constructor = ExtendedVariable
+			setPrototypeOf(ExtendedVariable, this)
 		}
-		var prototype = ExtendedVariable.prototype = Object.create(this.prototype)
-		ExtendedVariable.prototype.constructor = ExtendedVariable
-		setPrototypeOf(ExtendedVariable, this)
 		for (var key in properties) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
 			var value = descriptor.value
@@ -1878,9 +1891,10 @@
 				}
 			}
 			Object.defineProperty(prototype, key, descriptor)
-			if (value) {
+			if (value !== undefined) {
 				ExtendedVariable[key] = value
 			} else {
+				// getter/setter
 				Object.defineProperty(ExtendedVariable, key, descriptor)
 			}
 		}

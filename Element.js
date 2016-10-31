@@ -705,16 +705,18 @@
 
 	function withProperties(selector, properties) {
 		var Element = makeElementConstructor()
-		setPrototypeOf(Element, this)
-		Element.ownedClasses = null
-		Element.prototype = this.prototype
-		if (!Element.with) {
+		if (this.with) {
+			// TODO: Might consider only doing this for derivatives of derivatives, since we don't need to inherit from base constructors
+			setPrototypeOf(Element, this)
+			Element.ownedClasses = null
+		} else {
 			Element.create = create
 			Element.with = withProperties
 			Element.for = forTarget
 			Element.property = propertyForElement
 			Element.getForClass = getForClass
 		}
+		Element.prototype = this.prototype
 
 		var applyOnCreate = Element._applyOnCreate = {}
 		var parentApplySet = getApplySet(this)
