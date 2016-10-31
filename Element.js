@@ -624,7 +624,7 @@
 						Element[key] = value
 					}
 					if (classHandlers[key]) { // Could eliminate this if we got rid of hasOwn
-						classHandlers[key](Element, value, applyOnCreate, key)
+						classHandlers[key](Element, value, key, applyOnCreate)
 					} else if (typeof VariableClass === 'function' && VariableClass.notifies) {
 						applyOnCreate[key] = new VariableClass(value)
 					} else {
@@ -849,8 +849,11 @@
 						applyOnCreate.content = argument
 					} else {
 						for (var key in argument) {
-							// TODO: do deep merging of styles and classes, but not variables
-							applyOnCreate[key] = argument[key]
+							if (classHandlers[key]) {
+								classHandlers[key](this, argument[key], key, applyOnCreate)
+							} else {
+								applyOnCreate[key] = argument[key]
+							}
 						}
 					}
 				} else if (typeof argument === 'function' && argument.for) {
@@ -1156,7 +1159,7 @@
 		Object.getOwnPropertyNames(properties).forEach(function(key) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
 			if (classHandlers[key]) {
-				classHandlers[key](ExtendedElement, descriptor.value)
+				classHandlers[key](ExtendedElement, descriptor.value, key, properties)
 			} else {
 				Object.defineProperty(prototype, key, descriptor)
 			}

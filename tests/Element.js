@@ -571,15 +571,26 @@ define([
 		},
 		styleObject: function() {
 			var v = new Variable('25px')
-			var div = new Div({
+			var MyDiv = Div({
 				style: {
 					marginLeft: '10px',
+					paddingLeft: '10px'
+				}
+			})
+			var MyDiv2 = MyDiv({
+				style: {
 					paddingLeft: v
+				}
+			})
+			var div = new MyDiv2({
+				style: {
+				  display: 'inline-block'
 				}
 			})
 			document.body.appendChild(div)
 			assert.strictEqual(div.style.marginLeft, '10px')
 			assert.strictEqual(div.style.paddingLeft, '25px')
+			assert.strictEqual(div.style.display, 'inline-block')
 			v.put('35px')
 			return new Promise(requestAnimationFrame).then(function() {
 				assert.strictEqual(div.style.paddingLeft, '35px')
