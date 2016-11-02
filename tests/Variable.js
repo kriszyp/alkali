@@ -510,28 +510,50 @@ define([
 				a: 1,
 				b: 'foo'
 			}
-			var TypedVariable = Variable.with({
-				schema: {
-					properties: {
-						a: {type: 'number'},
-						b: {type: 'string'}
+			var TypedVariable = Variable({
+				a: Variable({type: 'number'}),
+				b: Variable({type: 'string', required: true})
+			})
+			var variable = new TypedVariable(object)
+			var derived = new Variable()
+			derived.put(variable)
+			var propertyA = variable.property('a')
+			assert.equal(propertyA.type, 'number')
+			propertyA = variable.a
+			assert.equal(propertyA.type, 'number')
+			assert.deepEqual(propertyA.validation.valueOf().isValid, true)
+			propertyA.put('not a number')
+			assert.strictEqual(derived.property('a').validation.valueOf().length, 1)
+			assert.strictEqual(propertyA.validation.valueOf().length, 1)
+			variable.set('a', 8)
+			assert.strictEqual(propertyA.validation.valueOf().length, 0)
+			propertyB = variable.b
+			assert.strictEqual(propertyB.validation.valueOf().length, 0)
+			propertyB.put('')
+			assert.strictEqual(propertyB.validation.valueOf().length, 1)
+		},
+
+		schemaCustomValidate: function() {
+			var object = {
+				a: 1
+			}
+			var TypedVariable = Variable({
+				a: Variable({type: 'number', min: 0, max: 5}),
+				validate: function(target, schema) {
+					if (target < schema.min || target > schema.max) {
+						return ['out of range']
 					}
+					return []
 				}
 			})
 			var variable = new TypedVariable(object)
 			var derived = new Variable()
 			derived.put(variable)
 			var propertyA = variable.property('a')
-			assert.equal(propertyA.schema.type, 'number')
-			assert.deepEqual(propertyA.validation.valueOf().isValid, true)
-			propertyA.put('not a number')
-			assert.deepEqual(derived.property('a').validation.valueOf().length, 1)
-			assert.deepEqual(propertyA.validation.valueOf().length, 1)
-			variable.set('a', 8)
 			assert.deepEqual(propertyA.validation.valueOf().length, 0)
-		},
-
-		schemaCustomValidate: function() {
+			propertyA.put(8)
+			assert.strictEqual(derived.property('a').validation.valueOf().length, 1)
+			assert.strictEqual(propertyA.validation.valueOf().length, 1)
 		},
 
 		composite: function() {

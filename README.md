@@ -209,7 +209,7 @@ In addition, `keyBy` and `groupBy` methods are also available:
 
 ## Structured Variables
 
-A recommended pattern for defining structured data with variables is to generate `Variable` with a structure argument. This can be done by adding variables as properties to your variable, and then setting the `structured` property. Setting the `structured` property will tell your variable to define all the added properties as child property variables. Using newer class property syntax, this would look like:
+With variables we can define structured data that will be represented by a corresponding variable structure. We can create new extended `Variable`s with their own object structure. This can be done by provided a structure in a direct call to `Variable` (without `new`) which will return an subclassed `Variable` class/constructor. Once we have defined the structure, these property variables will be available as properties directly on the variable class and instances. For example:
 ```javascript
 let MyVariable = Variable({
 	name: Variable
@@ -229,6 +229,16 @@ let MyVariable = Variable({
 		})
 	})
 }
+```
+Variables can also be subclassed with native class syntax. Subclassed variables can not be directly called without `new` (no classes can), but you can derive new structured variables from variable subclasses using the `.with(structure)` method, just as you would above:
+```javascript
+class MyVariable extends Variable {
+  ...
+}
+let AnotherVariable = MyVariable.with({
+  name: Variable
+})
+```
 
 ## EcmaScript Generator Support (`react()`)
 
@@ -675,17 +685,11 @@ Alkali provides metadata/schema information, as well as validation functionality
 
 You can define the schema for a variable by setting the `schema` property on a variable or defining a getter for the property. If you don't define a schema, the default schema is the variable's constructor. In any case, you can define metadata on your schema that is available for downstream use. A schema can also define metadata for properties, which is generally more useful. This is done by putting property definitions, in a `properties` object, with each property defining a schema for the corresponding property. For example, we could define a variable class that specifies that the `email` property should have a metadata property of `required: true`:
 ```javascript
-class ValidatedVariable extends Variable {
-	get schema() {
-		return {
-			properties: {
-				email: {
-					required: true,
-					description: 'Email address'
-				}
-			}
-		};
-	}
+let ValidatedVariable = Variable({
+	email: Variable({
+		required: true,
+		description: 'Email address'
+	})
 }
 ```
 Now we could define a UI control that makes use of this:
@@ -708,19 +712,16 @@ form.append(FormField(entry.property('email')))
 ```
 We could also add a `validate` method that will be called to determine the `validation` of the variable:
 ```javascript
-class ValidatedVariable extends Variable {
+let ValidatedVariable = Variable({
 	validate(value, schema) {
 		if (schema.pattern && !schema.pattern.test(value)) {
 			return ['Value is not the right format']
 		}
 	}
-	get schema() {
-		return {
-			properties: {
-				email: {
-					pattern: /\w+@\w+/,
-					...
-}
+	email: Variable({
+		pattern: /\w+@\w+/,
+		...
+})
 ...
 FormField.children = [
 	...

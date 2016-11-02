@@ -707,6 +707,7 @@
 		var Element = makeElementConstructor()
 		if (this.with) {
 			// TODO: Might consider only doing this for derivatives of derivatives, since we don't need to inherit from base constructors
+			// or only doing this in the case of element having custom properties (could mark it with a flag)
 			setPrototypeOf(Element, this)
 			Element.ownedClasses = null
 		} else {

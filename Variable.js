@@ -773,7 +773,7 @@
 		get schema() {
 			// default schema is the constructor
 			if (this.parent) {
-				var parentSchemaProperties = this.parent.schema.properties
+				var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
 				return parentSchemaProperties && parentSchemaProperties[this.key]
 			}
 			return this.returnedVariable ? this.returnedVariable.schema : this.constructor
@@ -791,8 +791,13 @@
 			if (this.parent) {
 				return this.parent.validate(target.valueOf(), schema)
 			}
-			if (schema && schema.type && (schema.type !== typeof target)) {
-				return ['Target type of ' + typeof target + ' does not match schema type of ' + schema.type]
+			if (schema) {
+				if (schema.type && (schema.type !== typeof target)) {
+					return ['Target type of ' + typeof target + ' does not match schema type of ' + schema.type]
+				}
+				if (schema.required && (target == null || target == '' || (typeof target === 'number' && isNaN(target)))) {
+					return ['Value is required']
+				}
 			}
 			var valid = []
 			valid.isValid = true
