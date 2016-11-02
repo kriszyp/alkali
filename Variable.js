@@ -1892,7 +1892,7 @@
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)
 				} else {
-					value = generalizeMethod(value, name)
+					value = generalizeMethod(value, key)
 				}
 			}
 			Object.defineProperty(prototype, key, descriptor)
