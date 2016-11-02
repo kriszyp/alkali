@@ -265,7 +265,7 @@ let MyVariable = Variable({
 	},
 	firstName: Variable,
 	lastName: Variable
-}
+})
 let v = new MyVariable({
 	firstName: 'John',
 	lastName: 'Doe'
