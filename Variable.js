@@ -1866,7 +1866,7 @@
 			// extending function/constructor
 			ExtendedVariable = function() {
 				if (this instanceof ExtendedVariable) {
-					Variable.apply(this, arguments)
+					Base.apply(this, arguments)
 				} else {
 					return ExtendedVariable.with(properties)
 				}
