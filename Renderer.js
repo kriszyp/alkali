@@ -378,9 +378,11 @@
 			if (each.defineHasOwn) {
 				each.defineHasOwn()
 			}
-			newValue.forEach(function(item) {
-				eachItem(item)
-			})
+			if (newValue) {
+				newValue.forEach(function(item) {
+					eachItem(item)
+				})
+			}
 			var contextualized = this.contextualized || this.variable
 			contextualized.notifies(this)
 
