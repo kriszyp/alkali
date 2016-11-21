@@ -257,7 +257,9 @@
 		if (newValue == null || (element.type === 'number' && isNaN(newValue))) {
 			newValue = ''
 		}
-		element[this.name] = newValue
+		if (element[this.name] != newValue) {
+			element[this.name] = newValue
+		}
 	}
 	InputPropertyRenderer.prototype.renderSelectValueUpdate = function (newValue, element) {
 		element.value = newValue
