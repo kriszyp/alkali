@@ -647,7 +647,7 @@
 		if (Class.getForClass) {
 			// we are extending an alkali constructor
 			// if this class is inheriting from an alkali constructor, work our way up the chain
-			applyOnCreate = Class._applyOnCreate = {}
+			var applyOnCreate = Class._applyOnCreate = {}
 			var parentApplySet = getApplySet(getPrototypeOf(Class))
 			for (var key in parentApplySet) {
 				applyOnCreate[key] = classHandlers[key] ? Object.create(parentApplySet[key]) : parentApplySet[key]
