@@ -693,13 +693,16 @@
 		undefine: function(key, context) {
 			this.set(key, undefined, context)
 		},
-		proxy: function(proxiedVariable) {
+		is: function(proxiedVariable) {
 			var thisVariable = this
 			this.fixed = true
 			return when(this.setValue(proxiedVariable), function(value) {
 				thisVariable.updated(new RefreshEvent(), thisVariable)
 				return thisVariable
 			})
+		},
+		proxy: function(proxiedVariable) {
+			return this.is(proxiedVariable)
 		},
 		next: function(value) {
 			// for ES7 observable compatibility
@@ -1826,6 +1829,35 @@
 	}
 	Variable.updated = function(updateEvent, by, context) {
 		return instanceForContext(this, context).updated(updateEvent, by, context)
+	}
+	var proxyHandler = {
+		get: function(target, name) {
+			var value = target[name]
+			return value === undefined ? target.property(name) : value
+		},
+		set: function(target, name, value) {
+			var oldValue = target[name]
+			if (oldValue && oldValue.put) {
+				// own property available to put into
+				oldValue.put(value)
+			} else {
+				target.set(name, value)
+			}
+			return true
+		},
+		has: function(target, name) {
+			return (name in target) || (name in target.valueOf())
+		},
+		deleteProperty: function(target, name) {
+			return proxyHandler.set(target, name, undefined)
+		},
+		ownKeys: function(target) {
+			return Object.getOwnPropertyNames(target.valueOf())
+		}
+	}
+	Variable.proxy = function(source) {
+		// should we memoize?
+		return new Proxy(source instanceof this ? source : this.from(source), proxyHandler)
 	}
 	Object.defineProperty(Variable, 'collectionOf', {
 		get: function() {

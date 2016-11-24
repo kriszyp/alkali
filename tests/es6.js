@@ -227,6 +227,34 @@ define([
 			assert.strictEqual(bar.property('foo').get('baz'), 5)
 			assert.strictEqual(bar.property('foo').get('bazDerived'), 10)
 		},
+		proxiedVariable: function() {
+			let Foo = Variable({
+				bar: Variable,
+				*derived() {
+					return 4 + (yield this.property('a'))
+				}
+			})
+			let foo = Foo.proxy({a: 3, bar: 'hi'})
+			let aInvalidated, barInvalidated, derivedInvalidated
+			assert.strictEqual(valueOfAndNotify(foo.a, function() {
+				aInvalidated = true
+			}), 3)
+			assert.strictEqual(valueOfAndNotify(foo.bar, function() {
+				barInvalidated = true
+			}), 'hi')
+			assert.strictEqual(valueOfAndNotify(foo.derived, function() {
+				derivedInvalidated = true
+			}), 7)
+			foo.a = 5
+			assert.isTrue(aInvalidated)
+			assert.isTrue(derivedInvalidated)
+			assert.isTrue(foo.derived == 9)
+			foo.bar = 'hello'
+			assert.isTrue(barInvalidated)
+			assert.isTrue(foo.bar == 'hello')
+			delete foo.bar
+			assert.isTrue(foo.bar.valueOf() == undefined)
+		},
 		instanceofElementClass: function() {
 			var MyDiv = Div('.test')
 			// only do this if the language supports Symbol.hasInstance
