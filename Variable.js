@@ -274,10 +274,7 @@
 			var variable = this
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
-					// nothing changed, immediately return valueOf (or ownObject if we have it)
-					if (variable.ownObject) {
-						return variable.ownObject
-					}
+					// nothing changed, immediately return valueOf
 					if (parentContext) {
 						if (!context) {
 							context = parentContext.newContext()
@@ -315,12 +312,6 @@
 					context.nextProperty = 'returnedVariable'
 				}
 				value = value.valueOf(context)
-				if (variable.ownObject) {
-					if (getPrototypeOf(variable.ownObject) !== value) {
-						setPrototypeOf(variable.ownObject, value)
-					}
-					value = variable.ownObject
-				}
 			}
 			if (value === undefined) {
 				value = variable.default
@@ -386,7 +377,6 @@
 			var key = this.key
 			var parent = this.parent
 			var variable = this
-			parent._willModify(context)
 			return when(parent.getValue ? parent.getValue(context) : parent.value, function(object) {
 				if (object == null) {
 					// nothing there yet, create an object to hold the new property
@@ -403,7 +393,7 @@
 				if (typeof object.set === 'function') {
 					object.set(key, newValue)
 				} else {
-					if (type == RequestChange && oldValue && oldValue.put) {
+					if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
 						// if a put and the property value is a variable, assign it to that.
 						oldValue.put(newValue)
 					} else {
@@ -654,16 +644,13 @@
 			if (this.parent) {
 				return this._changeValue(context, RequestChange, value)
 			}
-			if (this.ownObject) {
-				this.ownObject = false
-			}
 			return when(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
 				if (oldValue === value) {
 					return noChange
 				}
-				if (variable.fixed &&
+				if (oldValue && oldValue.put &&
 						// if it is set to fixed, we see we can put in the current variable
-						oldValue && oldValue.put) {
+						(variable.fixed || !(value && value.put))) {
 					return oldValue.put(value)
 				}
 				return when(variable.setValue(value, context), function(value) {
@@ -901,29 +888,6 @@
 		getCollectionOf: function() {
 			return this.constructor.collectionOf
 		},
-		_willModify: function(context) {
-			// an intent to modify, so we need to make sure we have our own copy
-			// of an object when necessary
-			if (this.fixed) {
-				if (this.value && this.value._willModify) {
-					return this.value._willModify(context)
-				}
-			}
-			if (!this.ownObject && this.value && this.value.notifies) {
-				var variable = this
-				return when(this.valueOf(context), function(value) {
-					if (value && typeof value === 'object') {
-						if (value instanceof Array) {
-							variable.ownObject = value.slice(0)
-						} else {
-							variable.ownObject = Object.create(value)
-						}
-					}
-				})
-			} else if (this.parent) {
-				this.parent._willModify()
-			}
-		},
 		_sN: function(name) {
 			// for compilers to set a name
 			this.name = name
@@ -992,7 +956,6 @@
 	}
 
 	function arrayToModify(variable, callback) {
-		variable._willModify()
 		// TODO: switch this to allow promises
 		when(variable.cachedValue || variable.valueOf(), function(array) {
 			if (!array) {
