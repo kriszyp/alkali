@@ -918,8 +918,12 @@
 			this.__debug = _debug
 		},
 		// TODO: Move these to VArray
+		/* TODO: at some point, we might add support for length, but need to make it be dependent/notified by array changes
 		get length() {
 			if (typeof this !== 'function') {
+				Object.defineProperty(this, 'length', {
+					configurable: true
+				})
 				return this.property('length')
 			}
 		},
@@ -928,7 +932,7 @@
 			Object.defineProperty(this, 'length', {
 				value: length
 			})
-		},
+		},*/
 		splice: function(startingIndex, removalCount) {
 			var args = arguments
 			return arrayToModify(this, function(array) {
