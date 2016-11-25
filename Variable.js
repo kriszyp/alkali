@@ -761,11 +761,14 @@
 		},
 		get schema() {
 			// default schema is the constructor
+			if (this.returnedVariable) {
+				return this.returnedVariable.schema
+			}
 			if (this.parent) {
 				var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
 				return parentSchemaProperties && parentSchemaProperties[this.key]
 			}
-			return this.returnedVariable ? this.returnedVariable.schema : this.constructor
+			return this.constructor
 		},
 		set schema(schema) {
 			// but allow it to be overriden
