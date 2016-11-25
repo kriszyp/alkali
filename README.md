@@ -847,11 +847,11 @@ containingVariable.set('foo', 3) // this will not affect the sourceVariable
 containingVariable.get('foo') -> 3
 sourceVariable.get('foo') -> 2
 ```
-However, there may be situations where you want to explicitly define a variable as a proxy, such that changes propagate to the source, as well as to the proxying variable. This can be done by using the `proxy` method to assign the variable:
+However, there may be situations where you want to explicitly define a variable as a proxy, such that changes propagate to the source, as well as to the proxying variable. This can be done by using the `is` method to assign the variable:
 ```javascript
 let sourceVariable = new Variable({foo: 1})
 let containingVariable = new Variable()
-containingVariable.proxy(sourceVariable)
+containingVariable.is(sourceVariable)
 containingVariable.set('foo', 3) // this *will* affect the sourceVariable
 sourceVariable.get('foo') -> 3
 containingVariable.put({foo: 4}) // this will also affect the sourceVariable
@@ -900,9 +900,13 @@ This stops the notifications to the dependent variable, undoing the action of `n
 
 This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables are updated, than the returned variable will update. The function can be re-executed with the changed values on the next call to valueOf.
 
-### proxy(sourceVariable)
+### is(sourceVariable)
 
-This will cause the variable to act as a proxy for the source variable, and changes to this variable will be directed to the source variable, and vice versa.
+This will cause the variable to act as a direct proxy for the source variable, and changes to this variable will be directed to the source variable, and vice versa.
+
+### Variable.proxy(source)
+
+This will utilize ES2015 Proxy's to create a proxy object that will intercept all property access and modification, make them act like `property` and `set` methods.
 
 ## Variables with Maps
 JavaScript `Map` objects can be used as the value for a variable, with the `Map` properties mapped to the variable properties. This can be done using the `VMap` constructor. The `Map` can be provided as a standard value as the argument or through `put`:
