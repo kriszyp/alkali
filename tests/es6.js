@@ -229,9 +229,9 @@ define([
 		},
 		proxiedVariable: function() {
 			let Foo = Variable({
-				bar: Variable,
+				a: Variable,
 				*derived() {
-					return 4 + (yield this.property('a'))
+					return 4 + (yield this.a)
 				}
 			})
 			let foo = Foo.proxy({a: 3, bar: 'hi'})

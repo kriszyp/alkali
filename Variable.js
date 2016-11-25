@@ -195,16 +195,21 @@
 	}
 	DeleteEvent.prototype.type = 'delete'
 
-	function forPropertyNotifyingValues(properties, callback) {
+	function forPropertyNotifyingValues(variable, properties, callback) {
+		if (variable === properties) {
+			forPropertyNotifyingValues(variable, variable._properties, callback)
+		}
 		for (var key in properties) {
 			var property = properties[key]
-			if (property.returnedVariable) {
-				callback(property.returnedVariable)
-			}
-			if (property.hasChildNotifiers) {
-				var subProperties = property._properties
-				if (subProperties) {
-					forPropertyNotifyingValues(subProperties, callback)
+			if (property && property.parent == variable) {
+				if (property.returnedVariable) {
+					callback(property.returnedVariable)
+				}
+				if (property.hasChildNotifiers) {
+					var subProperties = property._properties
+					if (subProperties) {
+						forPropertyNotifyingValues(property, property, callback)
+					}
 				}
 			}
 		}
@@ -341,24 +346,22 @@
 			}
 			return value
 		},
-		isMap: function() {
-			return this.value instanceof Map
-		},
 		PropertyClass: Variable,
 		property: function(key, PropertyClass) {
-			var isMap = this.isMap()
-			var properties = this._properties || (this._properties = isMap ? new Map() : {})
-			var propertyVariable = isMap ? properties.get(key) : properties[key]
+			var propertyVariable = this[key]
+			if (!propertyVariable || !propertyVariable.notifies) {
+				propertyVariable = this._properties && this._properties[key]
+			}
 			if (!propertyVariable) {
 				// create the property variable
 				var Class = PropertyClass || this.constructor[key]
 				propertyVariable = new (Class && typeof Class === 'function' && Class.notifies ? Class : this.PropertyClass)()
 				propertyVariable.key = key
 				propertyVariable.parent = this
-				if (isMap) {
-					properties.set(key, propertyVariable)
+				if (this[key] === undefined) {
+					this[key] = propertyVariable
 				} else {
-					properties[key] = propertyVariable
+					(this._properties || (this._properties = {}))[key] = propertyVariable
 				}
 			} else if (PropertyClass) {
 				if (!(propertyVariable instanceof PropertyClass)) {
@@ -438,6 +441,14 @@
 			for (var i in this._properties) {
 				callback(i)
 			}
+			for (var i in this) {
+				if (this.hasOwnProperty[i]) {
+					var value = this[i]
+					if (value && value.parent == this && value.listeners) {
+						callback(i)
+					}
+				}
+			}
 		},
 		apply: function(instance, args) {
 			return new Call(this, args)
@@ -450,10 +461,7 @@
 				callback(this.returnedVariable)
 			}
 			if (this.hasNotifyingChild) {
-				var properties = this._properties
-				if (properties) {
-					forPropertyNotifyingValues(properties, callback)
-				}
+				forPropertyNotifyingValues(this, this, callback)
 			}
 			if (this.parent) {
 				callback(this.parent)
@@ -674,7 +682,7 @@
 			})
 		},
 		get: function(key) {
-			if (this._properties && this._properties[key]) {
+			if (this[key] || (this._properties && this._properties[key])) {
 				return this.property(key).valueOf()
 			}
 			return when(this.valueOf(), function(object) {
@@ -1000,15 +1008,13 @@
 		var addedCount = added.length
 		// adjust the key positions of any index properties after splice
 		if (addedCount > 0) {
-			if (variable._properties) {
-				var arrayPosition
-				for (var i = arrayLength - addedCount; i > startingIndex;) {
-					var arrayPosition = variable._properties[--i]
-					if (arrayPosition) {
-						variable._properties[i] = undefined
-						arrayPosition.key += addedCount
-						variable._properties[arrayPosition.key] = arrayPosition
-					}
+			var arrayPosition
+			for (var i = arrayLength - addedCount; i > startingIndex;) {
+				var arrayPosition = variable[--i]
+				if (arrayPosition) {
+					variable[i] = undefined
+					arrayPosition.key += addedCount
+					variable[arrayPosition.key] = arrayPosition
 				}
 			}
 			// send out updates
@@ -1027,14 +1033,12 @@
 		var i = startingIndex + removalCount
 		var arrayPosition
 		if (removalCount > 0) {
-			if (variable._properties) {
-				for (var i = startingIndex + removalCount; i < arrayLength + removalCount; i++) {
-					var arrayPosition = variable._properties[i]
-					if (arrayPosition) {
-						variable._properties[i] = undefined
-						arrayPosition.key -= removalCount
-						variable._properties[arrayPosition.key] = arrayPosition
-					}
+			for (var i = startingIndex + removalCount; i < arrayLength + removalCount; i++) {
+				var arrayPosition = variable[i]
+				if (arrayPosition) {
+					variable[i] = undefined
+					arrayPosition.key -= removalCount
+					variable[arrayPosition.key] = arrayPosition
 				}
 			}
 			// send out updates
@@ -1055,7 +1059,7 @@
 		}
 	}
 
-	Variable.VMap = lang.compose(Variable, function(value){
+	var VMap = Variable.VMap = lang.compose(Variable, function(value){
 		this.value = typeof value === 'undefined' ? this.default : value
 	}, {
 		// TODO: Move all the get and set functionality for maps out of Variable
@@ -1502,9 +1506,7 @@
 	defineArrayMethod('every', function Aggregated() {})
 	defineArrayMethod('slice', function Aggregated() {})
 	defineArrayMethod('keyBy', function UniqueIndex(source, args) {}, {
-		isMap: function () {
-			return true
-		},
+		property: VMap.prototype.property,
 		method: function(array, args) {
 			var index = new Map()
 			var keyGenerator = args[0]
@@ -1527,9 +1529,7 @@
 	})
 
 	defineArrayMethod('groupBy', function UniqueIndex(source, args) {}, {
-		isMap: function () {
-			return true
-		},
+		property: VMap.prototype.property,
 		method: function(array, args) {
 			var index = new Map()
 			var keyGenerator = args[0]
@@ -1916,7 +1916,15 @@
 					descriptor = (function(key, Class) {
 						return {
 							get: function() {
-								return this.property(key, Class)
+								var property = new Class()
+								property.key = key
+								property.parent = this
+								Object.defineProperty(this, key, {
+									value: property,
+									enumerable: true,
+									configurable: true
+								})
+								return property
 							},
 							enumerable: true
 						}
