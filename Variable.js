@@ -236,14 +236,15 @@
 		valueOf: function(context) {
 			var valueContext
 			return this.gotValue(this.getValue ?
-				this.getValue(context && (valueContext = context.newContext())) :
+				this.getValue(context, context && (valueContext = context.newContext())) :
 				this.value, context, valueContext)
 		},
-		getValue: function(context) {
-			var valueContext
+		getValue: function(context, valueContext) {
 			if (this.parent) {
 				if (context) {
-					valueContext = context.newContext()
+					if (!valueContext) {
+						valueContext = context.newContext()
+					}
 					valueContext.nextProperty = 'parent'
 				}
 				var key = this.key
@@ -1054,7 +1055,7 @@
 			this.setValue = setValue
 		}
 	}, {
-		getValue: function(context) {
+		getValue: function(context, transformContext) {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = this
 			if (context) {
@@ -1079,10 +1080,6 @@
 				return computedValue
 			}
 
-			var transformContext
-			if (context) {
-				transformContext = context.newContext()
-			}
 			var newVersion = this.getVersion()
 			var computedValue = this.computeValue(transformContext)
 			if (computedValue && computedValue.then) {
