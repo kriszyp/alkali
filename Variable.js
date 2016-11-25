@@ -1914,17 +1914,18 @@
 				if (value.notifies) {
 					// variable class
 					descriptor = (function(key, Class) {
+						var property
 						return {
 							get: function() {
-								var property = new Class()
-								property.key = key
-								property.parent = this
-								Object.defineProperty(this, key, {
-									value: property,
-									enumerable: true,
-									configurable: true
-								})
+								if (!property) {
+									property = new Class()
+									property.key = key
+									property.parent = this
+								}
 								return property
+							},
+							set: function(value) {
+								this[key]._changeValue(null, RequestSet, value)
 							},
 							enumerable: true
 						}
