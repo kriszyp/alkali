@@ -33,7 +33,7 @@
 		this.derivativeMap = new lang.WeakMap(null, 'derivative')
 		this.isDirty = new Variable(false)
 	}, {
-		valueOf: function(context) {
+		getValue: function(context) {
 			if(this.state) {
 				this.state = null
 			}
@@ -46,11 +46,10 @@
 				}
 				return derivative
 			}
-			var thisValue = this.getValue ? this.getValue(context) : this.value
-			if(thisValue === undefined) {
+			if(this.value === undefined) {
 				return value
 			}
-			return thisValue
+			return this.value
 		},
 		getCopyOf: function(value) {
 			var derivative = this.derivativeMap.get(value)

@@ -240,44 +240,47 @@
 		constructor: Variable,
 		valueOf: function(context) {
 			var valueContext
+			return this.gotValue(this.getValue ?
+				this.getValue(context, context && (valueContext = context.newContext())) :
+				this.value, context, valueContext)
+		},
+		getValue: function(context, valueContext) {
 			if (this.parent) {
 				if (context) {
-					valueContext = context.newContext()
+					if (!valueContext) {
+						valueContext = context.newContext()
+					}
 					valueContext.nextProperty = 'parent'
 				}
 				var key = this.key
 				var property = this
-				var object = this.parent.valueOf(valueContext)
+				var parent = this.parent
+				var object = parent.getValue ? parent.getValue(valueContext) : parent.value
 				var gotValueAndListen = function(object) {
-					var value = property.gotValue(object == null ? undefined : typeof object.get === 'function' ? object.get(key) : object[key], context, valueContext)
-					if (property.listeners) {
+					var value = object == null ? undefined :
+						typeof object.property === 'function' ? object.property(key) :
+						typeof object.get === 'function' ? object.get(key) : object[key]
+					//if (property.listeners) {
 						var listeners = propertyListenersMap.get(object)
 						if (listeners && listeners.observer && listeners.observer.addKey) {
 							listeners.observer.addKey(key)
 						}
-					}
+					//}
 					return value
 				}
 				if (object && object.then) {
-					// call it initially so the dependencies can be registered
-					this.gotValue(null, context, valueContext)
 					return when(object, gotValueAndListen)
 				}
 				return gotValueAndListen(object)
 			}
-			return this.gotValue(this.getValue ?
-				this.getValue(context && (valueContext = context.newContext())) :
-				this.value, context, valueContext)
+			return this.value
 		},
 		gotValue: function(value, parentContext, context) {
 			var previousNotifyingValue = this.returnedVariable
 			var variable = this
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
-					// nothing changed, immediately return valueOf (or ownObject if we have it)
-					if (variable.ownObject) {
-						return variable.ownObject
-					}
+					// nothing changed, immediately return valueOf
 					if (parentContext) {
 						if (!context) {
 							context = parentContext.newContext()
@@ -315,12 +318,6 @@
 					context.nextProperty = 'returnedVariable'
 				}
 				value = value.valueOf(context)
-				if (variable.ownObject) {
-					if (getPrototypeOf(variable.ownObject) !== value) {
-						setPrototypeOf(variable.ownObject, value)
-					}
-					value = variable.ownObject
-				}
 			}
 			if (value === undefined) {
 				value = variable.default
@@ -384,8 +381,7 @@
 			var key = this.key
 			var parent = this.parent
 			var variable = this
-			parent._willModify(context)
-			return when(parent.valueOf(context), function(object) {
+			return when(parent.getValue ? parent.getValue(context) : parent.value, function(object) {
 				if (object == null) {
 					// nothing there yet, create an object to hold the new property
 					parent.put(object = typeof key == 'number' ? [] : {}, context)
@@ -401,7 +397,7 @@
 				if (typeof object.set === 'function') {
 					object.set(key, newValue)
 				} else {
-					if (type == RequestChange && oldValue && oldValue.put) {
+					if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
 						// if a put and the property value is a variable, assign it to that.
 						oldValue.put(newValue)
 					} else {
@@ -489,10 +485,6 @@
 			}
 			this.handles = null
 			var returnedVariable = this.returnedVariable
-			if (returnedVariable) {
-				// TODO: move this into the caching class
-				this.computedVariable = null
-			}
 			var variable = this
 			this.forDependencies(function(dependency) {
 				dependency.stopNotifies(variable)
@@ -661,16 +653,13 @@
 			if (this.parent) {
 				return this._changeValue(context, RequestChange, value)
 			}
-			if (this.ownObject) {
-				this.ownObject = false
-			}
 			return when(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
 				if (oldValue === value) {
 					return noChange
 				}
-				if (variable.fixed &&
+				if (oldValue && oldValue.put &&
 						// if it is set to fixed, we see we can put in the current variable
-						oldValue && oldValue.put) {
+						(variable.fixed || !(value && value.put))) {
 					return oldValue.put(value)
 				}
 				return when(variable.setValue(value, context), function(value) {
@@ -783,11 +772,14 @@
 		},
 		get schema() {
 			// default schema is the constructor
+			if (this.returnedVariable) {
+				return this.returnedVariable.schema
+			}
 			if (this.parent) {
 				var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
 				return parentSchemaProperties && parentSchemaProperties[this.key]
 			}
-			return this.returnedVariable ? this.returnedVariable.schema : this.constructor
+			return this.constructor
 		},
 		set schema(schema) {
 			// but allow it to be overriden
@@ -911,29 +903,6 @@
 		getCollectionOf: function() {
 			return this.constructor.collectionOf
 		},
-		_willModify: function(context) {
-			// an intent to modify, so we need to make sure we have our own copy
-			// of an object when necessary
-			if (this.fixed) {
-				if (this.value && this.value._willModify) {
-					return this.value._willModify(context)
-				}
-			}
-			if (!this.ownObject && this.value && this.value.notifies) {
-				var variable = this
-				return when(this.valueOf(context), function(value) {
-					if (value && typeof value === 'object') {
-						if (value instanceof Array) {
-							variable.ownObject = value.slice(0)
-						} else {
-							variable.ownObject = Object.create(value)
-						}
-					}
-				})
-			} else if (this.parent) {
-				this.parent._willModify()
-			}
-		},
 		_sN: function(name) {
 			// for compilers to set a name
 			this.name = name
@@ -949,6 +918,17 @@
 			this.__debug = _debug
 		},
 		// TODO: Move these to VArray
+		get length() {
+			if (typeof this !== 'function') {
+				return this.property('length')
+			}
+		},
+		set length(length) {
+			// allow overriding
+			Object.defineProperty(this, 'length', {
+				value: length
+			})
+		},
 		splice: function(startingIndex, removalCount) {
 			var args = arguments
 			return arrayToModify(this, function(array) {
@@ -991,7 +971,6 @@
 	}
 
 	function arrayToModify(variable, callback) {
-		variable._willModify()
 		// TODO: switch this to allow promises
 		when(variable.cachedValue || variable.valueOf(), function(array) {
 			if (!array) {
@@ -1062,6 +1041,7 @@
 	var VMap = Variable.VMap = lang.compose(Variable, function(value){
 		this.value = typeof value === 'undefined' ? this.default : value
 	}, {
+		fixed: true,
 		// TODO: Move all the get and set functionality for maps out of Variable
 		property: function(key, PropertyClass) {
 			var properties = this._properties || (this._properties = new Map())
@@ -1085,7 +1065,7 @@
 			this.setValue = setValue
 		}
 	}, {
-		valueOf: function(context) {
+		getValue: function(context, transformContext) {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = this
 			if (context) {
@@ -1103,10 +1083,6 @@
 
 			var variable = this
 			function withComputedValue(computedValue) {
-				if (computedValue && computedValue.notifies && variable.listeners) {
-					variable.computedVariable = computedValue
-				}
-				computedValue = variable.gotValue(computedValue, context, transformContext)
 				var contextualizedVariable = transformContext && transformContext.contextualized || variable
 				contextualizedVariable.cachedVersion = newVersion
 				contextualizedVariable.cachedValue = computedValue
@@ -1114,15 +1090,9 @@
 				return computedValue
 			}
 
-			var transformContext
-			if (context) {
-				transformContext = context.newContext()
-			}
 			var newVersion = this.getVersion()
-			var computedValue = this.getValue(transformContext)
+			var computedValue = this.computeValue(transformContext)
 			if (computedValue && computedValue.then) {
-				// call it initially so the dependencies can be registered
-				this.gotValue(null, context, transformContext)
 				return computedValue.then(withComputedValue)
 			} else {
 				return withComputedValue(computedValue)
@@ -1184,7 +1154,7 @@
 			return version
 		},
 
-		getValue: function(context) {
+		computeValue: function(context) {
 			var results = []
 			var argument, argumentName
 			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
@@ -1225,7 +1195,7 @@
 			}
 		},
 
-		getValue: function(context) {
+		computeValue: function(context) {
 			if (context) {
 				context.nextProperty = 'transform'
 			}
@@ -1371,7 +1341,7 @@
 		this.method = method
 		this.arguments = args
 	}, {
-		getValue: function(context) {
+		computeValue: function(context) {
 			var method = this.method
 			var args = this.arguments
 			var variable = this
@@ -1563,7 +1533,7 @@
 	var GeneratorVariable = Variable.GeneratorVariable = lang.compose(Variable.Composite, function ReactiveGenerator(generator){
 		this.generator = generator
 	}, {
-		getValue: getValue = function(context, resuming) {
+		computeValue: getValue = function(context, resuming) {
 			var lastValue
 			var i
 			var generatorIterator
@@ -1651,7 +1621,7 @@
 		getVersion: function(context) {
 			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getVersion(context))
 		},
-		getValue: function(context) {
+		computeValue: function(context) {
 			var target = this.target
 			// need to actually access the target value, so it can be evaluated in case it
 			// there is a returned variable that we should delegate to.
@@ -1780,8 +1750,12 @@
 		Object.defineProperty(Variable, key, Object.getOwnPropertyDescriptor(VariablePrototype, key))
 	}
 	Variable.valueOf = function(context) {
-		// contextualized getValue
+		// contextualized valueOf
 		return instanceForContext(this, context).valueOf(context)
+	}
+	Variable.getValue = function(context) {
+		// contextualized getValue
+		return instanceForContext(this, context)
 	}
 	Variable.put = function(value, context) {
 		// contextualized setValue
@@ -1938,6 +1912,7 @@
 			}
 			Object.defineProperty(prototype, key, descriptor)
 			if (value !== undefined) {
+				// TODO: If there is a getter/setter here, use defineProperty
 				ExtendedVariable[key] = value
 			} else {
 				// getter/setter
