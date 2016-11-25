@@ -112,42 +112,6 @@ define([
 			})
 		},
 
-		'no upstream side effects': function() {
-			var v = new Variable({a: 1})
-			var v2 = new Variable()
-			v2.put(v)
-			var updated = false
-			valueOfAndNotify(v, function(){
-				updated = true
-			})
-			v2.set('a', 2)
-			assert.strictEqual(v2.get('a'), 2)
-			assert.strictEqual(v2.valueOf().a, 2)
-			assert.strictEqual(v.get('a'), 1)
-			assert.strictEqual(v.valueOf().a, 1)
-			assert.isFalse(updated)
-			v2.put({a: 3})
-			assert.strictEqual(v2.get('a'), 3)
-			assert.strictEqual(v2.valueOf().a, 3)
-			assert.strictEqual(v.get('a'), 1)
-			assert.strictEqual(v.valueOf().a, 1)
-			assert.isFalse(updated)
-		},
-		'downstream array copy': function() {
-			var v = new Variable(['a'])
-			var v2 = new Variable()
-			v2.put(v)
-			var updated = false
-			valueOfAndNotify(v, function(){
-				updated = true
-			})
-			v2.push('b')
-			assert.strictEqual(v2.get(0), 'a')
-			assert.strictEqual(v2.get(1), 'b')
-			assert.strictEqual(v.get(0), 'a')
-			assert.strictEqual(v.get(1), undefined)
-		},
-
 		'upstream proxy of mutations': function() {
 			var v = new Variable({a: 1})
 			var v2 = new Variable()
