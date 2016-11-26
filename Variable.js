@@ -674,7 +674,7 @@
 			if (this[key] || (this._properties && this._properties[key])) {
 				return this.property(key).valueOf()
 			}
-			return when(this.valueOf(), function(object) {
+			return when(this.getValue(), function(object) {
 				var value = object && (typeof object.get === 'function' ? object.get(key) : object[key])
 				if (value && value.notifies) {
 					// nested variable situation, get underlying value

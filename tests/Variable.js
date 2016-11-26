@@ -100,7 +100,6 @@ define([
 			}), 1)
 			object.a = 2
 			return Promise.resolve().then(function(){
-			//Object.deliverChangeRecords && Object.deliverChangeRecords()
 				assert.equal(aProperty.valueOf(), 2)
 				assert.isTrue(invalidated)
 				invalidated = false
@@ -112,6 +111,42 @@ define([
 			})
 		},
 
+		'delegated properties': function() {
+			var MyVar = Variable({
+				a: Variable
+			})
+			var myVar = new MyVar({
+				a: 2,
+				b: 10
+			})
+			myVar.a2 = myVar.a.to(function(a) { return a * a })
+			myVar.b = myVar.property('b').to(function(b) { return b * 2 })
+			var fromMyVar = new Variable(myVar)
+			assert.equal(fromMyVar.property('a').valueOf(), 2)
+			assert.equal(valueOfAndNotify(fromMyVar.property('a2'), function(){
+				invalidated = true
+			}), 4)
+			assert.equal(fromMyVar.get('b'), 20)
+			fromMyVar.a.put(5)
+			assert.isTrue(invalidated)
+			assert.equal(myVar.a.valueOf(), 5)
+			assert.equal(fromMyVar.a2.valueOf(), 25)
+		},
+		'structured assignment': function() {
+			var MyVar = Variable({
+				a: Variable,
+				b: Variable
+			})
+			var myVar = new MyVar({
+				a: 2,
+				b: 10
+			})
+			assert.equal(myVar.a.valueOf(), 2)
+			myVar.a = 4
+			myVar.b = 20
+			assert.equal(myVar.a.valueOf(), 4)
+			assert.equal(myVar.b.valueOf(), 20)
+		},
 		'upstream proxy of mutations': function() {
 			var v = new Variable({a: 1})
 			var v2 = new Variable()
