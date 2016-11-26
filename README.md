@@ -101,7 +101,7 @@ foo.valueOf() -> 1
 foo.put(2);
 object.foo -> 2
 ```
-An optional class can be provided to define the class to use/instantiate for the property.
+An optional class can be provided to define the class to use/instantiate for the property. Once the property variable has been created/accessed, it will be available as a property directly on the variable (as long as it doesn't conflict with any methods). In the case the property variable can be accessed from `objectVar.foo`.
 
 
 ### `to(function)`
@@ -214,11 +214,25 @@ With variables we can define structured data that will be represented by a corre
 let MyVariable = Variable({
 	name: Variable
 	// we can subclass and define structures and use these in properties
-	subObject: OtherCustomVariable
+	subObject: Variable({
+		subValue: Variable,
+		foo: OtherCustomVariable
+	})
 })
 ```
-This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API).
-
+This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API). We can also values to these properties and they will be assigned to the value of the variable. For example:
+```
+let myVar = new MyVariable({ name: 'Alkali' })
+myVar.name // the "name" property variable
+myVar.name.valueOf() -> 'Alkali'
+myVar.name.subscribe(event => console.log('new name', event.value()))
+// assign a new vale to the property, will trigger the listener
+myVar.name = 'New name'
+// assignment the same as this:
+myVar.name.put('New name')
+// we can traverse into the sub class/objects:
+myVar.subObject.subValue.put(3)
+```
 We could go further and define list structures as well (here we demonstrate inline class definitions):
 ```javascript
 let MyVariable = Variable({
