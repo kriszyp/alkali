@@ -141,11 +141,16 @@ define([
 				a: 2,
 				b: 10
 			})
-			assert.equal(myVar.a.valueOf(), 2)
+			myVar.a2 = myVar.a.to(function(a) { return a * a })
+			assert.equal(valueOfAndNotify(myVar.a, function(){
+				invalidated = true
+			}), 2)
 			myVar.a = 4
 			myVar.b = 20
+			assert.isTrue(invalidated)
 			assert.equal(myVar.a.valueOf(), 4)
-			assert.equal(myVar.b.valueOf(), 20)
+			assert.equal(myVar.get('b'), 20)
+			assert.equal(myVar.a2.valueOf(), 16)
 		},
 		'upstream proxy of mutations': function() {
 			var v = new Variable({a: 1})
