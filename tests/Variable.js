@@ -152,10 +152,37 @@ define([
 			assert.equal(myVar.get('b'), 20)
 			assert.equal(myVar.a2.valueOf(), 16)
 		},
+		'successive puts': function() {
+			var v = new Variable(1)
+			var v2 = new Variable(2)
+			var v3 = new Variable(3)
+			v.put(v2)
+			assert.equal(v.valueOf(), 2)
+			v.put(v3)
+			assert.equal(v.valueOf(), 3)
+			assert.equal(v2.valueOf(), 2)
+			v.put(6)
+			assert.equal(v.valueOf(), 6)
+			assert.equal(v2.valueOf(), 2)
+			v3.put(v2)
+			assert.equal(v.valueOf(), 2)
+			assert.equal(v2.valueOf(), 2)
+			v2.put(4)
+			assert.equal(v.valueOf(), 4)
+			assert.equal(v2.valueOf(), 4)
+			v.put(7)
+			assert.equal(v.valueOf(), 7)
+			assert.equal(v2.valueOf(), 7)
+			assert.equal(v3.valueOf(), 7)
+			v.is(8)
+			assert.equal(v.valueOf(), 8)
+			assert.equal(v2.valueOf(), 7)
+			assert.equal(v3.valueOf(), 7)
+		},
 		'upstream proxy of mutations': function() {
 			var v = new Variable({a: 1})
 			var v2 = new Variable()
-			v2.proxy(v)
+			v2.is(v)
 			var updated = false
 			valueOfAndNotify(v, function(){
 				updated = true
@@ -384,7 +411,7 @@ define([
 				}
 			})
 			var parentReference = new Variable()
-			parentReference.proxy(parent)
+			parentReference.is(parent)
 			var parentNotified
 			var b = parent.property('a').property('b')
 			valueOfAndNotify(b, function(event){
@@ -406,7 +433,7 @@ define([
 			var v = new Variable({foo: 1})
 			var ref = new Variable(v)
 			var ref2 = new Variable()
-			ref2.proxy(v)
+			ref2.is(v)
 			var foo = v.property('foo')
 			var fooRef = ref.property('foo')
 			var fooRef2 = ref2.property('foo')
