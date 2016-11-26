@@ -226,7 +226,7 @@ let myVar = new MyVariable({ name: 'Alkali' })
 myVar.name // the "name" property variable
 myVar.name.valueOf() -> 'Alkali'
 myVar.name.subscribe(event => console.log('new name', event.value()))
-// assign a new vale to the property, will trigger the listener
+// assign a new value to the property, will trigger the listener
 myVar.name = 'New name'
 // assignment the same as this:
 myVar.name.put('New name')
