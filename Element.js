@@ -900,16 +900,22 @@
 			layoutChildren(parent, slice.call(arguments, 1), parent, true) // called as a function
 	}
 
-	function registerTag(tagName) {
-		this.tagName = tagName
-		if (doc.registerElement && this.prototype.constructor === this) {
-			doc.registerElement(tagName, this)
+	function defineTag(tagName, Element) {
+		var extendElement = Element.tagName
+		Element.tagName = tagName
+		if (Element.prototype.constructor === Element) {
+			if (typeof customElements === 'object') {
+				customElements.define(tagName, Element, extendElement)
+			} else {
+				console.warn('This browser does not support customElements, ensure that the constructor is used to create new elements')
+			}
+			console.warn('Only element classes (not simply constructors) may be defined with a custom tag')
 		}
 	}
 
 	var Element = withProperties.call(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
 
-	Element.registerTag = registerTag
+	Element.defineTag = defineTag
 	Element.assign = function(target, properties) {
 		if (typeof target === 'function') {
 			// assign properties to an existing constructor/class
