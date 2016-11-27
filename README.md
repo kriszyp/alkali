@@ -220,6 +220,7 @@ let MyVariable = Variable({
 	})
 })
 ```
+([JSFiddle example](https://jsfiddle.net/kriszyp/8oLtfz10/3/))
 This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API). We can also values to these properties and they will be assigned to the value of the variable. For example:
 ```
 let myVar = new MyVariable({ name: 'Alkali' })
@@ -268,13 +269,13 @@ The resulting variable will reactively update in response to changes in the vari
 
 This reactive function will also properly wait for promises; it can be used with variables that resolve to promises or even directly with promises themselves.
 
-### Generator Getters
+### Generator Computed Properties
 
 Reactive generators can also be directly defined in the variable structures. A computed variable property be assigned by providing a generator method used to calculate the variable value. This will generate a getter for the property that will return a variable based on the generator method. This method can be written in same way as the `react` generator functions described above, where you use the `yield` operator on each variable. The generator method also has access to `this`. Generator getters can be defined on variable classes or element classes. For example:
 
 ```javascript
 let MyVariable = Variable({
-	*name() { // this will create a getter for "name"
+	*name() { // this will create a computed property for "name"
 		return `${yield this.firstName} ${yield this.lastName}`
 	},
 	firstName: Variable,
@@ -286,8 +287,9 @@ let v = new MyVariable({
 })
 let name = v.name // the name property will return a variable
 name.valueOf() -> 'John Doe'
-v.lastName.put('Smith') // this will update "name" to have a value of "John Smith"
+v.lastName = 'Smith' // this will update "name" to have a value of "John Smith"
 ```
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/54b9gq7b/3/)
 
 # Element Construction
 
@@ -347,6 +349,7 @@ By default, properties are copied directly to the element that is being, or will
 * If a property is not recognized as one of these handled properties described above, the value will be copied to the target element (if the value is variable, the variable itself will be copied directly). To avoid any unexpected property collisions, Alkali keeps a whitelist of known/standard element and style properties, such that if an unknown property on an element exists, it will be overriden (and its behavior ignored).
 
 In addition, custom handling of properties can be defined creating render methods or getters and setters as described below.
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/7ndqjoyd/3/)
 
 ### Children Array Argument
 
@@ -361,17 +364,16 @@ For example, we could create a table:
 import { Table, TR, TD } from 'alkali/Element';
 let table = new Table([
 	TR, [
-		TD, [
-			'First Cell'
-		]
+		TD, ['Column 1, Row 1'],
+		TD, ['Column 2, Row 1'],
 	],
 	TR, [
-		TD, [
-			'Second Cell'
-		]
+		TD, ['Column 1, Row 2'],
+		TD, ['Column 2, Row 2'],
 	]
 ]);
 ```
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/nyz05qLm/1/)
 
 ### Variable Argument
 
@@ -395,7 +397,7 @@ You can also simply provide a string (or any primitive, including numbers or boo
 new Div('Some text to put in the div');
 ```
 
-Note that if you are using a string as the first argument, if it starts with a '.' or '#', it will be interpreted as a selector. Only the first argument can be selector, so a string-as-text can be safely used with any starting character for subsequent arguments. You can safely output variable or user-provided strings by starting with an empty selector string (`Div('', someString)`), as explicit content (`Div({content: someString})`), or as an explicit child (`Div([someString])`).
+Note that if you are using a string as the first argument, if it starts with a '.' or '#', it will be interpreted as a selector. Only the first argument can be selector, so a string-as-text can be safely used with any starting character for subsequent arguments. You can safely output variable or user-provided strings with explicit content (`Div({content: someString})`), or as an explicit child (`Div([someString])`).
 
 ### `null` and `undefined`
 Any null or undefined argument will be ignored. This can be useful for conditionally creating elements:
@@ -416,6 +418,7 @@ new Span({
 	onmouseover: mouseOverHandler
 });
 ```
+[See Example](https://jsfiddle.net/kriszyp/7ndqjoyd/3/)
 
 ## Extending Elements
 
@@ -481,6 +484,7 @@ Note that if you are using TypeScript, event handlers must be defined as class p
 		this.doSomething();
 	}
 ```
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/yun2y5dy/4/)
 
 #### Children
 You can also define a set of children for by setting the static children property of a class:
@@ -518,6 +522,8 @@ Which would create a structure like:
 	</div>
 </div>
 ```
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/yun2y5dy/4/)
+
 ### Property Declaration
 
 We can also declare properties on our elements through a constructor call, just as we would with a variable. When we define a property with a variable, this will make the property consistently available as a variable statically on the element and on the element instance. For example, we can declare that an element expects a `title` and `body` properties that we expect to be passed in on creation:
@@ -550,6 +556,8 @@ MyDiv.children = [
   Div('.body', MyDiv.body),
 ]
 ```
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/yun2y5dy/4/)
+
 
 ### Generator getter methods
 
@@ -586,6 +594,7 @@ new Div({
 	}
 })
 ```
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/yun2y5dy/4/)
 
 ### Construction Lifecycle Methods
 
@@ -888,15 +897,15 @@ Alkali includes a variable Copy constructor, that allows you to maintain a copy 
 
 ## Creating Custom Tag Named Elements
 
-Custom elements can be registered with their own custom tag name as well. This can be done by extending the generic `Element` class, and calling `registerTag` on a class. This will set the tag name of the created elements. It will also attempt to call `document.registerElement` to register the element with the browser, if it is available in the browser. For example:
+Custom elements can be registered with their own custom tag name as well. This can be done by extending an Element class, and calling `defineTag` with that class. This will set the tag name of the created elements. It will also attempt to call `customElements.define` to register the element with the browser, if it is available in the browser. For example:
 ```javascript
-import { Element } from 'alkali'
-class MyCustomElement extends Element {
+import { Element, defineTag } from 'alkali'
+class MyCustomElement extends Element { // on newer browsers we could extend other elements
 	...
 }
-MyCustomElement.registerTag('custom-element')
+defineTag('custom-element', MyCustomElement)
 ```
-Note that this functionality is currently only available on the generic `Element` class, as other base elements with specific functionality, like inputs and tables, will not properly inherit their functionality in all browsers (that do not support `registerElement`). Using `registerTag` is recommended for classes that will be frequently used and can extend generic element functionality.
+Note that this functionality currently will only work predictably on all browsers by extending the generic `Element` class, as other base elements with specific functionality, like inputs and tables, will not properly inherit their functionality in olders browsers (that do not support `customElements.define`). Using `defineTag` is recommended for classes that will be frequently used and can extend generic element functionality, or in newer browser environments.
 
 ## Additional Variable Methods
 
