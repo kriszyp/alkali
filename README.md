@@ -4,11 +4,11 @@
 [![Build Status](https://travis-ci.org/kriszyp/alkali.svg?branch=master)](https://travis-ci.org/kriszyp/alkali)
 [![devDependency status](https://david-dm.org/kriszyp/alkali/dev-status.svg)](https://david-dm.org/kriszyp/alkali#info=devDependencies)
 
-[Alkali](https://kriszyp.github.io/alkali/) is a package for creating efficient, reactive data flow that drives native HTML elements. The namesake, alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight, and likewise this library is designed to be a lightweight, dependency-free package for accessing simple pure native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native DOM elements. Alkali is designed to be for speed and scalability, using a true functional reactive, cache and invalidation-based system that provides optimized rendering performance. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
+[Alkali](https://kriszyp.github.io/alkali/) is a package for creating efficient, reactive data flow that drives native HTML elements. The namesake, alkali metals are a set of elements known for being extremely reactive, conductive, and lightweight, and likewise this library is designed to be a lightweight (20KB gzipped), dependency-free package for accessing simple pure native JavaScript objects with modeling and reactivity capabilities, and creating reactive UIs based on native DOM elements. Alkali is designed to be for speed and scalability, using a true functional reactive, cache and invalidation-based system that provides optimized rendering performance. This makes it possible to build highly efficient and fast applications, with UI components driven by standard JavaScript objects using modern functionally reactive techniques, and without any large framework impositions.
 
 # Alkali Basics
 
-The basic approach of using Alkali within your application, is to first, create "Variables" that holds your source data. A variable is the central entity in Alkali and represents a value that may change and can be reacted to. Next, we can traverse or transform variables into other derived variables. These variables can be used in the browser or server-side (in Node). In the browser, we can use these transformations, or the orginal variables directly, in element constructors to create bindings to DOM elements. A simple example would look like:
+The basic approach of using Alkali within your application, is to first create "Variables" that holds your source data. A variable is the central entity in Alkali and represents a value that may change and can be reacted to. Next, we can traverse or transform variables into other derived variables. These variables can be used in the browser or server-side (in Node). In the browser, we can use these transformations, or the orginal variables directly, in element constructors to create bindings to DOM elements. A simple example would look like:
 ```javascript
 import { Variable, Div, Span } from 'alkali'
 
@@ -221,6 +221,7 @@ let MyVariable = Variable({
 })
 ```
 ([JSFiddle example](https://jsfiddle.net/kriszyp/8oLtfz10/4/))
+
 This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API). We can also values to these properties and they will be assigned to the value of the variable. For example:
 ```
 let myVar = new MyVariable({ name: 'Alkali' })
