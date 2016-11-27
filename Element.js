@@ -903,13 +903,10 @@
 	function defineTag(tagName, Element) {
 		var extendElement = Element.tagName
 		Element.tagName = tagName
-		if (Element.prototype.constructor === Element) {
-			if (typeof customElements === 'object') {
-				customElements.define(tagName, Element, extendElement)
-			} else {
-				console.warn('This browser does not support customElements, ensure that the constructor is used to create new elements')
-			}
-			console.warn('Only element classes (not simply constructors) may be defined with a custom tag')
+		if (typeof customElements === 'object') {
+			customElements.define(tagName, lang.extendClass(HTMLElement), extendElement)
+		} else {
+			console.warn('This browser does not support customElements, ensure that the constructor is used to create new elements')
 		}
 	}
 

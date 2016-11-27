@@ -220,7 +220,7 @@ let MyVariable = Variable({
 	})
 })
 ```
-([JSFiddle example](https://jsfiddle.net/kriszyp/8oLtfz10/3/))
+([JSFiddle example](https://jsfiddle.net/kriszyp/8oLtfz10/4/))
 This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API). We can also values to these properties and they will be assigned to the value of the variable. For example:
 ```
 let myVar = new MyVariable({ name: 'Alkali' })
@@ -289,7 +289,7 @@ let name = v.name // the name property will return a variable
 name.valueOf() -> 'John Doe'
 v.lastName = 'Smith' // this will update "name" to have a value of "John Smith"
 ```
-[See JSFiddle Example](https://jsfiddle.net/kriszyp/54b9gq7b/3/)
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/54b9gq7b/4/)
 
 # Element Construction
 

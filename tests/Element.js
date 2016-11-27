@@ -28,6 +28,7 @@ define([
 	var prepend = Element.prepend
 	var extend = Element.extend
 	var assign = Element.assign
+	var defineTag = Element.defineTag
 	var VArray = Variable.VArray
 	registerSuite({
 		name: 'Element',
@@ -692,12 +693,12 @@ define([
 		},
 
 		registerTag: function() {
-			var CustomElement = extend(Element, {
-				foo: function() {
+			class CustomElement extends Element {
+				foo() {
 					return 3
 				}
-			})
-			CustomElement.registerTag('custom-tag')
+			}
+			defineTag('custom-tag', CustomElement)
 			var custom = new CustomElement()
 			assert.equal(custom.tagName.toUpperCase(), 'CUSTOM-TAG')
 			assert.equal(custom.foo(), 3)
