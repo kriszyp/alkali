@@ -11,6 +11,7 @@ define([
 		}))
 	}
 	var Div = Element.Div
+	var defineTag = Element.defineTag
 	registerSuite({
 		name: 'es6',
 		react: function () {
@@ -260,6 +261,18 @@ define([
 			// only do this if the language supports Symbol.hasInstance
 			//assert.isTrue(MyDiv instanceof Element.ElementClass)
 		},
+		registerTag: function() {
+			class CustomElement extends Element {
+				foo() {
+					return 3
+				}
+			}
+			defineTag('custom-tag', CustomElement)
+			var custom = new CustomElement()
+			assert.equal(custom.tagName.toUpperCase(), 'CUSTOM-TAG')
+			assert.equal(custom.foo(), 3)
+		},
+
 		getterGeneratorOnVariable() {
 			var Foo = Variable({
 				planet: Variable,
