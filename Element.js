@@ -588,6 +588,9 @@
 		},
 		children: function(Element, value) {
 			Element.children = value
+		},
+		shadow: function(Element, value) {
+			Element.shadow = value
 		}
 	}
 
@@ -879,6 +882,9 @@
 		if (this.children) {
 			layoutChildren(element, this.children, element)
 		}
+		if (this.shadow) {
+			layoutChildren(element.attachShadow({mode: 'open'}), this.shadow, element)
+		}
 		// always do this last, so it can be properly inserted inside the children
 		if (element.content) {
 			buildContent(element, element.content, 'content', applyOnCreate)
@@ -904,7 +910,7 @@
 		var extendElement = Element.tagName
 		Element.tagName = tagName
 		if (typeof customElements === 'object') {
-			customElements.define(tagName, lang.extendClass(HTMLElement), extendElement)
+			customElements.define(tagName, lang.extendClass(HTMLElement), { extends: extendElement })
 		} else {
 			console.warn('This browser does not support customElements, ensure that the constructor is used to create new elements')
 		}
@@ -1015,6 +1021,7 @@
 		'MenuItem',
 		'Nav',
 		'Section',
+		'Slot',
 		'Summary',
 		'WBr',
 		'Div',

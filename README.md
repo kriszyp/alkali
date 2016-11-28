@@ -503,7 +503,7 @@ class MyDiv extends Div {
 	}
 }
 ```
-This is distinct from providing an array of elements or other values as the `content` (or as an argument) of an element. The `children` is more of the intrinsic structure of an element, and the `content` is inserted after the children are created. Consequently we could define a structure like:
+This is distinct from providing an array of elements or other values as the `content` (or as an argument) of an element. The `children` represents  the intrinsic structure of an element, and the `content` is inserted after the children are created. Consequently we could define a structure like:
 ```javascript
 import { Div, Span, content } from 'alkali'
 ...
@@ -523,6 +523,9 @@ Which would create a structure like:
 	</div>
 </div>
 ```
+Children can alternately be defined as a shadow DOM structure by using `shadow` instead of `children`.
+
+
 [See JSFiddle Example](https://jsfiddle.net/kriszyp/yun2y5dy/4/)
 
 ### Property Declaration
