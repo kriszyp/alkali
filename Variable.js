@@ -744,6 +744,15 @@
 					callbackOrContext.call(this, itemVariable)
 				}, context)
 			}
+			if (this.collectionOf) {
+				return when(this.valueOf(callbackOrContext), function(value) {
+					if (value && value.forEach) {
+						value.forEach(function(item) {
+							callbackOrItemClass.call(this, this.collectionOf.from(item))
+						})
+					}
+				})
+			}
 			return when(this.valueOf(callbackOrContext), function(value) {
 				if (value && value.forEach) {
 					value.forEach(callbackOrItemClass)
@@ -1352,6 +1361,7 @@
 			if (context) {
 				context.nextProperty = 'source'
 			}
+			var collectionOf = this.collectionOf
 			return when(this.source.valueOf(context), function(array) {
 				if (array && array.forEach) {
 					if (context && context.notify) {
@@ -1368,6 +1378,11 @@
 							contextualizedVariable = variable
 						}
 						variable.notifies(contextualizedVariable)
+					}
+					if (collectionOf) {
+						array = array.map(function(item) {
+							return collection.from(item)
+						})
 					}
 				} else {
 					if (method === 'map'){
