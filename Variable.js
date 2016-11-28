@@ -1907,11 +1907,11 @@
 				if (value.notifies) {
 					// variable class
 					descriptor = (function(key, Class) {
-						var property
 						return {
 							get: function() {
+								var property = (this._properties || (this._properties = {}))[key]
 								if (!property) {
-									property = new Class()
+									this._properties[key] = property = new Class()
 									property.key = key
 									property.parent = this
 								}
