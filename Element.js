@@ -316,6 +316,7 @@
 		frame: ['name', 'scrolling', 'src', 'frameBorder'],
 		frameset: ['cols', 'rows'],
     iframe: ['src', 'srcdoc', 'name', 'referrerPolicy', 'align', 'scrolling', 'frameBorder', 'longDesc'],
+    img: ['src', 'alt', 'crossorigin', 'ismap', 'longdesc', 'sizes', 'srcset', 'usemap', 'referrerpolicy'],
     option: ['label', 'value', 'text', 'index'],
     optgroup: ['label'],
     output: ['name', 'type', 'defaultValue', 'value', 'validationMessage'],
@@ -990,7 +991,7 @@
 		'LI',
 		'KeyGen',
 		'Input',
-		'Image',
+		'Img',
 		'IFrame',
 		'H1',
 		'H2',
@@ -1113,6 +1114,7 @@
 
 	var aliases = {
 		Anchor: 'A',
+		Image: 'Img',
 		Paragraph: 'P',
 		Textarea: 'TextArea',
 		DList: 'DL',
