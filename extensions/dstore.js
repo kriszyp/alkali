@@ -12,7 +12,7 @@ define(['../util/lang', '../Variable'], function(lang, Variable){
 					event.visited = new Set()
 					variable.updated(event)
 				})
-				this.notifyingValue = {
+				this.returnedVariable = {
 					stopNotifies: handle.remove, // remove the listener when we unsubscribe
 					notifies: function(){}
 				}
