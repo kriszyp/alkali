@@ -1105,10 +1105,14 @@
 
 			var newVersion = this.getVersion()
 			var computedValue = this.computeValue(transformContext)
+			var contextualizedVariable = transformContext && transformContext.contextualized || variable
+			contextualizedVariable.cachedVersion = newVersion
+			contextualizedVariable.cachedValue = computedValue
+			contextualizedVariable.context = transformContext
 			if (computedValue && computedValue.then) {
 				return computedValue.then(withComputedValue)
 			} else {
-				return withComputedValue(computedValue)
+				return computedValue
 			}
 		}
 	})
