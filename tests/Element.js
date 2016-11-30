@@ -691,6 +691,13 @@ define([
 			assert.equal(div.title, 'foo')
 		},
 
+		content0: function() {
+			var div = document.body.appendChild(new Div([Span(0), new Span(0), Span({content: 0})]))
+			assert.equal(div.childNodes[0].textContent, '0')
+			assert.equal(div.childNodes[1].textContent, '0')
+			assert.equal(div.childNodes[2].textContent, '0')
+		},
+
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 100; i++) {

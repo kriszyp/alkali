@@ -887,7 +887,7 @@
 			layoutChildren(element.attachShadow({mode: 'open'}), this.shadow, element)
 		}
 		// always do this last, so it can be properly inserted inside the children
-		if (element.content) {
+		if (element.content != null) {
 			buildContent(element, element.content, 'content', applyOnCreate)
 		}
 		element.ready && element.ready(applyOnCreate)
