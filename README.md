@@ -1053,7 +1053,7 @@ Legend
 Label
 LI
 KeyGen
-Image
+Img
 IFrame
 H1
 H2
@@ -1092,6 +1092,7 @@ Area
 A
 
 Anchor (same as A)
+Image (same as Img)
 Paragraph (same as P)
 Textarea (same as TextArea)
 DList (same as DL)
