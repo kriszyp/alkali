@@ -314,6 +314,8 @@
 			}
 			if(promiseInvolved) {
 				// we have asynch inputs, do lazy loading
+				var callbackResult
+				var resolved
 				return {
 					then: function(onResolve, onError) {
 						var remaining = 1
@@ -344,7 +346,12 @@
 						function onEach() {
 							remaining--
 							if(!remaining) {
-								result = onResolve(callback(readyInputs))
+								if (resolved) {
+									result = onResolve(callbackResult)	
+								} else {
+									resolved = true
+									result = onResolve(callbackResult = callback(readyInputs))
+								}
 							}
 						}
 						return lastPromiseResult
