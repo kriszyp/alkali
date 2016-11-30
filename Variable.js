@@ -496,7 +496,7 @@
 		},
 
 		getVersion: function(context) {
-			return Math.max(this.version || 0, this.returnedVariable && this.returnedVariable.getVersion ? this.returnedVariable.getVersion(context) : 0)
+			return Math.max(this.version || 0, this.returnedVariable && this.returnedVariable.getVersion ? this.returnedVariable.getVersion(context) : 0, this.parent ? this.parent.getVersion(context) : 0)
 		},
 
 		getSubject: function(selectVariable) {
