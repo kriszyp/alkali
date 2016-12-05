@@ -656,3 +656,7 @@ declare namespace alkali {
 declare module 'alkali' {
     export = alkali
 }
+
+declare module 'alkali/extensions/typescript' {
+    export function reactive(target: any, key: string)
+}
