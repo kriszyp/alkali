@@ -15,13 +15,16 @@ return {
         var property = (this._properties || (this._properties = {}))[key]
         if (!property) {
           this._properties[key] = property = new Type()
-          property.key = key
-          property.parent = this
+          if (this.getValue) {
+            property.key = key
+            property.parent = this
+          }
         }
         return property
       },
       set: function(value) {
-        this[key]._changeValue(null, 4, value)
+        var property = this[key]
+        property.parent ? property._changeValue(null, 4, value) : property.put(value)
       },
       enumerable: true
     })
