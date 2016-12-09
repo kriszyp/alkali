@@ -132,6 +132,28 @@ define([
 			assert.equal(myVar.a.valueOf(), 5)
 			assert.equal(fromMyVar.a2.valueOf(), 25)
 		},
+		'separate non-live property caching': function() {
+			var myVar = new Variable({
+				a: 2,
+				b: 10
+			})
+			var computedA
+			var doubleA = myVar.property('a').to(function(a) { 
+				computedA = true
+				return a * 2
+			})
+			assert.equal(doubleA.valueOf(), 4)
+			assert.isTrue(computedA)
+			computedA = false
+			myVar.set('a', 3)
+			assert.equal(doubleA.valueOf(), 6)
+			assert.isTrue(computedA)
+			computedA = false
+			myVar.set('b', 15)
+			assert.equal(doubleA.valueOf(), 6)
+			assert.isFalse(computedA)
+		},
+
 		'structured assignment': function() {
 			var MyVar = Variable({
 				a: Variable,

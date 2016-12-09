@@ -496,7 +496,12 @@
 		},
 
 		getVersion: function(context) {
-			return Math.max(this.version || 0, this.returnedVariable && this.returnedVariable.getVersion ? this.returnedVariable.getVersion(context) : 0, this.parent ? this.parent.getVersion(context) : 0)
+			return Math.max(this.version || 0,
+				this.returnedVariable && this.returnedVariable.getVersion ? this.returnedVariable.getFullVersion(context) : 0,
+				this.parent ? this.parent.getVersion(context) : 0)
+		},
+		getFullVersion: function(context) {
+			return Math.max(this.versionWithChildren || 0, this.getVersion(context))
 		},
 
 		getSubject: function(selectVariable) {
@@ -549,7 +554,11 @@
 			}
 
 			this.lastUpdate = updateEvent */
-			this.updateVersion()
+			if (updateEvent instanceof PropertyChangeEvent) {
+				this.versionWithChildren = nextId++
+			} else {
+				this.updateVersion()
+			}
 
 			var listeners = this.listeners
 			if (listeners) {
@@ -1087,7 +1096,7 @@
 					contextualizedVariable = this
 				}
 			}
-			if (contextualizedVariable && contextualizedVariable.cachedVersion === contextualizedVariable.getVersion()) {
+			if (contextualizedVariable && contextualizedVariable.cachedVersion === contextualizedVariable.getFullVersion()) {
 				if (context) {
 					context.addInput(contextualizedVariable)
 				}
@@ -1103,7 +1112,7 @@
 				return computedValue
 			}
 
-			var newVersion = this.getVersion()
+			var newVersion = this.getFullVersion()
 			var computedValue = this.computeValue(transformContext)
 			var contextualizedVariable = transformContext && transformContext.contextualized || variable
 			contextualizedVariable.cachedVersion = newVersion
@@ -1164,8 +1173,8 @@
 			var version = Variable.prototype.getVersion.call(this, context)
 			var argument, argumentName
 			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
-				if (argument && argument.getVersion) {
-					version = Math.max(version, argument.getVersion(context))
+				if (argument && argument.getFullVersion) {
+					version = Math.max(version, argument.getFullVersion(context))
 				}
 			}
 			return version
@@ -1339,8 +1348,8 @@
 			var inputs = this.inputs || 0
 			for (var i = 0, l = inputs.length; i < l; i++) {
 				var input = inputs[i]
-				if (input.getVersion) {
-					version = Math.max(version, input.getVersion())
+				if (input.getFullVersion) {
+					version = Math.max(version, input.getFullVersion())
 				}
 			}
 			return version
@@ -1411,7 +1420,7 @@
 			callback(this.source)
 		},
 		getVersion: function(context) {
-			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getVersion(context))
+			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getFullVersion(context))
 		},
 		getCollectionOf: function(){
 			return this.source.getCollectionOf()
@@ -1642,7 +1651,7 @@
 			callback(this.target)
 		},
 		getVersion: function(context) {
-			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getVersion(context))
+			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getFullVersion(context))
 		},
 		computeValue: function(context) {
 			var target = this.target
