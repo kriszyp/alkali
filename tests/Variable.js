@@ -194,7 +194,29 @@ define([
 			assert.equal(result2.property('triple').valueOf(), 15)
 			assert.equal(transformed, 1)
 		},
-
+		'caching property of transform live': function() {
+			var v = new Variable(5)
+			var transformed = 0
+			var result = v.to(function(v) {
+				transformed++
+				return {
+					twice: v * 2,
+					triple: v * 3
+				}
+			})
+			var result2 = new Variable({
+				twice: result.property('twice'),
+				triple: result.property('triple'),
+				unrelated: []
+			})
+			assert.equal(valueOfAndNotify(result2.property('twice'), function(){}), 10)
+			assert.equal(valueOfAndNotify(result2.property('triple'), function(){}), 15)
+			assert.equal(transformed, 1)
+			result2.set('unrelated', ['hi'])
+			assert.equal(result2.property('twice').valueOf(), 10)
+			assert.equal(result2.property('triple').valueOf(), 15)
+			assert.equal(transformed, 1)
+		},
 		'structured assignment': function() {
 			var MyVar = Variable({
 				a: Variable,
