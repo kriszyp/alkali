@@ -97,7 +97,10 @@
 			return Variable.defaultInstance
 		},
 		getContextualized: function(variable) {
-
+			if (!this.subject) {
+				// no subject, just use the default variable
+				return variable
+			}
 			// returns a variable that has already been contextualized
 			var instance = variable._contextMap && this.subject && variable._contextMap.get(this.subject)
 			if (instance && instance.context && instance.context.matches(this)) {
