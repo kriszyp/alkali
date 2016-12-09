@@ -153,6 +153,24 @@ define([
 			assert.equal(doubleA.valueOf(), 6)
 			assert.isFalse(computedA)
 		},
+		'caching property of transform': function() {
+			var v = new Variable(5)
+			var transformed = 0
+			var result = v.to(function(v) {
+				transformed++
+				return {
+					twice: v * 2,
+					triple: v * 3
+				}
+			})
+			assert.equal(result.property('twice').valueOf(), 10)
+			assert.equal(result.property('triple').valueOf(), 15)
+			assert.equal(transformed, 1)
+			v.put(10)
+			assert.equal(result.property('twice').valueOf(), 20)
+			assert.equal(result.property('triple').valueOf(), 30)
+			assert.equal(transformed, 2)
+		},
 
 		'structured assignment': function() {
 			var MyVar = Variable({
