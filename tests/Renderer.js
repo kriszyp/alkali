@@ -78,6 +78,36 @@ define([
 				assert.equal(div.foo, 'foo')
 			})
 		},
+		'transform with Renderer': function() {
+			var state = new Variable({
+				selection: []
+			})
+			var transformed = 0
+			var data = new Variable(3).to(function(v) {
+				transformed++
+				return v + 1
+			})
+			var result = Variable.all([data, state.property('selection') ]).to(function(args) {
+				return args[0] + args[1].length
+			})
+			var div = document.createElement('div')
+			document.body.appendChild(div)
+			var updated
+			new Renderer.ElementRenderer({
+				variable: result,
+				element: div,
+				renderUpdate: function() {
+					updated = true
+				}
+			})
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.equal(transformed, 1)
+				state.set('selection', ['a'])
+				return new Promise(requestAnimationFrame).then(function(){
+					assert.equal(transformed, 1)
+				})
+			})
+		},
 		RendererInvalidation: function() {
 			document.body.appendChild(div);
 			var outer = new Variable(false);
