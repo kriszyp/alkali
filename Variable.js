@@ -567,7 +567,9 @@
 			if (listeners) {
 				var variable = this
 				// make a copy, in case they change
-				listeners.forEach(function(dependent) {
+				listeners = listeners.slice()
+				for (var i = 0; i < listeners.length; i++) {
+					var dependent = listeners[i]
 					if ((updateEvent instanceof PropertyChangeEvent) &&
 							dependent.parent) {
 						if (dependent.key === updateEvent.key) {
@@ -576,7 +578,7 @@
 					} else {
 						dependent.updated(updateEvent, variable, context)
 					}
-				})
+				}
 			}
 			if (updateEvent instanceof PropertyChangeEvent) {
 				if (this.returnedVariable && this.fixed) {
@@ -600,10 +602,11 @@
 		notifies: function(target) {
 			var listeners = this.listeners
 			if (!listeners || !this.hasOwnProperty('listeners')) {
-				this.listeners = listeners = new Set()
+				this.listeners = listeners = [target]
 				this.init()
+			} else if (listeners.indexOf(target) === -1) {
+				listeners.push(target)
 			}
-			listeners.add(target)
 		},
 		subscribe: function(listener) {
 			// ES7 Observable (and baconjs) compatible API
@@ -652,11 +655,14 @@
 		stopNotifies: function(dependent) {
 			var listeners = this.listeners
 			if (listeners) {
-				listeners.delete(dependent)
-				if (listeners.size === 0) {
-					// clear the listeners so it will be reinitialized if it has
-					// listeners again
-					this.cleanup()
+				var index = listeners.indexOf(dependent)
+				if (index > -1) {
+					listeners.splice(index, 1)
+					if (listeners.length === 0) {
+						// clear the listeners so it will be reinitialized if it has
+						// listeners again
+						this.cleanup()
+					}
 				}
 			}
 		},

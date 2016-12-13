@@ -475,7 +475,7 @@ define([
 				Span(a)])
 			document.body.appendChild(div)
 			return new Promise(requestAnimationFrame).then(function() {
-				assert.strictEqual(a.listeners.size, 2)
+				assert.strictEqual(a.listeners.length, 2)
 				document.body.removeChild(div)
 				return new Promise(requestAnimationFrame).then(function() {
 					assert.strictEqual(a.listeners, false)
