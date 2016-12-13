@@ -1094,6 +1094,9 @@
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = this
 			if (context) {
+				if (!transformContext) {
+					transformContext = context.newContext()
+				}
 				contextualizedVariable = context.getContextualized(this)
 				if (!contextualizedVariable && this.context && this.context.matches(context)) {
 					contextualizedVariable = this

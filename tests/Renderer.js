@@ -108,6 +108,75 @@ define([
 				})
 			})
 		},
+		'Renderer with complex transform': function() {
+
+	    var data = new Variable([{
+	      id: 1,
+	      group: 1,
+	      text: 'foo'
+	    }, {
+	      id: 2,
+	      group: 1,
+	      text: 'bar'
+	    }, {
+	      id: 3,
+	      group: 2,
+	      text: 'baz'
+	    }])
+
+	    var count = 0
+
+	    var transformedData = data.to((data) => {
+	      count++
+	      if (count > 1) {
+	      	throw new Error('Not cached properly')
+	      }
+	      return {
+	        data: data.map((datum) => Object.assign({}, datum)),
+	        otherStuff: 'lolwut',
+	      }
+	    })
+
+	    var state = new Variable({
+	      selection: {}
+	    })
+
+	    var selectedGroups = Variable.all([
+	      state.property('selection'),
+	      transformedData.property('data')
+	    ]).to(([selection, data]) => {
+	      return data.reduce((memo, datum) => {
+	        if (selection[datum.id]) {
+	          memo[datum.group] = true
+	        }
+
+	        return memo
+	      }, {})
+	    })
+
+			var div = document.createElement('div')
+			document.body.appendChild(div)
+			var updated
+
+	    new Renderer.ElementRenderer({
+	      variable: selectedGroups,
+	      element: div,
+	      renderUpdate: (selectedGroups) => {
+	        console.log('selectedGroups', selectedGroups)
+	        console.log('this.count === 1?', count === 1)
+	      }
+	    })
+
+	    setTimeout(() => state.set('selection', { 1: true }), 10)
+	    setTimeout(() => state.set('selection', { 1: true, 2: true }), 50)
+	    return new Promise(function(resolve, reject) {
+		    setTimeout(function() {
+		    	state.set('selection', { 3: true })
+			    resolve()
+		    }, 100)
+	    })
+		},
+
 		RendererInvalidation: function() {
 			document.body.appendChild(div);
 			var outer = new Variable(false);
