@@ -355,7 +355,7 @@
 			if (!propertyVariable) {
 				// create the property variable
 				var Class = PropertyClass || this.constructor[key]
-				propertyVariable = new (Class && typeof Class === 'function' && Class.notifies ? Class : this.PropertyClass)()
+				propertyVariable = new (Class && typeof Class === 'function' && Class.isPropertyClass ? Class : this.PropertyClass)()
 				propertyVariable.key = key
 				propertyVariable.parent = this
 				if (this[key] === undefined) {
@@ -1678,13 +1678,6 @@
 	Variable.VPromised = Variable
 	Variable.deny = deny
 	Variable.noChange = noChange
-	function addFlag(name) {
-		Variable[name] = function(functionValue) {
-			functionValue[name] = true
-		}
-	}
-	addFlag(Variable, 'handlesContext')
-	addFlag(Variable, 'handlesPromises')
 
 	function objectUpdated(object) {
 		// simply notifies any subscribers to an object, that it has changed
@@ -1948,6 +1941,7 @@
 							enumerable: true
 						}
 					})(key, value)
+					value.isPropertyClass = true
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)
 				} else {
