@@ -1674,7 +1674,19 @@
 		}
 	})
 
-	Variable.VArray = Variable
+	var VArray = Variable.VArray = Variable
+	VArray.of = function(collectionOf) {
+		var ArrayClass = VArray({collectionOf: collectionOf})
+		if (this !== VArray) {
+			// new operator
+			return new ArrayClass()
+		}
+		return ArrayClass
+	}
+
+	Variable.VString = Variable
+	Variable.VBoolean = Variable
+	Variable.VNumber = Variable
 	Variable.VPromised = Variable
 	Variable.deny = deny
 	Variable.noChange = noChange
@@ -1941,6 +1953,9 @@
 							enumerable: true
 						}
 					})(key, value)
+					if (value === Variable) {
+						value = Variable() // create own instance
+					}
 					value.isPropertyClass = true
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)

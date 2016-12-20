@@ -10,6 +10,9 @@
 	main.Variable = Variable
 	main.VMap = Variable.VMap
 	main.VArray = Variable.VArray
+	main.VString = Variable.VString
+	main.VNumber = Variable.VNumber
+	main.VBoolean = Variable.VBoolean
 	main.VPromised = Variable.VPromised
 	main.all = Variable.all
 	main.Transform = Variable.Call

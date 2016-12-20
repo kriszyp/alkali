@@ -60,12 +60,20 @@ declare namespace alkali {
     pop(): T
     shift(): T
     splice(start: number, end: number, ...items: T[])
+    static of: {
+      <U>(collectionOf: { new (): U }): { new(): VArray<U> },
+      new<U>(collectionOf: { new (): U }): VArray<U>
+    }
     collectionOf: VariableClass<{}>
   }
   export class VMap<T> extends VariableInstance<T> {
   }
   export class VPromised<T> extends VariableInstance<Promise<T>> {
     to<U>(transform: (T) => VPromised<U> | VariableInstance<U> | Promise<U> | U): VPromised<U>
+  }
+  export var VString: {
+    (v?: string): VariableInstance<string> & string
+    new (v?: string): VariableInstance<string> & string
   }
 
   export function react<T>(reactiveFunction: () => T): VariableInstance<T>
