@@ -354,8 +354,14 @@
 			}
 			if (!propertyVariable) {
 				// create the property variable
-				var Class = PropertyClass || this.constructor[key]
-				propertyVariable = new (Class && typeof Class === 'function' && Class.isPropertyClass ? Class : this.PropertyClass)()
+				var Class = PropertyClass
+				if (!Class) {
+					Class = this.constructor[key]
+					if (typeof Class !== 'function' || !Class.isPropertyClass) {
+						Class = this.PropertyClass
+					}
+				}
+				propertyVariable = new Class()
 				propertyVariable.key = key
 				propertyVariable.parent = this
 				if (this[key] === undefined) {
@@ -1386,7 +1392,7 @@
 			if (context) {
 				context.nextProperty = 'source'
 			}
-			var collectionOf = this.collectionOf
+			var collectionOf = this.source.collectionOf
 			return when(this.source.valueOf(context), function(array) {
 				if (array && array.forEach) {
 					if (context && context.notify) {
@@ -1406,7 +1412,7 @@
 					}
 					if (collectionOf) {
 						array = array.map(function(item) {
-							return collection.from(item)
+							return collectionOf.from(item)
 						})
 					}
 				} else {
@@ -1933,7 +1939,7 @@
 		for (var key in properties) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
 			var value = descriptor.value
-			if (typeof value === 'function') {
+			if (typeof value === 'function' && key !== 'collectionOf') {
 				if (value.notifies) {
 					// variable class
 					descriptor = (function(key, Class) {

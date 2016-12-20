@@ -4,6 +4,7 @@ define([
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
 ], function (Variable, registerSuite, assert, Promise) {
+	VArray = Variable.VArray
 	function valueOfAndNotify(variable, callback) {
 		var context = new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
 			updated: callback
@@ -314,7 +315,7 @@ define([
 			assert.isTrue(invalidated)
 			assert.equal(sum.valueOf(), 7)
 		},
-		map: function () {
+		transform: function () {
 			var a = new Variable()
 			var b = new Variable()
 			var sum = a.to(function (a) {
@@ -355,6 +356,21 @@ define([
 			assert.isTrue(targetInvalidated)
 			assert.equal(target.valueOf(), 10)
 		},
+		mixedMap: function() {
+			var a = new Variable()
+			var plusTwo = a.map(function(a) {
+				return a + 2
+			})
+			var invalidated = false
+			var updater = function() {
+				invalidated = true
+			}
+			var result = valueOfAndNotify(plusTwo, updater)
+			assert.equal(typeof result, 'number')
+			assert.isTrue(isNaN(result))
+			a.put([1, 2])
+			assert.deepEqual(plusTwo.valueOf(), [3, 4])
+		},
 		derivedMap: function() {
 			var a = new Variable(2)
 			var b = new Variable(3)
@@ -381,6 +397,23 @@ define([
 			assert.deepEqual(mult.valueOf(), [10])
 			b.put([4])
 			assert.deepEqual(mult.valueOf(), [12])
+		},
+		typedMap: function() {
+			var Foo = Variable({
+				foo: Variable
+			})
+			var LotsOfFoo = Variable({
+				items: VArray.of(Foo)
+			})
+			var lof = new LotsOfFoo({items: [{foo: 'a'}, {foo: 'b'}]})
+			var letters = lof.items.map(function(item) {
+				return item.get('foo')
+			})
+			lettersResolved = []
+			letters.forEach(function(letter) {
+				lettersResolved.push(letter)
+			})
+			assert.deepEqual(lettersResolved, ['a', 'b'])
 		},
 		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)
