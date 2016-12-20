@@ -1393,6 +1393,7 @@
 				context.nextProperty = 'source'
 			}
 			var collectionOf = this.source.collectionOf
+			var isStrictArray = this.source._isStrictArray
 			return when(this.source.valueOf(context), function(array) {
 				if (array && array.forEach) {
 					if (context && context.notify) {
@@ -1415,6 +1416,8 @@
 							return collectionOf.from(item)
 						})
 					}
+				} else if (isStrictArray) {
+					array = []
 				} else {
 					if (method === 'map'){
 						// fast path, and special behavior for map
@@ -1442,7 +1445,8 @@
 		},
 		getCollectionOf: function(){
 			return this.source.getCollectionOf()
-		}
+		},
+		_isStrictArray: true
 	})
 
 	function defineArrayMethod(method, constructor, properties) {
@@ -1450,7 +1454,7 @@
 		IterativeResults.prototype.method || (IterativeResults.prototype.method = method)
 		Object.defineProperty(IterativeResults.prototype, 'isIterable', {value: true});
 		Variable.prototype[method] = function() {
-			var results = new IterativeResults()
+			var results = new IterativeResults(this)
 			results.source = this
 			results.arguments = arguments
 			return results
@@ -1496,7 +1500,9 @@
 			}
 		}
 	})
-	defineArrayMethod('map', function Mapped() {}, {
+	defineArrayMethod('map', function Mapped(source) {
+		this._isStrictArray = source._isStrictArray
+	}, {
 		updated: function(event, by, context) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Composite.prototype.updated.call(this, event, by, context)
@@ -1680,7 +1686,15 @@
 		}
 	})
 
-	var VArray = Variable.VArray = Variable
+	var VArray = Variable.VArray = lang.compose(Variable, function(value) {
+		if (this instanceof Variable) {
+			Variable.apply(this, arguments)
+		} else {
+			return VArray.with(value)
+		}
+	}, {
+		_isStrictArray: true
+	})
 	VArray.of = function(collectionOf) {
 		var ArrayClass = VArray({collectionOf: collectionOf})
 		if (this !== VArray) {

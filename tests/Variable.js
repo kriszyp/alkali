@@ -358,7 +358,11 @@ define([
 		},
 		mixedMap: function() {
 			var a = new Variable()
+			var b = new VArray()
 			var plusTwo = a.map(function(a) {
+				return a + 2
+			})
+			var bPlusTwo = b.map(function(a) {
 				return a + 2
 			})
 			var invalidated = false
@@ -368,8 +372,11 @@ define([
 			var result = valueOfAndNotify(plusTwo, updater)
 			assert.equal(typeof result, 'number')
 			assert.isTrue(isNaN(result))
+			assert.deepEqual(bPlusTwo.valueOf(), [])
 			a.put([1, 2])
+			b.put([1, 2])
 			assert.deepEqual(plusTwo.valueOf(), [3, 4])
+			assert.deepEqual(bPlusTwo.valueOf(), [3, 4])
 		},
 		derivedMap: function() {
 			var a = new Variable(2)
