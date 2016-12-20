@@ -1515,8 +1515,8 @@
 			} else if (event.type === 'update') {
 				var object = event.parent.valueOf(context)
 				var array = contextualizedVariable.cachedValue
-				if (array && array.map) {
-					var index = array.indexOf(object)
+				var index
+				if (array && array.map && (index = array.indexOf(object)) > -1) {
 					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], event.value))
 				} else {
 					return Composite.prototype.updated.call(this, event, by, context)
