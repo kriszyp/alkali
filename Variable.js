@@ -1,6 +1,6 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang'], factory) } else if (typeof module === 'object' && module.exports) {        
-  module.exports = factory(require('./util/lang')) // Node
+	define(['./util/lang'], factory) } else if (typeof module === 'object' && module.exports) {				
+	module.exports = factory(require('./util/lang')) // Node
 }}(this, function (lang) {
 	var deny = {}
 	var noChange = {}
@@ -82,7 +82,7 @@
 			var specifiedInstance
 			if (subjectMap) {
 				if (!this.distinctSubject) {
-	        this.distinctSubject = subject
+					this.distinctSubject = subject
 				}
 				var instanceMap = subjectMap.get(Variable)
 				if (instanceMap) {
@@ -247,6 +247,10 @@
 				this.getValue(context, context && (valueContext = context.newContext())) :
 				this.value, context, valueContext)
 		},
+		/*then: function(onResolve, onError) {
+			// short hand for this.valueOf().then()
+			return when(this.valueOf(), onResolve, onError)
+		},*/
 		getValue: function(context, valueContext) {
 			if (this.parent) {
 				if (context) {
@@ -456,7 +460,7 @@
 			}
 		},
 		apply: function(instance, args) {
-			return new Call(this, args)
+			return new Call(args[0], this, args)
 		},
 		call: function(instance) {
 			return this.apply(instance, Array.prototype.slice.call(arguments, 1))
@@ -801,7 +805,10 @@
 					reverse.call(this, args[0], context)
 				}
 			}
-			return new Call(transformFunction, [this])
+			if (transformFunction.prototype instanceof Variable) {
+				return new transformFunction(this)
+			}
+			return new Call(this, transformFunction)
 		},
 		get schema() {
 			// default schema is the constructor
@@ -1222,11 +1229,16 @@
 	})
 
 	// a call variable is the result of a call
-	var Call = lang.compose(Composite, function Transform(transform, args) {
+	var Call = lang.compose(Composite, function Transform(input, transform, additionalInputs) {
+		if (input) {
+			this.input = input
+		}
 		if (transform) {
 			this.transform = transform
-			for (var i = 0, l = args.length; i < l; i++) {
-				this[i > 0 ? 'input' + i : 'input'] = args[i]
+			if (additionalInputs) {
+				for (var i = 1, l = additionalInputs.length; i < l; i++) {
+					this['input' + i] = additionalInputs[i]
+				}
 			}
 		}
 	}, {
@@ -1277,8 +1289,8 @@
 				}
 				return when(call.transform.valueOf(context), function(functionValue) {
 					return call.invoke(function() {
-						if (functionValue.reverse) {
-							functionValue.reverse.call(call, value, call.getArguments(), context)
+						if (call.reverse || functionValue.reverse) {
+							(call.reverse || functionValue.reverse).call(call, value, call.getArguments(), context)
 							return Variable.prototype.put.call(call, value, context)
 						} else if (originalValue && originalValue.put) {
 							return originalValue.put(value)
@@ -1540,6 +1552,7 @@
 			var hasKeyFunction = typeof keyGenerator === 'function'
 			var hasValueFunction = typeof valueGenerator === 'function'
 			var hasKey = !!keyGenerator
+			array = toArray(array)
 			for (var i = 0, l = array.length; i < l; i++) {
 				var element = array[i]
 				index.set(
@@ -1563,6 +1576,7 @@
 			var hasKeyFunction = typeof keyGenerator === 'function'
 			var hasValueFunction = typeof valueGenerator === 'function'
 			var hasKey = !!keyGenerator
+			array = toArray(array)
 			for (var i = 0, l = array.length; i < l; i++) {
 				var element = array[i]
 				var key = hasKeyFunction ? keyGenerator(element) :
@@ -1583,7 +1597,21 @@
 			return index
 		}
 	})
-
+	function toArray(array) {
+		if (!array) {
+			return []
+		}
+		if (array.length > -1) {
+			return array
+		}
+		var newArray = []
+		if (array.forEach) {
+			array.forEach(function(item) {
+				newArray.push(item)
+			})
+		}
+		return newArray
+	}
 
 	var getValue
 	var GeneratorVariable = Variable.GeneratorVariable = lang.compose(Variable.Composite, function ReactiveGenerator(generator){
@@ -1686,12 +1714,15 @@
 		}
 	})
 
-	var VArray = Variable.VArray = lang.compose(Variable, function(value) {
-		if (this instanceof Variable) {
-			Variable.apply(this, arguments)
+	function makeSubVar(instance, value, Type) {
+		if (instance instanceof Variable) {
+			Variable.call(instance, value)
 		} else {
-			return VArray.with(value)
+			return Type.with(value)
 		}
+	}
+	var VArray = Variable.VArray = lang.compose(Variable, function(value) {
+		return makeSubVar(this, value, VArray)
 	}, {
 		_isStrictArray: true
 	})
@@ -1704,9 +1735,29 @@
 		return ArrayClass
 	}
 
-	Variable.VString = Variable
+	function forwardMethod(target, method) {
+		target[method] = function() {
+			var args = arguments
+			// TODO: make these args part of the call so variables can be resolved
+			return new Call(this, function(value) {
+				return value == null ? undefined : value[method].apply(value, args)
+			})
+		}
+		for (var i = 2; i < arguments.length; i++) {
+			var method = arguments[i]
+			forwardMethod(target, arguments[i])
+		}
+	}
+	var VString = Variable.VString = lang.compose(Variable, function(value) {
+		makeSubVar(this, value, VString)
+	}, forwardMethod({}, 'charAt', 'codeCharAt', 'indexOf', 'lastIndex', 'match', 'replace', 'substr', 'slice', 'toUpperCase', 'toLowerCase'))
 	Variable.VBoolean = Variable
-	Variable.VNumber = Variable
+	var VNumber = Variable.VNumber = lang.compose(Variable, function(value) {
+		makeSubVar(this, value, VString)
+	}, forwardMethod({}, 'toFixed', 'toExponential', 'toPrecision', 'toLocaleString'))
+	var VSet = Variable.VSet = lang.compose(Variable, function(value) {
+		makeSubVar(this, value, VString)
+	}, forwardMethod({}, 'has'))
 	Variable.VPromised = Variable
 	Variable.deny = deny
 	Variable.noChange = noChange
@@ -1725,7 +1776,7 @@
 		// This is intended to mirror Promise.all. It actually takes
 		// an iterable, but for now we are just looking for array-like
 		if (array.length > -1) {
-			return typeof transform === 'function' ? new Call(transform, array) : new Composite(array)
+			return typeof transform === 'function' ? new Call(array[0], transform, array) : new Composite(array)
 		}
 		if (arguments.length > 1) {
 			// support multiple arguments as an array

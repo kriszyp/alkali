@@ -59,7 +59,7 @@
     if (target.property && typeof target === 'function') {
       return target.apply(null, preserveObjects(args))
     }
-    return new Variable.Call(target, args)
+    return new Variable.Call(args[0], target, args)
   }
   react.mcall = function(target, key, args) {
     var method = target[key]
@@ -67,13 +67,13 @@
       // for now we check to see if looks like it could handle a variable, or is a bind call
       return method.apply(target, preserveObjects(args))
     }
-    return new Variable.Call(target[key].bind(target), args)
+    return new Variable.Call(args[0], target[key].bind(target), args)
   }
   react.ncall = function(target, args) {
     if (target.property && typeof target === 'function') {
       return new (target.bind.apply(target, [null].concat(preserveObjects(args))))()
     }
-    return new Variable.Call(function() {
+    return new Variable.Call(args[0], function() {
       return new (target.bind.apply(target, [null].concat(arguments)))()
     }, args)
   }
