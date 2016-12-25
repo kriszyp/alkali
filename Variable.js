@@ -1752,32 +1752,6 @@
 		return ArrayClass
 	}
 
-	function forwardMethod(target, mutates, method) {
-		var mutates
-		target[method] = mutates ?
-		function() {
-			var args = arguments
-			var variable = this
-			return this.then(function(value) {
-				value[method].apply(value, args)
-				variable.put(value)
-				variable.updated()
-			})
-		} :
-		function() {
-			var args = arguments
-			// TODO: make these args part of the call so variables can be resolved
-			// TODO: may actually want to do getValue().invoke()
-			return new Call(this, function(value) {
-				return value == null ? undefined : value[method].apply(value, args)
-			})
-		}
-		for (var i = 3; i < arguments.length; i++) {
-			var method = arguments[i]
-			forwardMethod(target, mutates, arguments[i])
-		}
-		return target
-	}
 	Variable.deny = deny
 	Variable.noChange = noChange
 
@@ -2116,7 +2090,6 @@
 				return this.then(function(value) {
 					var returnValue = value[method].apply(value, args)
 					variable.put(value)
-					variable.updated()
 					return returnValue
 				})
 			}
