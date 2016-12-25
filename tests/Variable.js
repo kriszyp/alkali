@@ -5,6 +5,9 @@ define([
 	'bluebird/js/browser/bluebird'
 ], function (Variable, registerSuite, assert, Promise) {
 	VArray = Variable.VArray
+	VString = Variable.VString
+	VSet = Variable.VSet
+	VNumber = Variable.VNumber
 	function valueOfAndNotify(variable, callback) {
 		var context = new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
 			updated: callback
@@ -421,6 +424,61 @@ define([
 				lettersResolved.push(letter)
 			})
 			assert.deepEqual(lettersResolved, ['a', 'b'])
+		},
+		VString: function() {
+			var vs = new VString('hello')
+			var transformed = vs.toUpperCase().slice(1, 3)
+			var invalidated
+			assert.equal(valueOfAndNotify(transformed, function() {
+				invalidated = true
+			}), 'EL')
+			vs.put('hi')
+			assert.isTrue(invalidated)
+			assert.equal(transformed.valueOf(), 'I')
+		},
+		VNumber: function() {
+			var vn = new VNumber(344)
+			var transformed = vn.toExponential().indexOf('e+')
+			var invalidated
+			assert.equal(valueOfAndNotify(transformed, function() {
+				invalidated = true
+			}), 4)
+			vn.put(3)
+			assert.isTrue(invalidated)
+			assert.equal(transformed.valueOf(), 1)
+		},
+		transformAndCast: function() {
+			var vn = new VNumber(344)
+			var transformed = vn.to(function(num) {
+				return 'num: ' + num
+			}).as(VString).toUpperCase()
+			var invalidated
+			assert.equal(valueOfAndNotify(transformed, function() {
+				invalidated = true
+			}), 'NUM: 344')
+			vn.put(3)
+			assert.isTrue(invalidated)
+			assert.equal(transformed.valueOf(), 'NUM: 3')
+		},
+		VSet: function() {
+			var vs = new VSet(['a', 'b'])
+			var a = vs.has('a')
+			var c = vs.has('c')
+			assert.equal(a.valueOf(), true)
+			var invalidated
+			assert.equal(valueOfAndNotify(c, function() {
+				invalidated = true
+			}), false)
+			vs.add('c')
+			assert.equal(a.valueOf(), true)
+			assert.equal(c.valueOf(), true)
+			assert.isTrue(invalidated)
+			vs.delete('a')
+			assert.equal(a.valueOf(), false)
+			assert.equal(c.valueOf(), true)
+			vs.clear()
+			assert.equal(a.valueOf(), false)
+			assert.equal(c.valueOf(), false)
 		},
 		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)

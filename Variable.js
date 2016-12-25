@@ -30,6 +30,12 @@
 		}
 		return callback(value)
 	}
+	function whenStrict(value, callback) {
+		if (value && value.then && !value.notifies) {
+			return value.then(callback)
+		}
+		return callback(value)
+	}
 
 	function Context(subject){
 		this.subject = subject
@@ -247,10 +253,10 @@
 				this.getValue(context, context && (valueContext = context.newContext())) :
 				this.value, context, valueContext)
 		},
-		/*then: function(onResolve, onError) {
+		then: function(onResolve, onError) {
 			// short hand for this.valueOf().then()
 			return when(this.valueOf(), onResolve, onError)
-		},*/
+		},
 		getValue: function(context, valueContext) {
 			if (this.parent) {
 				if (context) {
@@ -275,7 +281,7 @@
 					//}
 					return value
 				}
-				if (object && object.then) {
+				if (object && object.then && !object.notifies) {
 					return when(object, gotValueAndListen)
 				}
 				return gotValueAndListen(object)
@@ -394,7 +400,7 @@
 			var key = this.key
 			var parent = this.parent
 			var variable = this
-			return when(parent.getValue ? parent.getValue(context) : parent.value, function(object) {
+			return whenStrict(parent.getValue ? parent.getValue(context) : parent.value, function(object) {
 				if (object == null) {
 					// nothing there yet, create an object to hold the new property
 					parent.put(object = typeof key == 'number' ? [] : {}, context)
@@ -681,7 +687,7 @@
 			if (this.parent) {
 				return this._changeValue(context, RequestChange, value)
 			}
-			return when(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
+			return whenStrict(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
 				if (oldValue === value) {
 					return noChange
 				}
@@ -690,7 +696,7 @@
 						(variable.fixed || !(value && value.put))) {
 					return oldValue.put(value)
 				}
-				return when(variable.setValue(value, context), function(value) {
+				return whenStrict(variable.setValue(value, context), function(value) {
 					var event = new RefreshEvent()
 					event.oldValue = oldValue
 					event.target = variable
@@ -702,8 +708,15 @@
 			if (this[key] || (this._properties && this._properties[key])) {
 				return this.property(key).valueOf()
 			}
-			return when(this.getValue(), function(object) {
-				var value = object && (typeof object.get === 'function' ? object.get(key) : object[key])
+			var object = this.getValue()
+			if (!object) {
+				return
+			}
+			if (typeof object.get === 'function') {
+				return object.get(key)
+			}
+			return whenStrict(object, function(object) {
+				var value = object[key]
 				if (value && value.notifies) {
 					// nested variable situation, get underlying value
 					return value.valueOf()
@@ -721,7 +734,7 @@
 		is: function(proxiedVariable) {
 			var thisVariable = this
 			this.fixed = true
-			return when(this.setValue(proxiedVariable), function(value) {
+			return whenStrict(this.setValue(proxiedVariable), function(value) {
 				thisVariable.updated(new RefreshEvent(), thisVariable)
 				return thisVariable
 			})
@@ -753,7 +766,7 @@
 		},
 		onValue: function(listener) {
 			return this.subscribe(function(event) {
-				lang.when(event.value(), function(value) {
+				when(event.value(), function(value) {
 					listener(value)
 				})
 			})
@@ -809,6 +822,10 @@
 				return new transformFunction(this)
 			}
 			return new Call(this, transformFunction)
+		},
+		as: function(Class) {
+			// easiest way to cast to a variable class
+			return new Class(this)
 		},
 		get schema() {
 			// default schema is the constructor
@@ -1143,7 +1160,7 @@
 			contextualizedVariable.cachedVersion = newVersion
 			contextualizedVariable.cachedValue = computedValue
 			contextualizedVariable.context = transformContext
-			if (computedValue && computedValue.then) {
+			if (computedValue && computedValue.then && !computedValue.notifies) {
 				return computedValue.then(withComputedValue)
 			} else {
 				return computedValue
@@ -1735,30 +1752,32 @@
 		return ArrayClass
 	}
 
-	function forwardMethod(target, method) {
-		target[method] = function() {
+	function forwardMethod(target, mutates, method) {
+		var mutates
+		target[method] = mutates ?
+		function() {
+			var args = arguments
+			var variable = this
+			return this.then(function(value) {
+				value[method].apply(value, args)
+				variable.put(value)
+				variable.updated()
+			})
+		} :
+		function() {
 			var args = arguments
 			// TODO: make these args part of the call so variables can be resolved
+			// TODO: may actually want to do getValue().invoke()
 			return new Call(this, function(value) {
 				return value == null ? undefined : value[method].apply(value, args)
 			})
 		}
-		for (var i = 2; i < arguments.length; i++) {
+		for (var i = 3; i < arguments.length; i++) {
 			var method = arguments[i]
-			forwardMethod(target, arguments[i])
+			forwardMethod(target, mutates, arguments[i])
 		}
+		return target
 	}
-	var VString = Variable.VString = lang.compose(Variable, function(value) {
-		makeSubVar(this, value, VString)
-	}, forwardMethod({}, 'charAt', 'codeCharAt', 'indexOf', 'lastIndex', 'match', 'replace', 'substr', 'slice', 'toUpperCase', 'toLowerCase'))
-	Variable.VBoolean = Variable
-	var VNumber = Variable.VNumber = lang.compose(Variable, function(value) {
-		makeSubVar(this, value, VString)
-	}, forwardMethod({}, 'toFixed', 'toExponential', 'toPrecision', 'toLocaleString'))
-	var VSet = Variable.VSet = lang.compose(Variable, function(value) {
-		makeSubVar(this, value, VString)
-	}, forwardMethod({}, 'has'))
-	Variable.VPromised = Variable
 	Variable.deny = deny
 	Variable.noChange = noChange
 
@@ -1980,17 +1999,17 @@
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply
-	Variable.with = function(properties) {
+	Variable.with = function(properties, ExtendedVariable) {
 		// TODO: handle arguments
 		var Base = this
-		var ExtendedVariable, prototype
+		var prototype
 		if (Object.getOwnPropertyDescriptor(this, 'prototype').writable === false) {
 			// extending native class
 			ExtendedVariable = lang.extendClass(this)
 			prototype = ExtendedVariable.prototype
 		} else {
 			// extending function/constructor
-			ExtendedVariable = function() {
+			ExtendedVariable = ExtendedVariable || function() {
 				if (this instanceof ExtendedVariable) {
 					Base.apply(this, arguments)
 				} else {
@@ -2030,6 +2049,8 @@
 					value.isPropertyClass = true
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)
+				} else if (value.defineAs) {
+					descriptor = value.defineAs(key)
 				} else {
 					value = generalizeMethod(value, key)
 				}
@@ -2063,6 +2084,92 @@
 		var subjectMap = this.ownedClasses || (this.ownedClasses = new WeakMap())
 		subjectMap.set(Target, instanceMap)
 	}
+
+	function VFunction() {
+	}
+	(VFunction.returns = function(Type){
+		function VFunction() {}
+		VFunction.defineAs = function(method)	{
+			return {
+				value: function() {
+					var args = arguments
+					// TODO: make these args part of the call so variables can be resolved
+					// TODO: may actually want to do getValue().invoke()
+					return new Type(new Call(this, function(value) {
+							return value == null ? undefined : value[method].apply(value, args)
+					}))
+				}
+			}
+		}
+		return VFunction
+	})
+
+	function VMethod() {
+	}
+	VMethod.defineAs = function(method) {
+		return {
+			value: function() {
+				var args = arguments
+				// TODO: make these args part of the call so variables can be resolved
+				// TODO: may actually want to do getValue().invoke()
+				var variable = this
+				return this.then(function(value) {
+					var returnValue = value[method].apply(value, args)
+					variable.put(value)
+					variable.updated()
+					return returnValue
+				})
+			}
+		}		
+	}
+
+	function VString(value) {
+		return makeSubVar(this, typeof value === 'object' ? value : String(value), VString)
+	}
+	Variable.VString = VString
+	function VNumber(value) {
+		return makeSubVar(this, typeof value === 'object' ? value : Number(value), VNumber)
+	}
+	Variable.VNumber = VNumber
+	function VBoolean(value) {
+		return makeSubVar(this, typeof value === 'object' ? value : Boolean(value), VBoolean)
+	}
+	Variable.VBoolean = VBoolean
+
+	function VSet(value) {
+		return makeSubVar(this, value instanceof Array ? new Set(value) : value, VSet)
+	}
+	Variable.VSet = VSet
+	
+	Variable.with({
+		charAt: VFunction.returns(VString),
+		codeCharAt: VFunction.returns(VNumber),
+		indexOf: VFunction.returns(VNumber),
+		lastIndexOf: VFunction.returns(VNumber),
+		match: VFunction.returns(VArray),
+		replace: VFunction.returns(VString),
+		substr: VFunction.returns(VString),
+		slice: VFunction.returns(VString),
+		toUpperCase: VFunction.returns(VString),
+		toLowerCase: VFunction.returns(VString),
+		length: VNumber
+	}, VString)
+	Variable.with({
+		toFixed: VFunction.returns(VString),
+		toExponential: VFunction.returns(VString),
+		toPrecision: VFunction.returns(VString),
+		toLocaleString: VFunction.returns(VString)
+	}, VNumber)
+	Variable.with({}, VBoolean)
+	Variable.with({
+		has: VFunction.returns(VBoolean),
+		add: VMethod,
+		clear: VMethod,
+		delete: VMethod
+	}, VSet)
+
+
+	Variable.VPromised = Variable
 
 	var getGeneratorDescriptor = Variable.getGeneratorDescriptor = function(value) {
 		var variables
