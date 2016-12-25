@@ -409,7 +409,7 @@
 					return deny
 				}
 				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-				if (oldValue === newValue) {
+				if (oldValue === newValue && typeof newValue == 'object') {
 					// no actual change to make
 					return noChange
 				}
@@ -688,7 +688,7 @@
 				return this._changeValue(context, RequestChange, value)
 			}
 			return whenStrict(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
-				if (oldValue === value) {
+				if (oldValue === value && typeof value != 'object') {
 					return noChange
 				}
 				if (oldValue && oldValue.put &&
@@ -1301,7 +1301,7 @@
 		put: function(value, context) {
 			var call = this
 			return when(this.valueOf(context), function(originalValue) {
-				if (originalValue === value) {
+				if (originalValue === value && typeof value != 'object') {
 					return noChange
 				}
 				return when(call.transform.valueOf(context), function(functionValue) {
