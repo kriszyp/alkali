@@ -4,7 +4,7 @@
 }}(this, function (lang, operators, Variable) {
 
   var isGenerator = lang.isGenerator
-  var ObjectTransform = lang.compose(Variable.Call, function ObjectTransform(transform, inputs) {
+  var ObjectTransform = lang.compose(Variable.Call, function ObjectTransform(input, transform, inputs) {
     this.inputs = inputs
     Variable.Call.apply(this, arguments)
   }, {
@@ -79,7 +79,7 @@
   }
 
   react.obj = function(transform, inputs) {
-    return new ObjectTransform(transform, inputs)
+    return new ObjectTransform(inputs[0], transform, inputs)
   }
 
 	return react
