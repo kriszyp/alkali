@@ -4,11 +4,13 @@ define([
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
 ], function (Variable, registerSuite, assert, Promise) {
-	VArray = Variable.VArray
-	VString = Variable.VString
-	VSet = Variable.VSet
-	VDate = Variable.VDate
-	VNumber = Variable.VNumber
+	var VArray = Variable.VArray
+	var VString = Variable.VString
+	var VSet = Variable.VSet
+	var VDate = Variable.VDate
+	var VNumber = Variable.VNumber
+	var VPromised = Variable.VPromised
+	var Transform = Variable.Call
 	function valueOfAndNotify(variable, callback) {
 		var context = new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
 			updated: callback
@@ -461,6 +463,22 @@ define([
 			assert.isTrue(invalidated)
 			assert.equal(transformed.valueOf(), 'NUM: 3')
 		},
+		transformAndCastClass: function() {
+			var vn = new VNumber(344)
+			var TransformToString = Transform.with({
+				transform: function(num) {
+					return 'num: ' + num
+				}
+			}).as(VString)
+			var transformed = new TransformToString(vn).toUpperCase()
+			var invalidated
+			assert.equal(valueOfAndNotify(transformed, function() {
+				invalidated = true
+			}), 'NUM: 344')
+			vn.put(3)
+			assert.isTrue(invalidated)
+			assert.equal(transformed.valueOf(), 'NUM: 3')
+		},
 		VDate: function() {
 			var d = new VDate(1482816115981)
 			assert.equal(d.toUTCString().toUpperCase().valueOf(), 'TUE, 27 DEC 2016 05:21:55 GMT')
@@ -486,6 +504,15 @@ define([
 			vs.clear()
 			assert.equal(a.valueOf(), false)
 			assert.equal(c.valueOf(), false)
+		},
+		VPromised: function() {
+			var p = new VPromised('hi')
+			var called
+			p.then(function(value) {
+				called = true
+				assert.equal(value, 'hi')
+			})
+			assert.isTrue(called)
 		},
 		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)

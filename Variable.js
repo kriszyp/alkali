@@ -253,10 +253,6 @@
 				this.getValue(context, context && (valueContext = context.newContext())) :
 				this.value, context, valueContext)
 		},
-		then: function(onResolve, onError) {
-			// short hand for this.valueOf().then()
-			return when(this.valueOf(), onResolve, onError)
-		},
 		getValue: function(context, valueContext) {
 			if (this.parent) {
 				if (context) {
@@ -2043,6 +2039,23 @@
 		}
 		return ExtendedVariable
 	}
+	Variable.as = function(Type) {
+		var NewType = this.with({})
+		var target = NewType.prototype
+		var prototype = Type.prototype
+		do {
+			var names = Object.getOwnPropertyNames(prototype)
+			for (var i = 0; i < names.length; i++) {
+				var name = names[i]
+				if (!Object.getOwnPropertyDescriptor(target, name)) {
+					Object.defineProperty(target, name, Object.getOwnPropertyDescriptor(prototype, name))
+				}
+			}
+			prototype = getPrototypeOf(prototype)
+		} while (prototype && prototype !== Variable.prototype)
+		return NewType
+	}
+
 	Object.defineProperty(Variable, 'defaultInstance', {
 		get: function() {
 			return this.hasOwnProperty('_defaultInstance') ?
@@ -2087,7 +2100,7 @@
 				// TODO: make these args part of the call so variables can be resolved
 				// TODO: may actually want to do getValue().invoke()
 				var variable = this
-				return this.then(function(value) {
+				return when(this.valueOf(), function(value) {
 					var returnValue = value[method].apply(value, args)
 					variable.put(value)
 					return returnValue
@@ -2152,10 +2165,14 @@
 		setTime: VMethod
 	}, VDate)
 
-
-
-
-	Variable.VPromised = Variable
+	Variable.VPromised = lang.compose(Variable, function VPromised(value) {
+		return makeSubVar(this, value, VPromised)
+	}, {
+		then: function(onResolve, onError) {
+			// short hand for this.valueOf().then()
+			return when(this.valueOf(), onResolve, onError)
+		},
+	})
 
 	var getGeneratorDescriptor = Variable.getGeneratorDescriptor = function(value) {
 		var variables
