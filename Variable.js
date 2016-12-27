@@ -2099,22 +2099,12 @@
 	function VString(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : String(value), VString)
 	}
-	Variable.VString = VString
+
 	function VNumber(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : Number(value), VNumber)
 	}
-	Variable.VNumber = VNumber
-	function VBoolean(value) {
-		return makeSubVar(this, typeof value === 'object' ? value : Boolean(value), VBoolean)
-	}
-	Variable.VBoolean = VBoolean
-
-	function VSet(value) {
-		return makeSubVar(this, value instanceof Array ? new Set(value) : value, VSet)
-	}
-	Variable.VSet = VSet
 	
-	Variable.with({
+	Variable.VString = Variable.with({
 		charAt: VFunction.returns(VString),
 		codeCharAt: VFunction.returns(VNumber),
 		indexOf: VFunction.returns(VNumber),
@@ -2127,19 +2117,42 @@
 		toLowerCase: VFunction.returns(VString),
 		length: VNumber
 	}, VString)
-	Variable.with({
+
+	Variable.VNumber = Variable.with({
 		toFixed: VFunction.returns(VString),
 		toExponential: VFunction.returns(VString),
 		toPrecision: VFunction.returns(VString),
 		toLocaleString: VFunction.returns(VString)
 	}, VNumber)
-	Variable.with({}, VBoolean)
-	Variable.with({
+
+	function VBoolean(value) {
+		return makeSubVar(this, typeof value === 'object' ? value : Boolean(value), VBoolean)
+	}
+	Variable.VBoolean = Variable.with({}, VBoolean)
+
+	function VSet(value) {
+		return makeSubVar(this, value instanceof Array ? new Set(value) : value, VSet)
+	}
+	Variable.VSet = Variable.with({
 		has: VFunction.returns(VBoolean),
 		add: VMethod,
 		clear: VMethod,
 		delete: VMethod
 	}, VSet)
+
+	function VDate(value) {
+		return makeSubVar(this, typeof value === 'object' ? value : new Date(value), VDate)
+	}
+	Variable.VDate = Variable.with({
+		toDateString: VFunction.returns(VString),
+		toTimeString: VFunction.returns(VString),
+		toGMTString: VFunction.returns(VString),
+		toUTCString: VFunction.returns(VString),
+		getTime: VFunction.returns(VNumber),
+		setTime: VMethod
+	}, VDate)
+
+
 
 
 	Variable.VPromised = Variable

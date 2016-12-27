@@ -7,6 +7,7 @@ define([
 	VArray = Variable.VArray
 	VString = Variable.VString
 	VSet = Variable.VSet
+	VDate = Variable.VDate
 	VNumber = Variable.VNumber
 	function valueOfAndNotify(variable, callback) {
 		var context = new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
@@ -459,6 +460,12 @@ define([
 			vn.put(3)
 			assert.isTrue(invalidated)
 			assert.equal(transformed.valueOf(), 'NUM: 3')
+		},
+		VDate: function() {
+			var d = new VDate(1482816115981)
+			assert.equal(d.toUTCString().toUpperCase().valueOf(), 'TUE, 27 DEC 2016 05:21:55 GMT')
+			d.setTime(1483816115981)
+			assert.equal(d.toUTCString().toString(), 'Sat, 07 Jan 2017 19:08:35 GMT')
 		},
 		VSet: function() {
 			var vs = new VSet(['a', 'b'])
