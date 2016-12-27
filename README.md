@@ -238,21 +238,46 @@ myVar.subObject.subValue.put(3)
 We could go further and define list structures as well (here we demonstrate inline class definitions):
 ```javascript
 let MyVariable = Variable({
-	myList: VArray({
-		collectionOf: Variable({
-			foo: Variable()
-			structured = true
-		})
-	})
-}
+	myList: VArray.of(Variable({
+		foo: Variable()
+	}))
+})
 ```
+
+
+### Primitive Typed Variables
+We can also define properties with a specific primitive type. Alkali exports classes for primitive typed variables:
+* VString
+* VNumber
+* VBoolean
+* VDate
+* VSet
+
+Each of these have methods corresponding to the methods on the original primitive. For non-mutating accessor methods, the method will return a new variable representing the result of applying the method to the value. For example:
+```
+let greeting = new VString('hello, world')
+let greet = vs.slice(0, 5)
+greet.valueOf() -> 'hello'
+greeting.put('hi there')
+greet.valueOf() -> 'hi th'
+```
+And the mutating methods (that change the value of the primitive) will change the primitive and notifying any listeners:
+```
+let set = new VSet(['a', 'b'])
+let hasC = set.has('c')
+hasC.valueOf() -> false
+set.add('c')
+hasC.valueOf() -> true
+```
+
+### Subclassing Structured Variables
 Variables can also be subclassed with native class syntax. Subclassed variables can not be directly called without `new` (no classes can), but you can derive new structured variables from variable subclasses using the `.with(structure)` method, just as you would above:
 ```javascript
 class MyVariable extends Variable {
   ...
 }
 let AnotherVariable = MyVariable.with({
-  name: Variable
+  name: VString
 })
 ```
 
