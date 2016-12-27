@@ -9,11 +9,13 @@
 	main.Element = Element
 	main.Variable = Variable
 	main.VMap = Variable.VMap
+	main.VSet = Variable.VSet
 	main.VArray = Variable.VArray
 	main.VString = Variable.VString
 	main.VNumber = Variable.VNumber
 	main.VBoolean = Variable.VBoolean
-	main.VPromised = Variable.VPromised
+	main.VDate = Variable.VDate
+	main.VPromise = Variable.VPromise
 	main.all = Variable.all
 	main.Transform = Variable.Call
 	main.Caching = Variable.Caching

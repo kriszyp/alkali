@@ -9,7 +9,7 @@ define([
 	var VSet = Variable.VSet
 	var VDate = Variable.VDate
 	var VNumber = Variable.VNumber
-	var VPromised = Variable.VPromised
+	var VPromise = Variable.VPromise
 	var Transform = Variable.Call
 	function valueOfAndNotify(variable, callback) {
 		var context = new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
@@ -505,8 +505,8 @@ define([
 			assert.equal(a.valueOf(), false)
 			assert.equal(c.valueOf(), false)
 		},
-		VPromised: function() {
-			var p = new VPromised('hi')
+		VPromise: function() {
+			var p = new VPromise('hi')
 			var called
 			p.then(function(value) {
 				called = true

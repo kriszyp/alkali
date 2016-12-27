@@ -252,6 +252,7 @@ We can also define properties with a specific primitive type. Alkali exports cla
 * VBoolean
 * VDate
 * VSet
+* VPromise
 
 Each of these have methods corresponding to the methods on the original primitive. For non-mutating accessor methods, the method will return a new variable representing the result of applying the method to the value. For example:
 ```

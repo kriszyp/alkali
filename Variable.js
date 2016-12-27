@@ -2165,8 +2165,8 @@
 		setTime: VMethod
 	}, VDate)
 
-	Variable.VPromised = lang.compose(Variable, function VPromised(value) {
-		return makeSubVar(this, value, VPromised)
+	Variable.VPromise = lang.compose(Variable, function VPromise(value) {
+		return makeSubVar(this, value, VPromise)
 	}, {
 		then: function(onResolve, onError) {
 			// short hand for this.valueOf().then()

@@ -68,8 +68,8 @@ declare namespace alkali {
   }
   export class VMap<T> extends VariableInstance<T> {
   }
-  export class VPromised<T> extends VariableInstance<Promise<T>> {
-    to<U>(transform: (T) => VPromised<U> | VariableInstance<U> | Promise<U> | U): VPromised<U>
+  export class VPromise<T> extends VariableInstance<Promise<T>> {
+    to<U>(transform: (T) => VPromise<U> | VariableInstance<U> | Promise<U> | U): VPromise<U>
   }
   export var VString: {
     (v?: string): VariableInstance<string> & string
