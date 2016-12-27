@@ -395,6 +395,9 @@
 		_changeValue: function(context, type, newValue) {
 			var key = this.key
 			var parent = this.parent
+			if (!parent) {
+				return this.put(newValue, context)
+			}
 			var variable = this
 			return whenStrict(parent.getValue ? parent.getValue(context) : parent.value, function(object) {
 				if (object == null) {
@@ -405,7 +408,7 @@
 					return deny
 				}
 				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-				if (oldValue === newValue && typeof newValue == 'object') {
+				if (oldValue === newValue && typeof newValue != 'object') {
 					// no actual change to make
 					return noChange
 				}
