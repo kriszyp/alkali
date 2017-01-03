@@ -4,9 +4,9 @@
 }}(this, function (lang, operators, Variable) {
 
   var isGenerator = lang.isGenerator
-  var ObjectTransform = lang.compose(Variable.Call, function ObjectTransform(input, transform, inputs) {
+  var ObjectTransform = lang.compose(Variable.Transform, function ObjectTransform(input, transform, inputs) {
     this.inputs = inputs
-    Variable.Call.apply(this, arguments)
+    Variable.Transform.apply(this, arguments)
   }, {
     _getAsObject: function() {
       return this.transform.apply(this, preserveObjects(this.inputs))
@@ -59,7 +59,7 @@
     if (target.property && typeof target === 'function') {
       return target.apply(null, preserveObjects(args))
     }
-    return new Variable.Call(args[0], target, args)
+    return new Variable.Transform(args[0], target, args)
   }
   react.mcall = function(target, key, args) {
     var method = target[key]
@@ -67,13 +67,13 @@
       // for now we check to see if looks like it could handle a variable, or is a bind call
       return method.apply(target, preserveObjects(args))
     }
-    return new Variable.Call(args[0], target[key].bind(target), args)
+    return new Variable.Transform(args[0], target[key].bind(target), args)
   }
   react.ncall = function(target, args) {
     if (target.property && typeof target === 'function') {
       return new (target.bind.apply(target, [null].concat(preserveObjects(args))))()
     }
-    return new Variable.Call(args[0], function() {
+    return new Variable.Transform(args[0], function() {
       return new (target.bind.apply(target, [null].concat(arguments)))()
     }, args)
   }

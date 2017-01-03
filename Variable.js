@@ -46,6 +46,7 @@
 		newContext: function(variable) {
 			return new Context(this.subject)
 		},
+		version: 0,
 		contextualize: function(variable, parentContext) {
 			// resolve the contextualization of a variable, and updates this context to be aware of what distinctive aspect of the context has
 			// been used for resolution
@@ -74,6 +75,7 @@
 				// TOOD: if it has previously been contextualized to a different context (can happen in a promise/async situation), stop previous notifiers and start new ones
 			//}
 			parentContext.addInput(contextualized)
+			parentContext.version = Math.max(this.version, parentContext.version, variable.version || 0, variable.versionWithChildren || 0)
 			return contextualized
 		},
 		merge: function(childContext) {
@@ -254,6 +256,9 @@
 				this.value, context, valueContext)
 		},
 		getValue: function(context, valueContext) {
+			if (context) {
+				context.version = Math.max(context.version, this.version || 0)
+			}
 			if (this.parent) {
 				if (context) {
 					if (!valueContext) {
@@ -294,9 +299,10 @@
 						if (!context) {
 							context = parentContext.newContext()
 						}
-						context.contextualize(this, parentContext)
 						context.nextProperty = 'returnedVariable'
-						return value.valueOf(context)
+						value = value.valueOf(context)
+						context.contextualize(this, parentContext)
+						return value
 					} else {
 						return value.valueOf()
 					}
@@ -465,7 +471,7 @@
 			}
 		},
 		apply: function(instance, args) {
-			return new Call(args[0], this, args)
+			return new Transform(args[0], this, args)
 		},
 		call: function(instance) {
 			return this.apply(instance, Array.prototype.slice.call(arguments, 1))
@@ -820,7 +826,7 @@
 			if (transformFunction.prototype instanceof Variable) {
 				return new transformFunction(this)
 			}
-			return new Call(this, transformFunction)
+			return new Transform(this, transformFunction)
 		},
 		as: function(Class) {
 			// easiest way to cast to a variable class
@@ -957,7 +963,7 @@
 			})
 		},
 		getCollectionOf: function() {
-			return this.constructor.collectionOf
+			return this.returnedVariable && this.returnedVariable.collectionOf || this.constructor.collectionOf
 		},
 		_sN: function(name) {
 			// for compilers to set a name
@@ -1117,69 +1123,64 @@
 		}
 	})
 
-	var Caching = Variable.Caching = lang.compose(Variable, function Caching(getValue, setValue) {
-		if (getValue) {
-			this.getValue = getValue
-		}
-		if (setValue) {
-			this.setValue = setValue
+	var Transform = Variable.Transform = lang.compose(Variable, function Transform(input, transform, inputs) {
+		this.input = input
+		if (transform) {
+			this.transform = transform
+			if (inputs) {
+				for (var i = 1, l = inputs.length; i < l; i++) {
+					this['input' + i] = inputs[i]
+				}
+			}
 		}
 	}, {
 		getValue: function(context, transformContext) {
 			// first check to see if we have the variable already computed
-			var contextualizedVariable = this
-			if (context) {
-				if (!transformContext) {
-					transformContext = context.newContext()
-				}
-				contextualizedVariable = context.getContextualized(this)
-				if (!contextualizedVariable && this.context && this.context.matches(context)) {
-					contextualizedVariable = this
-				}
+			if (!transformContext) {
+				transformContext = context ? context.newContext() : new Context()
 			}
-			if (contextualizedVariable && contextualizedVariable.cachedVersion === contextualizedVariable.getFullVersion()) {
+			if (!this.hasOwnProperty('input1')) {
+				// TODO: Not sure if this is a helpful optimization or not
+				// if we have a single input, we can use ifModifiedSince
+				var contextualizedVariable = this
 				if (context) {
-					context.addInput(contextualizedVariable)
+					contextualizedVariable = context.getContextualized(this)
+					/*if (!contextualizedVariable && this.context && this.context.matches(context)) {
+						contextualizedVariable = this
+					}*/
+					if (contextualizedVariable && contextualizedVariable.cachedVersion > -1) {
+						transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
+					}
 				}
-				return contextualizedVariable.cachedValue
 			}
-
+			var args = []
+			var argument, argumentName
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
+				if (context) {
+					context.nextProperty = argumentName
+				}
+				args[i] = argument && argument.valueOf(transformContext)
+			}
+			// get the version in there
+			var transform = this.transform && this.transform.valueOf(transformContext)
 			var variable = this
-			function withComputedValue(computedValue) {
-				var contextualizedVariable = transformContext && transformContext.contextualized || variable
-				contextualizedVariable.cachedVersion = newVersion
-				contextualizedVariable.cachedValue = computedValue
-				contextualizedVariable.context = transformContext
-				return computedValue
-			}
-
-			var newVersion = this.getFullVersion()
-			var computedValue = this.computeValue(transformContext)
-			var contextualizedVariable = transformContext && transformContext.contextualized || variable
-			contextualizedVariable.cachedVersion = newVersion
-			contextualizedVariable.cachedValue = computedValue
-			contextualizedVariable.context = transformContext
-			if (computedValue && computedValue.then && !computedValue.notifies) {
-				return computedValue.then(withComputedValue)
-			} else {
-				return computedValue
-			}
-		}
-	})
-
-	var Item = Variable.Item = lang.compose(Variable, function Item(value, content) {
-		this.value = value
-		this.collection = content
-	}, {})
-
-	var Composite = Variable.Composite = lang.compose(Caching, function Composite(args) {
-		for (var i = 0, l = args.length; i < l; i++) {
-			this[i > 0 ? 'input' + i : 'input'] = args[i]
-		}
-	}, {
+			return whenAll(args, function(resolved) {
+				var version = Math.max(transformContext.version, variable.version || 0)
+				var contextualizedVariable = transformContext.contextualized || variable
+				if (contextualizedVariable && contextualizedVariable.cachedVersion === version) {
+					// get it out of the cache
+					return contextualizedVariable.cachedValue
+				}
+				var result = transform ? transform.apply(variable, resolved) : resolved
+				// cache it
+				contextualizedVariable.cachedValue = result
+				contextualizedVariable.cachedVersion = version
+				return result
+			})
+		},
 		forDependencies: function(callback) {
 			// depend on the args
-			Caching.prototype.forDependencies.call(this, callback)
+			Variable.prototype.forDependencies.call(this, callback)
 			var argument, argumentName
 			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
 				if (argument && argument.notifies) {
@@ -1200,7 +1201,7 @@
 					}
 				}
 			}
-			return Caching.prototype.updated.call(this, updateEvent, by, context)
+			return Variable.prototype.updated.call(this, updateEvent, by, context)
 		},
 
 		getUpdates: function(since) {
@@ -1210,30 +1211,6 @@
 			}
 		},
 
-		getVersion: function(context) {
-			var version = Variable.prototype.getVersion.call(this, context)
-			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
-				if (argument && argument.getFullVersion) {
-					version = Math.max(version, argument.getFullVersion(context))
-				}
-			}
-			return version
-		},
-
-		computeValue: function(context) {
-			var results = []
-			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
-				if (context) {
-					context.nextProperty = argumentName
-				}
-				results[i] = argument && argument.valueOf(context)
-			}
-			return whenAll(results, function(resolved) {
-				return resolved
-			})
-		},
 		getArguments: function() {
 			var args = []
 			var argument, argumentName
@@ -1241,139 +1218,34 @@
 				args.push(argument)
 			}
 			return args
-		}
-	})
-
-	// a call variable is the result of a call
-	var Call = lang.compose(Composite, function Transform(input, transform, additionalInputs) {
-		if (input) {
-			this.input = input
-		}
-		if (transform) {
-			this.transform = transform
-			if (additionalInputs) {
-				for (var i = 1, l = additionalInputs.length; i < l; i++) {
-					this['input' + i] = additionalInputs[i]
-				}
-			}
-		}
-	}, {
-		fixed: true,
-		forDependencies: function(callback) {
-			// depend on the args
-			Composite.prototype.forDependencies.call(this, callback)
-			if (this.transform.notifies) {
-				callback(this.transform)
-			}
 		},
-
-		computeValue: function(context) {
-			if (context) {
-				context.nextProperty = 'transform'
-			}
-			var functionValue = this.transform.valueOf(context)
-			if (functionValue.then) {
-				var call = this
-				return functionValue.then(function(functionValue) {
-					return call.invoke(functionValue, context)
-				})
-			}
-			return this.invoke(functionValue, context)
-		},
-
-		getVersion: function(context) {
-			// TODO: shortcut if we are live and since equals this.lastUpdate
-			var argsVersion = Composite.prototype.getVersion.call(this, context)
-			if (this.transform.getVersion) {
-				return Math.max(argsVersion, this.transform.getVersion(context))
-			}
-			return argsVersion
-		},
-
-		execute: function(context) {
-			var call = this
-			return when(this.transform.valueOf(context), function(functionValue) {
-				return call.invoke(functionValue, context, true)
-			})
-		},
-
 		put: function(value, context) {
 			var call = this
 			return when(this.valueOf(context), function(originalValue) {
 				if (originalValue === value && typeof value != 'object') {
 					return noChange
 				}
-				return when(call.transform.valueOf(context), function(functionValue) {
-					return call.invoke(function() {
-						if (call.reverse || functionValue.reverse) {
-							(call.reverse || functionValue.reverse).call(call, value, call.getArguments(), context)
-							return Variable.prototype.put.call(call, value, context)
-						} else if (originalValue && originalValue.put) {
-							return originalValue.put(value)
-						} else {
-							return deny
-						}
-					}, context)
-				});
-			})
-		},
-		invoke: function(functionValue, context, observeArguments) {
-			var instance = this.transform.parent
-			var variable = this
-			if (functionValue.handlesVariables || functionValue.property) {
-				return functionValue.apply(instance, this.getArguments(), context)
-			}else{
-				var results = []
-				var argument, argumentName
-				for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
-					if (context) {
-						context.nextProperty = argumentName
-					}
-					results[i] = argument && argument.valueOf(context)
-				}
-				instance = instance && instance.valueOf(context)
-				if (functionValue.handlesPromises) {
-					return functionValue.apply(instance, results, context)
+				var transform = call.transform.valueOf(context)
+				if (transform.reverse) {
+					(transform.reverse).call(call, value, call.getArguments(), context)
+					call.updated(null, null, context)
+				} else if (originalValue && originalValue.put) {
+					return originalValue.put(value)
 				} else {
-					// include the instance in whenAll
-					results.push(instance)
-					// wait for the values to be received
-					return whenAll(results, function(inputs) {
-						if (observeArguments) {
-							var handles = []
-							for (var i = 0, l = inputs.length; i < l; i++) {
-								var input = inputs[i]
-								if (input && typeof input === 'object') {
-									handles.push(observe(input))
-								}
-							}
-							var instance = inputs.pop()
-							try{
-								var result = functionValue.apply(instance || variable, inputs, context)
-							}finally{
-								when(result, function() {
-									for (var i = 0; i < l; i++) {
-										handles[i].done()
-									}
-								})
-							}
-							return result
-						}
-						var instance = inputs.pop()
-						return functionValue.apply(instance || variable, inputs, context)
-					})
+					return deny
 				}
-			}
+			})
 		},
 		setReverse: function(reverse) {
 			this.transform.valueOf().reverse = reverse
 			return this
-		},
-		getCollectionOf: function() {
-			return this.returnedVariable && this.returnedVariable.getCollectionOf()
 		}
 	})
-	Variable.Call = Call
+
+	var Item = Variable.Item = lang.compose(Variable, function Item(value, content) {
+		this.value = value
+		this.collection = content
+	}, {})
 
 	var ContextualizedVariable = lang.compose(Variable, function ContextualizedVariable(generic, subject) {
 		this.generic = generic
@@ -1407,72 +1279,42 @@
 		}
 	})
 
-	var IterativeMethod = lang.compose(Composite, function(source, method, args) {
-		this.source = source
+	var IterativeMethod = lang.compose(Transform, function(source, method, args) {
+		this.input = source
 		// source.interestWithin = true
 		this.method = method
 		this.arguments = args
 	}, {
-		computeValue: function(context) {
+		transform: function(array) {
 			var method = this.method
-			var args = this.arguments
-			var variable = this
-			if (context) {
-				context.nextProperty = 'source'
+			var collectionOf = this.input && this.input.collectionOf
+			var isStrictArray = this.input && this.input._isStrictArray
+			if (array && array.forEach) {
+				if (collectionOf) {
+					array = array.map(function(item) {
+						return collectionOf.from(item)
+					})
+				}
+			} else if (isStrictArray) {
+				array = []
+			} else {
+				if (method === 'map'){
+					// fast path, and special behavior for map
+					return this.arguments[0](array)
+				}
+				// if not an array convert to an array
+				array = [array]
 			}
-			var collectionOf = this.source.collectionOf
-			var isStrictArray = this.source._isStrictArray
-			return when(this.source.valueOf(context), function(array) {
-				if (array && array.forEach) {
-					if (context && context.notify) {
-						var contextualizedVariable
-						if (context.distinctSubject) {
-							var contextMap = variable._contextMap || (variable._contextMap = new WeakMap())
-							if (contextMap.has(context.distinctSubject)) {
-								contextualizedVariable = contextMap.get(context.distinctSubject)
-							} else {
-								contextMap.set(context.distinctSubject, contextualizedVariable = Object.create(variable))
-								contextualizedVariable.listeners = false
-							}
-						} else {
-							contextualizedVariable = variable
-						}
-						variable.notifies(contextualizedVariable)
-					}
-					if (collectionOf) {
-						array = array.map(function(item) {
-							return collectionOf.from(item)
-						})
-					}
-				} else if (isStrictArray) {
-					array = []
-				} else {
-					if (method === 'map'){
-						// fast path, and special behavior for map
-						return args[0](array)
-					}
-					// if not an array convert to an array
-					array = [array]
-				}
-				if (typeof method === 'string') {
-					// apply method
-					return array[method].apply(array, args)
-				} else {
-					return method(array, args)
-				}
-			})
+			if (typeof method === 'string') {
+				// apply method
+				return array[method].apply(array, this.arguments)
+			} else {
+				return method(array, this.arguments)
+			}
 		},
-		// TODO: Create specialized updated handlers for faster recomputation of other array derivatives
-		forDependencies: function(callback) {
-			// depend on the args
-			Composite.prototype.forDependencies.call(this, callback)
-			callback(this.source)
-		},
-		getVersion: function(context) {
-			return Math.max(Composite.prototype.getVersion.call(this, context), this.source.getFullVersion(context))
-		},
+
 		getCollectionOf: function(){
-			return this.source.getCollectionOf()
+			return this.input.getCollectionOf()
 		},
 		_isStrictArray: true
 	})
@@ -1483,7 +1325,7 @@
 		Object.defineProperty(IterativeResults.prototype, 'isIterable', {value: true});
 		Variable.prototype[method] = function() {
 			var results = new IterativeResults(this)
-			results.source = this
+			results.input = this
 			results.arguments = arguments
 			return results
 		}
@@ -1492,7 +1334,7 @@
 	defineArrayMethod('filter', function Filtered() {}, {
 		updated: function(event, by, context) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
-				return Composite.prototype.updated.call(this, event, by, context)
+				return Transform.prototype.updated.call(this, event, by, context)
 			}
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			if (event.type === 'delete') {
@@ -1524,7 +1366,7 @@
 				}
 				return
 			} else {
-				return Composite.prototype.updated.call(this, event, by, context)
+				return Transform.prototype.updated.call(this, event, by, context)
 			}
 		}
 	})
@@ -1533,7 +1375,7 @@
 	}, {
 		updated: function(event, by, context) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
-				return Composite.prototype.updated.call(this, event, by, context)
+				return Transform.prototype.updated.call(this, event, by, context)
 			}
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			if (event.type === 'delete') {
@@ -1547,10 +1389,10 @@
 				if (array && array.map && (index = array.indexOf(object)) > -1) {
 					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], event.value))
 				} else {
-					return Composite.prototype.updated.call(this, event, by, context)
+					return Transform.prototype.updated.call(this, event, by, context)
 				}
 			} else {
-				return Composite.prototype.updated.call(this, event, by, context)
+				return Transform.prototype.updated.call(this, event, by, context)
 			}
 		}
 	})
@@ -1630,102 +1472,93 @@
 	}
 
 	var getValue
-	var GeneratorVariable = Variable.GeneratorVariable = lang.compose(Variable.Composite, function ReactiveGenerator(generator){
+	var GeneratorVariable = Variable.GeneratorVariable = lang.compose(Transform, function ReactiveGenerator(generator){
 		this.generator = generator
 	}, {
-		computeValue: getValue = function(context, resuming) {
-			var lastValue
-			var i
-			var generatorIterator
-			var isThrowing
-			if (resuming) {
-				// resuming from a promise
-				generatorIterator = resuming.iterator
-				i = resuming.i
-				lastValue = resuming.value
-				isThrowing = resuming.isThrowing
-			} else {
-				// a fresh start
-				i = 0
-				generatorIterator = this.generator()
-			}
-
-			do {
-				var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](lastValue)
-				if (stepReturn.done) {
-					return stepReturn.value
-				}
-				var nextVariable = stepReturn.value
-				// compare with the arguments from the last
-				// execution to see if they are the same
-				var argumentName = i > 0 ? 'input' + i : 'input'
-				if (this[argumentName] !== nextVariable) {
-					if (this[argumentName]) {
-						this[argumentName].stopNotifies(this)
-					}
-					// subscribe if it is a variable
-					if (nextVariable && nextVariable.notifies) {
-						if (this.listeners) {
-							nextVariable.notifies(this)
-						}
-						this[argumentName] = nextVariable
-					} else if (typeof nextVariable === 'function' && isGenerator(nextVariable)) {
-						var delegatedGenerator
-						getValue.call(this, context, delegatedGenerator = {
-							i: i,
-							iterator: nextVariable()
-						})
-						i = delegatedGenerator.i
+		transform: {
+			valueOf: function(context) {
+				var resuming
+				return next
+				function next() {
+					var lastValue
+					var i
+					var generatorIterator
+					var isThrowing
+					if (resuming) {
+						// resuming from a promise
+						generatorIterator = resuming.iterator
+						i = resuming.i
+						lastValue = resuming.value
+						isThrowing = resuming.isThrowing
 					} else {
-						this[argumentName] = null
+						// a fresh start
+						i = 0
+						generatorIterator = this.generator()
 					}
+
+					do {
+						var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](lastValue)
+						if (stepReturn.done) {
+							return stepReturn.value
+						}
+						var nextVariable = stepReturn.value
+						// compare with the arguments from the last
+						// execution to see if they are the same
+						var argumentName = i > 0 ? 'input' + i : 'input'
+						if (this[argumentName] !== nextVariable) {
+							if (this[argumentName]) {
+								this[argumentName].stopNotifies(this)
+							}
+							// subscribe if it is a variable
+							if (nextVariable && nextVariable.notifies) {
+								if (this.listeners) {
+									nextVariable.notifies(this)
+								}
+								this[argumentName] = nextVariable
+							} else if (typeof nextVariable === 'function' && isGenerator(nextVariable)) {
+								resuming = {
+									i: i,
+									iterator: nextVariable()
+								}
+								next.call(this)
+								i = resuming.i
+							} else {
+								this[argumentName] = null
+							}
+						}
+						i++
+						if (context) {
+							context.nextProperty = argumentName
+						}
+						lastValue = nextVariable && nextVariable.valueOf(context)
+						if (lastValue && lastValue.then) {
+							// if it is a promise, we will wait on it
+							var variable = this
+							resuming = {
+								i: i,
+								iterator: generatorIterator
+							}
+							// and return the promise so that the next caller can wait on this
+							return lastValue.then(function(value) {
+								resuming.value = value
+								return next.call(variable)
+							}, function(error) {
+								resuming.value = error
+								resuming.isThrowing = true
+								return next.call(variable)
+							})
+						}
+					} while(true)
 				}
-				i++
-				if (resuming) {
-					resuming.i = i
-				}
-				if (context) {
-					context.nextProperty = argumentName
-				}
-				lastValue = nextVariable && nextVariable.valueOf(context)
-				if (lastValue && lastValue.then) {
-					// if it is a promise, we will wait on it
-					var variable = this
-					// and return the promise so that the getValue caller can wait on this
-					return lastValue.then(function(value) {
-						return getValue.call(variable, context, {
-							i: i,
-							iterator: generatorIterator,
-							value: value
-						})
-					}, function(error) {
-						return getValue.call(variable, context, {
-							i: i,
-							iterator: generatorIterator,
-							value: error,
-							isThrowing: true
-						})
-					})
-				}
-			} while(true)
+			}
 		}
 	})
 
-	var Validating = lang.compose(Caching, function(target) {
-		this.target = target
+	var Validating = lang.compose(Transform, function(input) {
+		this.input = input
 	}, {
-		forDependencies: function(callback) {
-			Caching.prototype.forDependencies.call(this, callback)
-			callback(this.target)
-		},
-		getVersion: function(context) {
-			return Math.max(Variable.prototype.getVersion.call(this, context), this.target.getFullVersion(context))
-		},
-		computeValue: function(context) {
-			var target = this.target
-			// need to actually access the target value, so it can be evaluated in case it
-			// there is a returned variable that we should delegate to.
-			target.valueOf(context)
+		transform: function(target) {
+			var target = this.input
 			return target.validate(target, target.schema)
 		}
 	})
@@ -1764,15 +1597,21 @@
 		}
 	}
 
+	var argsToArray = {
+		apply: function(instance, args) {
+			return args
+		}
+	}
+
 	function all(array, transform) {
 		// This is intended to mirror Promise.all. It actually takes
 		// an iterable, but for now we are just looking for array-like
 		if (array.length > -1) {
-			return typeof transform === 'function' ? new Call(array[0], transform, array) : new Composite(array)
+			return new Transform(array[0], typeof transform === 'function' ? transform : argsToArray, array)
 		}
 		if (arguments.length > 1) {
 			// support multiple arguments as an array
-			return new Composite(arguments)
+			return new Transform(arguments[0], argsToArray, arguments)
 		}
 		if (typeof array === 'object') {
 			// allow an object as a hash to be mapped
@@ -2085,7 +1924,7 @@
 					var args = arguments
 					// TODO: make these args part of the call so variables can be resolved
 					// TODO: may actually want to do getValue().invoke()
-					return new Type(new Call(this, function(value) {
+					return new Type(new Transform(this, function(value) {
 							return value == null ? undefined : value[method].apply(value, args)
 					}))
 				}
@@ -2173,7 +2012,11 @@
 	}, {
 		then: function(onResolve, onError) {
 			// short hand for this.valueOf().then()
-			return when(this.valueOf(), onResolve, onError)
+			var value = this.valueOf()
+			if (value && value.then) {
+				return value.then(onResolve, onError)
+			}
+			return onResolve(value)
 		},
 	})
 

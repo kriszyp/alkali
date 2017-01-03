@@ -10,7 +10,7 @@ define([
 	var VDate = Variable.VDate
 	var VNumber = Variable.VNumber
 	var VPromise = Variable.VPromise
-	var Transform = Variable.Call
+	var Transform = Variable.Transform
 	function valueOfAndNotify(variable, callback) {
 		var context = new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
 			updated: callback
@@ -35,9 +35,10 @@ define([
 		'simple caching value': function () {
 			var invalidated = false
 			var value = 1
-			var variable = new Variable.Caching(function () {
+			var variable = new Variable.Transform(null, function () {
 				return value
-			}, function (newValue) {
+			})
+			variable.setReverse(function (newValue) {
 				value = newValue
 			})
 			assert.equal(valueOfAndNotify(variable, function(){
@@ -71,9 +72,10 @@ define([
 		'on/off': function () {
 			var invalidated = false
 			var value = 1
-			var variable = new Variable.Caching(function () {
+			var variable = new Variable.Transform(null, function () {
 				return value
-			}, function (newValue) {
+			})
+			variable.setReverse(function (newValue) {
 				value = newValue
 			})
 			var target = {
@@ -547,7 +549,7 @@ define([
 			})
 			assert.deepEqual(last.valueOf(), 5)
 		},
-		derivedConditionalMapWithArrayDependencyFree: function() {
+		derivedConditionalMapWithArray: function() {
 			var values = [0,1,2,3,4,5]
 			var all = new Variable(values)
 			var subset = new Variable([2,3,4])
@@ -562,25 +564,6 @@ define([
 			assert.deepEqual(filter2.valueOf(), [0], 'filter2 should return first element of all values')
 			returnSubset = true
 			subset.updated()
-			assert.deepEqual(filter1.valueOf(), [2,3,4], 'filter1 should return subset of values')
-			assert.deepEqual(filter2.valueOf(), [2], 'filter2 should return first element of subset')
-		},
-		derivedConditionalMapWithArray: function() {
-			var values = [0,1,2,3,4,5]
-			var all = new Variable(values)
-			var subset = new Variable([2,3,4])
-			var returnSubset = false
-			var filter1 = all.to(function (all_val) {
-				return subset.to(function(subset_val) {
-					return returnSubset ? subset_val : all_val
-				})
-			})
-			var filter2 = filter1.to(function(filter1_val) { return [filter1_val[0]]; }); 
-			assert.deepEqual(filter1.valueOf(), values, 'filter1 should return all values')
-			assert.deepEqual(filter2.valueOf(), [0], 'filter2 should return first element of all values')
-			filter2.subscribe(function(){}); // trigger a dependency chain, to test the normal dependency based flow
-			returnSubset = true
-			filter1.updated()
 			assert.deepEqual(filter1.valueOf(), [2,3,4], 'filter1 should return subset of values')
 			assert.deepEqual(filter2.valueOf(), [2], 'filter2 should return first element of subset')
 		},
