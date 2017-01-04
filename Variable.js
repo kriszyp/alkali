@@ -12,7 +12,6 @@
 	var RequestChange = 3
 	var RequestSet = 4
 
-	var nextId = 1
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap')
 	var isStructureChecked = new WeakMap()
 
@@ -442,6 +441,7 @@
 						}
 					}
 				}
+				return newValue
 			})
 		},
 
@@ -510,7 +510,7 @@
 		},
 
 		updateVersion: function(version) {
-			this.version = nextId++
+			this.version = Variable.nextId++
 		},
 
 		getVersion: function(context) {
@@ -573,7 +573,7 @@
 
 			this.lastUpdate = updateEvent */
 			if (updateEvent instanceof PropertyChangeEvent) {
-				this.versionWithChildren = nextId++
+				this.versionWithChildren = Variable.nextId++
 			} else {
 				this.updateVersion()
 			}
@@ -700,6 +700,7 @@
 					event.oldValue = oldValue
 					event.target = variable
 					variable.updated(event, variable, context)
+					return value
 				})
 			})
 		},
@@ -909,7 +910,7 @@
 			}
 		},
 		getId: function() {
-			return this.id || (this.id = nextId++)
+			return this.id || (this.id = Variable.nextId++)
 		},
 		observeObject: function() {
 			var variable = this
@@ -1306,8 +1307,9 @@
 				return when(call.transform.valueOf(context), function(functionValue) {
 					return call.invoke(function() {
 						if (call.reverse || functionValue.reverse) {
-							(call.reverse || functionValue.reverse).call(call, value, call.getArguments(), context)
-							return Variable.prototype.put.call(call, value, context)
+							return when((call.reverse || functionValue.reverse).call(call, value, call.getArguments(), context), function() {
+								return Variable.prototype.put.call(call, value, context)
+							})
 						} else if (originalValue && originalValue.put) {
 							return originalValue.put(value)
 						} else {
@@ -1967,8 +1969,11 @@
 			}
 		}
 	})
+	// these are just for exporting
+	Variable.nextId = 1
 	Variable.Context = Context
 	Variable.NotifyingContext = NotifyingContext
+
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply
