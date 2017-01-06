@@ -4,22 +4,22 @@
 }}(this, function (lang, operators, Variable) {
 
   var isGenerator = lang.isGenerator
-  var ObjectTransform = lang.compose(Variable.Transform, function ObjectTransform(input, transform, inputs) {
-    this.inputs = inputs
+  var ObjectTransform = lang.compose(Variable.Transform, function ObjectTransform(source, transform, sources) {
+    this.sources = sources
     Variable.Transform.apply(this, arguments)
   }, {
     _getAsObject: function() {
-      return this.transform.apply(this, preserveObjects(this.inputs))
+      return this.transform.apply(this, preserveObjects(this.sources))
     }
   })
-  function preserveObjects(inputs) {
-    for (var i = 0, l = inputs.length; i < l; i++) {
-      var input = inputs[i]
-      if (input && input._getAsObject) {
-        inputs[i] = input._getAsObject()
+  function preserveObjects(sources) {
+    for (var i = 0, l = sources.length; i < l; i++) {
+      var source = sources[i]
+      if (source && source._getAsObject) {
+        sources[i] = source._getAsObject()
       }
     }
-    return inputs
+    return sources
   }
 	function react(generator, options) {
     if (typeof generator !== 'function') {
@@ -78,8 +78,8 @@
     }, args)
   }
 
-  react.obj = function(transform, inputs) {
-    return new ObjectTransform(inputs[0], transform, inputs)
+  react.obj = function(transform, sources) {
+    return new ObjectTransform(sources[0], transform, sources)
   }
 
 	return react

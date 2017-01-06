@@ -39,14 +39,14 @@
 
 	function Context(subject){
 		this.subject = subject
-		this.inputs = []
+		this.sources = []
 	}
 	Context.prototype = {
 		constructor: Context,
 		newContext: function(variable) {
 			return new Context(this.subject)
 		},
-		version: 0,
+		version: 2166136261, // FNV-1a prime seed
 		contextualize: function(variable, parentContext) {
 			// resolve the contextualization of a variable, and updates this context to be aware of what distinctive aspect of the context has
 			// been used for resolution
@@ -58,9 +58,9 @@
 					contextMap.set(this.distinctSubject, contextualized = Object.create(variable))
 					contextualized.listeners = false
 					contextualized.context = this
-					var inputs = this.inputs
-					for (var i = 0, l = inputs.length; i < l; i++) {
-						contextualized[inputs[i]] = inputs[++i]
+					var sources = this.sources
+					for (var i = 0, l = sources.length; i < l; i++) {
+						contextualized[sources[i]] = sources[++i]
 					}
 				}
 				this.contextualized = contextualized
@@ -75,8 +75,14 @@
 				// TOOD: if it has previously been contextualized to a different context (can happen in a promise/async situation), stop previous notifiers and start new ones
 			//}
 			parentContext.addInput(contextualized)
-			parentContext.version = Math.max(this.version, parentContext.version, variable.version || 0, variable.versionWithChildren || 0)
+			parentContext.hash(this.version)
+			parentContext.hash(Math.max(variable.version || 0, variable.versionWithChildren || 0))
 			return contextualized
+		},
+		hash: function(version) {
+			// FNV1a hash algorithm
+			// TODO: May eventually want to make this a 54 or 64 bit hash by tracking two 32-bit numbers
+			return this.version = (this.version ^ (version || 0)) * 16777619 >>> 0
 		},
 		merge: function(childContext) {
 			if (!this.distinctSubject) {
@@ -115,8 +121,8 @@
 				return instance
 			}
 		},
-		addInput: function(inputVariable) {
-			this.inputs.push(this.nextProperty, inputVariable)
+		addInput: function(sourceVariable) {
+			this.sources.push(this.nextProperty, sourceVariable)
 		},
 		matches: function(context) {
 			// does another context match the resolution of this one?
@@ -257,10 +263,7 @@
 		},
 		getValue: function(context, valueContext) {
 			if (context) {
-				// TODO: Should we use a hash for versions instead? (This is FNV-1a)
-				// context.version = (context.version ^ this.version) * 16777619 >>> 0
-				// context.version should start at 2166136261
-				context.version = Math.max(context.version, this.version || 0)
+				context.hash(this.version)
 			}
 			if (this.parent) {
 				if (context) {
@@ -346,7 +349,7 @@
 			if (parentContext) {
 
 				/*if (!contextualized.listeners) {
-					// mark it as initialized, since we have already recursively dependended on inputs
+					// mark it as initialized, since we have already recursively dependended on sources
 					contextualized.listeners = []
 				}*/
 
@@ -519,7 +522,7 @@
 		},
 
 		updateVersion: function(version) {
-			this.version = nextId++
+			this.version = Math.max(this.version || 0, this.versionWithChildren || 0) + 1
 		},
 
 		getVersion: function(context) {
@@ -582,7 +585,7 @@
 
 			this.lastUpdate = updateEvent */
 			if (updateEvent instanceof PropertyChangeEvent) {
-				this.versionWithChildren = nextId++
+				this.versionWithChildren = Math.max(this.version || 0, this.versionWithChildren || 0) + 1
 			} else {
 				this.updateVersion()
 			}
@@ -1190,13 +1193,13 @@
 		}
 	})
 
-	var Transform = Variable.Transform = lang.compose(Variable, function Transform(input, transform, inputs) {
-		this.input = input
+	var Transform = Variable.Transform = lang.compose(Variable, function Transform(source, transform, sources) {
+		this.source = source
 		if (transform) {
 			this.transform = transform
-			if (inputs) {
-				for (var i = 1, l = inputs.length; i < l; i++) {
-					this['input' + i] = inputs[i]
+			if (sources) {
+				for (var i = 1, l = sources.length; i < l; i++) {
+					this['source' + i] = sources[i]
 				}
 			}
 		}
@@ -1206,9 +1209,9 @@
 			if (!transformContext) {
 				transformContext = context ? context.newContext() : new Context()
 			}
-			if (!this.hasOwnProperty('input1')) {
+			if (!this.hasOwnProperty('source1')) {
 				// TODO: Not sure if this is a helpful optimization or not
-				// if we have a single input, we can use ifModifiedSince
+				// if we have a single source, we can use ifModifiedSince
 				var contextualizedVariable = this
 				if (context) {
 					contextualizedVariable = context.getContextualized(this)
@@ -1222,17 +1225,18 @@
 			}
 			var args = []
 			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
-				if (context) {
-					context.nextProperty = argumentName
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
+				if (transformContext) {
+					transformContext.nextProperty = argumentName
 				}
 				args[i] = argument && argument.valueOf(transformContext)
 			}
 			// get the version in there
+			transformContext.nextProperty = 'transform'
 			var transform = this.transform && this.transform.valueOf(transformContext)
 			var variable = this
 			return whenAll(args, function(resolved) {
-				var version = Math.max(transformContext.version, variable.version || 0)
+				var version = transformContext.hash(variable.version)
 				var contextualizedVariable = transformContext.contextualized || variable
 				if (contextualizedVariable && contextualizedVariable.cachedVersion === version) {
 					// get it out of the cache
@@ -1249,7 +1253,7 @@
 			// depend on the args
 			Variable.prototype.forDependencies.call(this, callback)
 			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 				if (argument && argument.notifies) {
 					callback(argument)
 				}
@@ -1258,9 +1262,9 @@
 
 		updated: function(updateEvent, by, context) {
 			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
-				// search for the output in the inputs
+				// search for the output in the sources
 				var argument, argumentName
-				for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
+				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 					if (argument === by) {
 						// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
 						updateEvent = new RefreshEvent()
@@ -1281,7 +1285,7 @@
 		getArguments: function() {
 			var args = []
 			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'input' + i : 'input']) || argumentName in this; i++) {
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 				args.push(argument)
 			}
 			return args
@@ -1325,16 +1329,16 @@
 		},
 
 		forDependencies: function(callback) {
-			this.inputs && this.inputs.forEach(callback)
+			this.sources && this.sources.forEach(callback)
 		},
 
 		getVersion: function() {
 			var version = Variable.prototype.getVersion.call(this)
-			var inputs = this.inputs || 0
-			for (var i = 0, l = inputs.length; i < l; i++) {
-				var input = inputs[i]
-				if (input.getFullVersion) {
-					version = Math.max(version, input.getFullVersion())
+			var sources = this.sources || 0
+			for (var i = 0, l = sources.length; i < l; i++) {
+				var source = sources[i]
+				if (source.getFullVersion) {
+					version = Math.max(version, source.getFullVersion())
 				}
 			}
 			return version
@@ -1346,7 +1350,7 @@
 		}
 	})
 
-	var VArray = Variable.VArray = lang.compose(Variable, function(value) {
+	var VArray = Variable.VArray = lang.compose(Variable, function VArray(value) {
 		return makeSubVar(this, value, VArray)
 	}, {
 		_isStrictArray: true,
@@ -1463,7 +1467,7 @@
 						var nextVariable = stepReturn.value
 						// compare with the arguments from the last
 						// execution to see if they are the same
-						var argumentName = i > 0 ? 'input' + i : 'input'
+						var argumentName = i > 0 ? 'source' + i : 'source'
 						if (this[argumentName] !== nextVariable) {
 							if (this[argumentName]) {
 								this[argumentName].stopNotifies(this)
@@ -1513,11 +1517,11 @@
 		}
 	})
 
-	var Validating = lang.compose(Transform, function(input) {
-		this.input = input
+	var Validating = lang.compose(Transform, function(source) {
+		this.source = source
 	}, {
 		transform: function(target) {
-			var target = this.input
+			var target = this.source
 			return target.validate(target, target.schema)
 		}
 	})
@@ -1867,15 +1871,15 @@
 
 
 	var IterativeMethod = lang.compose(Transform, function(source, method, args) {
-		this.input = source
+		this.source = source
 		// source.interestWithin = true
 		this.method = method
 		this.arguments = args
 	}, {
 		transform: function(array) {
 			var method = this.method
-			var collectionOf = this.input && this.input.collectionOf
-			var isStrictArray = this.input && this.input._isStrictArray
+			var collectionOf = this.source && this.source.collectionOf
+			var isStrictArray = this.source && this.source._isStrictArray
 			if (array && array.forEach) {
 				if (collectionOf) {
 					array = array.map(function(item) {
@@ -1901,7 +1905,7 @@
 		},
 
 		getCollectionOf: function(){
-			return this.input.getCollectionOf()
+			return this.source.getCollectionOf()
 		},
 		_isStrictArray: true
 	})
@@ -1912,7 +1916,7 @@
 		Object.defineProperty(IterativeResults.prototype, 'isIterable', {value: true});
 		VArray.prototype[method] = function() {
 			var results = new IterativeResults(this)
-			results.input = this
+			results.source = this
 			results.arguments = arguments
 			return results
 		}

@@ -392,9 +392,9 @@ define([
 			assert.equal(typeof result, 'number')
 			assert.isTrue(isNaN(result))
 			assert.deepEqual(bPlusTwo.valueOf(), [])
-			a.put([1, 2])
+			a.put(2)
 			b.put([1, 2])
-			assert.deepEqual(plusTwo.valueOf(), [3, 4])
+			assert.equal(plusTwo.valueOf(), 4)
 			assert.deepEqual(bPlusTwo.valueOf(), [3, 4])
 		},
 		derivedMap: function() {
