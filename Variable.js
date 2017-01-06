@@ -1847,6 +1847,11 @@
 		clear: VMethod,
 		delete: VMethod
 	}, VSet)
+	Object.defineProperty(VSet.prototype, 'array', {
+		get: function() {
+			return this._array || (this._array = this.to(toArray).as(VArray))
+		}
+	})
 
 	function VDate(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : new Date(value), VDate)
@@ -2005,7 +2010,6 @@
 			var hasKeyFunction = typeof keyGenerator === 'function'
 			var hasValueFunction = typeof valueGenerator === 'function'
 			var hasKey = !!keyGenerator
-			array = toArray(array)
 			for (var i = 0, l = array.length; i < l; i++) {
 				var element = array[i]
 				index.set(
@@ -2029,7 +2033,6 @@
 			var hasKeyFunction = typeof keyGenerator === 'function'
 			var hasValueFunction = typeof valueGenerator === 'function'
 			var hasKey = !!keyGenerator
-			array = toArray(array)
 			for (var i = 0, l = array.length; i < l; i++) {
 				var element = array[i]
 				var key = hasKeyFunction ? keyGenerator(element) :
