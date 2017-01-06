@@ -303,7 +303,7 @@ define([
 		},
 
 		list: function() {
-			var arrayVariable = new Variable(['a', 'b', 'c'])
+			var arrayVariable = new VArray(['a', 'b', 'c'])
 			var listElement = new UL({
 				content: arrayVariable,
 				each: LI([

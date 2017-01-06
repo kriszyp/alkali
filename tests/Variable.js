@@ -294,10 +294,21 @@ define([
 			assert.strictEqual(v.valueOf().a, 3)
 		},
 
+		mapAndFilter: function(){
+			var v = new VArray(['a', 'b'])
+			var result = v.map(function(letter) {
+				return letter.toUpperCase()
+			}).filter(function(letter) {
+				return letter !== 'A'
+			})
+			assert.deepEqual(result.valueOf(), ['B'])
+
+		},
+
 		'transform with mutations': function() {
 			var v = new Variable({a: 1})
-			var v2 = new Variable(['a'])
-			var transformed = v.to(function(v) { return v2 })
+			var v2 = new VArray(['a'])
+			var transformed = v.to(function(v) { return v2 }).as(VArray)
 			transformed.push('b')
 			assert.strictEqual(v2.get(1), 'b')
 		},
@@ -551,15 +562,15 @@ define([
 		},
 		derivedConditionalMapWithArray: function() {
 			var values = [0,1,2,3,4,5]
-			var all = new Variable(values)
-			var subset = new Variable([2,3,4])
+			var all = new VArray(values)
+			var subset = new VArray([2,3,4])
 			var returnSubset = false
 			var filter1 = all.to(function (all_val) {
 				return subset.to(function(subset_val) {
 					return returnSubset ? subset_val : all_val
 				})
 			})
-			var filter2 = filter1.to(function(filter1_val) { return [filter1_val[0]]; }); 
+			var filter2 = filter1.to(function(filter1_val) { return [filter1_val[0]]; })
 			assert.deepEqual(filter1.valueOf(), values, 'filter1 should return all values')
 			assert.deepEqual(filter2.valueOf(), [0], 'filter2 should return first element of all values')
 			returnSubset = true
@@ -657,7 +668,7 @@ define([
 
 		array: function () {
 			var array = [1, 2]
-			var variable = new Variable(array)
+			var variable = new VArray(array)
 			var twice = variable.map(function(item){
 				return item * 2
 			})
@@ -669,7 +680,7 @@ define([
 		},
 
 		'array positions': function () {
-			var v = new Variable(['a', 'b'])
+			var v = new VArray(['a', 'b'])
 			var a = v.property(0)
 			var b = v.property(1)
 			assert.strictEqual(a.valueOf(), 'a')
@@ -805,7 +816,7 @@ define([
 		},
 
 		incrementalUpdate: function() {
-			var array = new Variable([2, 4, 6])
+			var array = new VArray([2, 4, 6])
 			var sum = array.to(function(array) {
 				return array.reduce(function(a, b) {return a + b})
 			})
@@ -843,7 +854,7 @@ define([
 		},
 
 		filterArray: function() {
-			var arrayVariable = new Variable([3, 5, 7])
+			var arrayVariable = new VArray([3, 5, 7])
 			var greaterThanFour = arrayVariable.filter(function(item) {
 				return item > 4
 			})
@@ -857,7 +868,7 @@ define([
 		},
 
 		mapReduceArray: function() {
-			var arrayVariable = new Variable([3, 5, 7])
+			var arrayVariable = new VArray([3, 5, 7])
 			var mapOperations = 0
 			var doubled = arrayVariable.map(function(item) {
 				mapOperations++
@@ -889,7 +900,7 @@ define([
 		},
 
 		someArray: function() {
-			var arrayVariable = new Variable([3, 5, 7])
+			var arrayVariable = new VArray([3, 5, 7])
 			var oneGreaterThanFour = arrayVariable.some(function(item) {
 				return item > 4
 			})
@@ -899,7 +910,7 @@ define([
 		},
 
 		keyBy: function() {
-			var arrayVariable = new Variable([3, 5, 7])
+			var arrayVariable = new VArray([3, 5, 7])
 			var index = arrayVariable.keyBy(function (key) {
 				return key
 			}, function (value) {
@@ -912,7 +923,7 @@ define([
 		},
 
 		groupBy: function() {
-			var arrayVariable = new Variable([{even: false, n: 3}, {even: true, n: 4}, {even: false, n: 5}])
+			var arrayVariable = new VArray([{even: false, n: 3}, {even: true, n: 4}, {even: false, n: 5}])
 			var index = arrayVariable.groupBy('even')
 			assert.strictEqual(index.get(false).length, 2)
 			assert.strictEqual(index.get(false)[0].n, 3)

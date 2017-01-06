@@ -68,6 +68,7 @@
 	}
 	Renderer.prototype = {
 		constructor: Renderer,
+		version: 0,
 		updateRendering: function () {
 			throw new Error ('updateRendering must be implemented by sub class of Renderer')
 		},
