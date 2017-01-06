@@ -4,22 +4,22 @@
 }}(this, function (lang, operators, Variable) {
 
   var isGenerator = lang.isGenerator
-  var ObjectTransform = lang.compose(Variable.Call, function ObjectTransform(input, transform, inputs) {
-    this.inputs = inputs
-    Variable.Call.apply(this, arguments)
+  var ObjectTransform = lang.compose(Variable.Transform, function ObjectTransform(source, transform, sources) {
+    this.sources = sources
+    Variable.Transform.apply(this, arguments)
   }, {
     _getAsObject: function() {
-      return this.transform.apply(this, preserveObjects(this.inputs))
+      return this.transform.apply(this, preserveObjects(this.sources))
     }
   })
-  function preserveObjects(inputs) {
-    for (var i = 0, l = inputs.length; i < l; i++) {
-      var input = inputs[i]
-      if (input && input._getAsObject) {
-        inputs[i] = input._getAsObject()
+  function preserveObjects(sources) {
+    for (var i = 0, l = sources.length; i < l; i++) {
+      var source = sources[i]
+      if (source && source._getAsObject) {
+        sources[i] = source._getAsObject()
       }
     }
-    return inputs
+    return sources
   }
 	function react(generator, options) {
     if (typeof generator !== 'function') {
@@ -59,7 +59,7 @@
     if (target.property && typeof target === 'function') {
       return target.apply(null, preserveObjects(args))
     }
-    return new Variable.Call(args[0], target, args)
+    return new Variable.Transform(args[0], target, args)
   }
   react.mcall = function(target, key, args) {
     var method = target[key]
@@ -67,19 +67,19 @@
       // for now we check to see if looks like it could handle a variable, or is a bind call
       return method.apply(target, preserveObjects(args))
     }
-    return new Variable.Call(args[0], target[key].bind(target), args)
+    return new Variable.Transform(args[0], target[key].bind(target), args)
   }
   react.ncall = function(target, args) {
     if (target.property && typeof target === 'function') {
       return new (target.bind.apply(target, [null].concat(preserveObjects(args))))()
     }
-    return new Variable.Call(args[0], function() {
+    return new Variable.Transform(args[0], function() {
       return new (target.bind.apply(target, [null].concat(arguments)))()
     }, args)
   }
 
-  react.obj = function(transform, inputs) {
-    return new ObjectTransform(inputs[0], transform, inputs)
+  react.obj = function(transform, sources) {
+    return new ObjectTransform(sources[0], transform, sources)
   }
 
 	return react

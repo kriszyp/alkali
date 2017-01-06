@@ -17,7 +17,7 @@
 	main.VDate = Variable.VDate
 	main.VPromise = Variable.VPromise
 	main.all = Variable.all
-	main.Transform = Variable.Call
+	main.Transform = Variable.Transform
 	main.Caching = Variable.Caching
 	main.react = react
 	main.spawn = function(func) {

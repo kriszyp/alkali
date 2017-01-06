@@ -68,6 +68,7 @@
 	}
 	Renderer.prototype = {
 		constructor: Renderer,
+		version: 2166136261,
 		updateRendering: function () {
 			throw new Error ('updateRendering must be implemented by sub class of Renderer')
 		},
@@ -83,6 +84,9 @@
 					})
 				}
 			}
+		},
+		hash: function(){
+			// this doesn't need its own version/hash
 		},
 		newContext: function() {
 			return new Variable.Context(this.element)
