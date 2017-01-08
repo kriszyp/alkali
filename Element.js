@@ -1456,7 +1456,8 @@
 		},
 
 		merge: function(childContext) {
-			if (!this.distinctSubject || this.distinctSubject.contains(childContext.distinctSubject)) {
+			if (!this.distinctSubject ||
+					(this.distinctSubject !== childContext.distinctSubject && this.distinctSubject.contains(childContext.distinctSubject))) {
 				this.distinctSubject = childContext.distinctSubject
 			}
 			[].push.apply(this.generics || (this.generics = []), childContext.generics)
