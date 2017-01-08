@@ -91,6 +91,9 @@
 		newContext: function() {
 			return new Variable.Context(this.element)
 		},
+		integrate: function(context, contextualized) {
+			this.addInput(contextualized)
+		},
 		addInput: function(contextualized) {
 			if (this.variable !== contextualized) {
 				this.contextualized = contextualized

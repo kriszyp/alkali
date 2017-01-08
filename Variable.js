@@ -73,10 +73,12 @@
 			//if (this.contextualized && this.contextualized !== contextualized) {
 				// TOOD: if it has previously been contextualized to a different context (can happen in a promise/async situation), stop previous notifiers and start new ones
 			//}
-			parentContext.addInput(contextualized)
-			parentContext.hash(this.version)
-			parentContext.hash(Math.max(variable.version || 0, variable.versionWithChildren || 0))
 			return contextualized
+		},
+		integrate: function(context, contextualized) {
+			this.addInput(contextualized)
+			this.hash(context.version)
+			this.hash(Math.max(contextualized.version || 0, contextualized.versionWithChildren || 0))
 		},
 		hash: function(version) {
 			// FNV1a hash algorithm
@@ -306,7 +308,7 @@
 						}
 						context.nextProperty = 'returnedVariable'
 						value = value.valueOf(context)
-						context.contextualize(this, parentContext)
+						parentContext.integrate(context, context.contextualize(this, parentContext) || this)
 						return value
 					} else {
 						return value.valueOf()
@@ -343,7 +345,7 @@
 				value = variable.default
 			}
 			if (context) {
-				context.contextualize(this, parentContext)
+				parentContext.integrate(context, context.contextualize(this, parentContext) || this)
 			}
 			if (parentContext) {
 
@@ -553,7 +555,7 @@
 			return updates
 		},
 
-		updated: function(updateEvent, by, context) {
+		updated: function(updateEvent, by, context, isDownstream) {
 			if (!updateEvent) {
 				updateEvent = new RefreshEvent()
 			}
@@ -586,7 +588,7 @@
 			this.lastUpdate = updateEvent */
 			if (updateEvent instanceof PropertyChangeEvent) {
 				this.versionWithChildren = Math.max(this.version || 0, this.versionWithChildren || 0) + 1
-			} else {
+			} else if (!isDownstream) {
 				this.updateVersion()
 			}
 
@@ -600,10 +602,10 @@
 					if ((updateEvent instanceof PropertyChangeEvent) &&
 							dependent.parent) {
 						if (dependent.key === updateEvent.key) {
-							dependent.updated(updateEvent.childEvent, variable, context)
+							dependent.updated(updateEvent.childEvent, variable, context, true)
 						}
 					} else {
-						dependent.updated(updateEvent, variable, context)
+						dependent.updated(updateEvent, variable, context, true)
 					}
 				}
 			}
@@ -1113,9 +1115,8 @@
 			if (!array) {
 				variable.put(array = [])
 			}
-			variable.updateVersion()
 			var results = callback.call(variable, array)
-			variable.cachedVersion = variable.version // update the cached version so it doesn't need to be recomputed
+			variable.cachedVersion++ // update the cached version, so any version checking will know it has changed
 			return results
 		})
 	}
@@ -1207,6 +1208,12 @@
 	}, {
 		getValue: function(context, transformContext) {
 			// first check to see if we have the variable already computed
+			if (this.invalidated) {
+				this.invalidated = false
+			} else if (this.listeners && this.cachedVersion) {
+				// it is live, so we can shortcut and just return the cached value
+				return this.cachedValue
+			}
 			if (!transformContext) {
 				transformContext = context ? context.newContext() : new Context()
 			}
@@ -1237,8 +1244,11 @@
 			var transform = this.transform && this.transform.valueOf(transformContext)
 			var variable = this
 			return whenAll(args, function(resolved) {
-				var version = transformContext.hash(variable.version)
-				var contextualizedVariable = transformContext.contextualized || variable
+				if (variable.version) {
+					transformContext.hash(variable.version ^ 55555555555)
+				}
+				var contextualizedVariable = transformContext.contextualize(variable, context)
+				var version = transformContext.version
 				if (contextualizedVariable && contextualizedVariable.cachedVersion === version) {
 					// get it out of the cache
 					return contextualizedVariable.cachedValue
@@ -1262,6 +1272,7 @@
 		},
 
 		updated: function(updateEvent, by, context) {
+			this.invalidated = true
 			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
 				// search for the output in the sources
 				var argument, argumentName
@@ -1923,7 +1934,7 @@
 		var IterativeResults = lang.compose(returns ? returns.as(IterativeMethod) : IterativeMethod, constructor, properties)
 		IterativeResults.prototype.method || (IterativeResults.prototype.method = method)
 		Object.defineProperty(IterativeResults.prototype, 'isIterable', {value: true});
-		VArray.prototype[method] = function() {
+		VArray[method] = VArray.prototype[method] = function() {
 			var results = new IterativeResults(this)
 			results.source = this
 			results.arguments = arguments
@@ -1975,7 +1986,7 @@
 	}, {
 		updated: function(event, by, context) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
-				return Transform.prototype.updated.call(this, event, by, context)
+				return Variable.prototype.updated.call(this, event, by, context)
 			}
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			if (event.type === 'delete') {

@@ -951,8 +951,8 @@ define([
 			assert.strictEqual(TestVariable.property('a').for(subject2).valueOf(), 2)
 		},
 		contextualizedFilter: function() {
-			var TestVariable = Variable()
-			var TestSubject = Variable()
+			var TestVariable = VArray()
+			var TestSubject = VArray()
 			TestSubject.hasOwn(TestVariable)
 			var subject1 = new TestSubject()
 			var subject2 = new TestSubject()
