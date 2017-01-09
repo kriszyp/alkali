@@ -1111,7 +1111,7 @@
 
 	function arrayToModify(variable, callback) {
 		// TODO: switch this to allow promises
-		when(variable.cachedValue || variable.valueOf(), function(array) {
+		return when(variable.cachedValue || variable.valueOf(), function(array) {
 			if (!array) {
 				variable.put(array = [])
 			}
