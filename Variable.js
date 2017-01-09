@@ -1217,28 +1217,31 @@
 	}, {
 		getValue: function(context, transformContext) {
 			// first check to see if we have the variable already computed
-			if (this.invalidated) {
-				this.invalidated = false
-			} else if (this.listeners && this.cachedVersion) {
-				// it is live, so we can shortcut and just return the cached value
-				return this.cachedValue
-			}
-			if (!transformContext) {
-				transformContext = context ? context.newContext() : new Context()
-			}
-			if (!this.hasOwnProperty('source1')) {
-				// TODO: Not sure if this is a helpful optimization or not
-				// if we have a single source, we can use ifModifiedSince
-				var contextualizedVariable = this
-				if (context) {
-					contextualizedVariable = context.getContextualized(this)
-					/*if (!contextualizedVariable && this.context && this.context.matches(context)) {
-						contextualizedVariable = this
-					}*/
+			var contextualizedVariable = context ? context.getContextualized(this) : this
+			if (contextualizedVariable) {
+				if (contextualizedVariable.invalidated) {
+					contextualizedVariable.invalidated = false
+				} else if (contextualizedVariable.listeners && contextualizedVariable.cachedVersion) {
+					// it is live, so we can shortcut and just return the cached value
+					if (transformContext) {
+						transformContext.version = contextualizedVariable.cachedVersion
+						transformContext.contextualize(contextualizedVariable, context)
+					}
+					return contextualizedVariable.cachedValue
+				}
+				if (!this.hasOwnProperty('source1') && context) {
+					// TODO: Not sure if this is a helpful optimization or not
+					// if we have a single source, we can use ifModifiedSince
+						/*if (!contextualizedVariable && this.context && this.context.matches(context)) {
+							contextualizedVariable = this
+						}*/
 					if (contextualizedVariable && contextualizedVariable.cachedVersion > -1) {
 						transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
 					}
 				}
+			}
+			if (!transformContext) {
+				transformContext = context ? context.newContext() : new Context()
 			}
 			var args = []
 			var argument, argumentName
