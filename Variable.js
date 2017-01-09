@@ -81,9 +81,18 @@
 			this.hash(Math.max(contextualized.version || 0, contextualized.versionWithChildren || 0))
 		},
 		hash: function(version) {
-			// FNV1a hash algorithm
-			// TODO: May eventually want to make this a 54 or 64 bit hash by tracking two 32-bit numbers
-			return this.version = (this.version ^ (version || 0)) * 16777619 >>> 0
+/*			// FNV1a hash algorithm 32-bit
+			return this.version = (this.version ^ (version || 0)) * 16777619 >>> 0*/
+
+/*			// 54 bit FNV1a hash algorithm
+			var xored = this.version ^ (version || 0)
+			// 435 + 1099511627776 = 1099511628211 is 64 bit FNV prime
+			return this.version =
+				xored * 435 + // compute hash on lower 32 bits
+				(xor & 16777215) * 1099511627776 + // compute hash on lower 24 bits that overflow into upper 32 bits
+				((this.version / 4294967296 >>> 0) * 435 & 2097151) * 4294967296 // hash on upper 32 bits*/
+			// 54 bit derivative of FNV1a that better uses JS numbers/operators
+			return this.version = (this.version ^ (version || 0)) * 1049011 + (this.version / 5555555 >>> 0)
 		},
 		merge: function(childContext) {
 			if (!this.distinctSubject) {
