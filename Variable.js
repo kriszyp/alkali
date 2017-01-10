@@ -1269,6 +1269,13 @@
 				// cache it
 				contextualizedVariable.cachedValue = result
 				contextualizedVariable.cachedVersion = version
+				if (result && result.then) {
+					result.then(null, function() {
+						// clear out the cache on an error
+						contextualizedVariable.cachedValue = null
+						contextualizedVariable.cachedVersion = 0
+					})
+				}
 				return result
 			})
 		},
