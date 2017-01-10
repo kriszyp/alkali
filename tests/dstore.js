@@ -100,13 +100,13 @@ define([
 			assert.equal(m1.handlers.length, 1)
 			storeVar.put(m2)
 			storeVar.valueOf()
-			assert.equal(m1.handlers.length, 1)
+			assert.equal(m1.handlers.length, 0)
 			assert.equal(m2.handlers.length, 1)
 			// put seen m1 again
 			storeVar.put(m1)
 			storeVar.valueOf()
 			assert.equal(m1.handlers.length, 1)
-			assert.equal(m2.handlers.length, 1)
+			assert.equal(m2.handlers.length, 0)
 		}
 	})
 })
