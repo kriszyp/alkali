@@ -897,6 +897,10 @@ define([
 			assert.deepEqual(doubled.valueOf(), [6, 14, 18, 2])
 			assert.strictEqual(sum.valueOf(), 40)
 			assert.strictEqual(mapOperations, 5)
+			arrayVariable.set(1, 4)
+			assert.deepEqual(doubled.valueOf(), [6, 8, 18, 2])
+			assert.strictEqual(sum.valueOf(), 34)
+			assert.strictEqual(mapOperations, 6)
 		},
 
 		someArray: function() {
