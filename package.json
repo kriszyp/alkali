@@ -26,6 +26,7 @@
   "main": "./index.js",
   "dependencies": {
   },
+  "typings": "./typings.d.ts",
   "dojoBuild": "package.js",
   "devDependencies": {
     "bluebird": "^3.3.3",
