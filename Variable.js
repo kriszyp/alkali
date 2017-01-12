@@ -1235,7 +1235,7 @@
 						/*if (!contextualizedVariable && this.context && this.context.matches(context)) {
 							contextualizedVariable = this
 						}*/
-					if (contextualizedVariable && contextualizedVariable.cachedVersion > -1) {
+					if (contextualizedVariable && transformContext && contextualizedVariable.cachedVersion > -1) {
 						transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
 					}
 				}
