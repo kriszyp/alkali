@@ -1403,6 +1403,9 @@
 		splice: function(startingIndex, removalCount) {
 			var args = arguments
 			return arrayToModify(this, function(array) {
+				if (startingIndex < 0) {
+					startingIndex = array.length + startingIndex
+				}
 				var results = array.splice.apply(array, args)
 				removedAt(this, results, startingIndex, removalCount, array.length)
 				insertedAt(this, [].slice.call(args, 2), startingIndex, array.length)
@@ -1917,14 +1920,9 @@
 	}, {
 		transform: function(array) {
 			var method = this.method
-			var collectionOf = this.source && this.source.collectionOf
 			var isStrictArray = this.source && this.source._isStrictArray
 			if (array && array.forEach) {
-				if (collectionOf) {
-					array = array.map(function(item) {
-						return collectionOf.from(item)
-					})
-				}
+				array = this._mappedItems(array)
 			} else if (isStrictArray) {
 				array = []
 			} else {
@@ -1941,6 +1939,12 @@
 			} else {
 				return method(array, this.arguments)
 			}
+		},
+		_mappedItems: function(array) {
+			var collectionOf = this.source && this.source.collectionOf
+			return collectionOf ? array.map(function(item) {
+				return collectionOf.from(item)
+			}) : array
 		},
 
 		getCollectionOf: function(){
@@ -1973,13 +1977,13 @@
 					contextualizedVariable.splice(index, 1)
 				}
 			} else if (event.type === 'add') {
-				if ([event.value].filter(this.arguments[0]).length > 0) {
+				if (this._mappedItems([event.value]).filter(this.arguments[0]).length > 0) {
 					contextualizedVariable.push(event.value)
 				}
 			} else if (event.type === 'update') {
 				var object = event.parent.valueOf(context)
 				var index = contextualizedVariable.cachedValue.indexOf(object)
-				var matches = [object].filter(this.arguments[0]).length > 0
+				var matches = this._mappedItems([object]).filter(this.arguments[0]).length > 0
 				if (index > -1) {
 					if (matches) {
 						return new PropertyChangeEvent(index, event, contextualizedVariable.cachedValue,
@@ -2011,7 +2015,7 @@
 			if (event.type === 'delete') {
 				contextualizedVariable.splice(event.previousIndex, 1)
 			} else if (event.type === 'add') {
-				contextualizedVariable.push(this.arguments[0].call(this.arguments[1], event.value))
+				contextualizedVariable.push(this.arguments[0].apply(this.arguments[1], this._mappedItems([event.value])))
 			} else if (event.type === 'update') {
 				var object = event.parent.valueOf(context)
 				var array = contextualizedVariable.cachedValue
@@ -2025,7 +2029,7 @@
 					index = array && array.map && array.indexOf(object)
 				}
 				if (index > -1) {
-					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], value))
+					contextualizedVariable.splice(index, 1, this.arguments[0].apply(this.arguments[1], this._mappedItems([value])))
 				} else {
 					return Transform.prototype.updated.call(this, event, by, context)
 				}

@@ -435,6 +435,22 @@ define([
 			var letters = lof.items.map(function(item) {
 				return item.get('foo')
 			})
+			var lettersResolved = []
+			letters.forEach(function(letter) {
+				lettersResolved.push(letter)
+			})
+			assert.deepEqual(lettersResolved, ['a', 'b'])
+			valueOfAndNotify(letters, function() {
+			})
+
+			lof.items.push({foo: 'c'})
+			lettersResolved = []
+			letters.forEach(function(letter) {
+				lettersResolved.push(letter)
+			})
+			assert.deepEqual(lettersResolved, ['a', 'b', 'c'])
+
+			lof.items.splice(-1, 1)
 			lettersResolved = []
 			letters.forEach(function(letter) {
 				lettersResolved.push(letter)
