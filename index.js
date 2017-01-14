@@ -1,8 +1,8 @@
 /// <reference path="./typings.d.ts" />
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-  define(['./Element', './Renderer', './react', './Copy', './operators', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
-  module.exports = factory(require('./Element'), require('./Renderer'), require('./react'), require('./Copy'), require('./operators'), require('./Variable')) // Node
-}}(this, function (Element, Renderer, react, Copy, operators, Variable) {
+  define(['./Element', './Renderer', './react', './Copy', './operators', './Variable', './util/lang'], factory) } else if (typeof module === 'object' && module.exports) {        
+  module.exports = factory(require('./Element'), require('./Renderer'), require('./react'), require('./Copy'), require('./operators'), require('./Variable'), require('./util/lang')) // Node
+}}(this, function (Element, Renderer, react, Copy, operators, Variable, lang) {
 
 	var main = Object.create(Element)
 	main.Copy = Copy
@@ -24,7 +24,7 @@
 		return react(func).valueOf()
 	}
 	main.Renderer = Renderer.ElementRenderer
-	Object.assign(main, Renderer)
-	Object.assign(main, operators)
+	lang.copy(main, Renderer)
+	lang.copy(main, operators)
 	return main
 }))

@@ -30,7 +30,7 @@
 		}
 		return new Variable.GeneratorVariable(generator)
 	}
-  Object.assign(react, operators)
+  lang.copy(react, operators)
   react.from = function(value, options) {
     if (value && value.property) {
       return value
