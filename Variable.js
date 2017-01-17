@@ -1400,6 +1400,9 @@
 				value: length
 			})
 		},*/
+		property: function(key, PropertyClass) {
+			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
+		},
 		splice: function(startingIndex, removalCount) {
 			var args = arguments
 			return arrayToModify(this, function(array) {
