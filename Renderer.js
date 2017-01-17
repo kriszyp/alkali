@@ -334,6 +334,9 @@
 		if (newValue == null){
 			newValue = ''
 		}
+		if (newValue.create) {
+			newValue = newValue.create({parent: element})
+		}
 		if (newValue.nodeType) {
 			if (this.textNode && this.textNode.parentNode == element) {
 				// text node is attached, we can replace it with the node
@@ -382,20 +385,20 @@
 			this.builtList = true
 			this.omitValueOf = true
 			element.innerHTML = ''
-			container = document.createDocumentFragment()
 			var childElements = this.childElements = []
 			if (each.defineHasOwn) {
 				each.defineHasOwn()
 			}
 			if (newValue) {
 				newValue.forEach(function(item) {
-					eachItem(item)
+					childElements.push(Renderer.append(thisElement, eachItem(item)))
 				})
 			}
 			var contextualized = this.contextualized || this.variable
 			contextualized.notifies(this)
 
-			thisElement.appendChild(container)
+			// TODO: restore using a doc fragment to add these items:
+			// thisElement.appendChild(container)
 		} else {
 			var childElements = this.childElements
 			var updates = this.updates
@@ -413,14 +416,20 @@
 						childElements.splice(update.previousIndex, 1)
 					}
 					if (update.index > -1) {
-						var nextChild = childElements[update.index] || null
-						eachItem(update.value, update.index, nextChild)
+						var nextChild = childElements[update.index]
+						var newElement = Renderer.append(thisElement, eachItem(update.value))
+						if (nextChild) {
+							thisElement.insertBefore(newElement, nextChild)
+							childElements.splice(update.index, 0, newElement)
+						} else {
+							childElements.push(newElement)
+						}
 					}
 				}
 			})
 			this.updates = [] // clear the updates
 		}
-		function eachItem(item, index, nextChild) {
+		function eachItem(item) {
 			var childElement
 			if (each.create) {
 				childElement = each.create({parent: thisElement, _item: item}) // TODO: make a faster object here potentially
@@ -430,13 +439,7 @@
 					childElement = childElement.create({parent: thisElement, _item: item})
 				}
 			}
-			if (nextChild) {
-				container.insertBefore(childElement, nextChild)
-				childElements.splice(index, 0, childElement)
-			} else {
-				container.appendChild(childElement)
-				childElements.push(childElement)
-			}
+			return childElement
 		}
 	}
 	Renderer.ListRenderer = ListRenderer

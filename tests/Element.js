@@ -331,6 +331,43 @@ define([
 				})
 			})
 		},
+		listOfMappedObjects: function() {
+			var TypedArray = VArray.of(Variable.with({name: Variable}))
+			var arrayVariable = new TypedArray([{name:'a'}, {name: 'b'},{name: 'c'}])
+			var listElement = new UL(arrayVariable.map(function(item) {
+				return LI(item.name)
+			}))
+			document.body.appendChild(listElement)
+			assert.strictEqual(listElement.children.length, 3)
+			assert.strictEqual(listElement.childNodes[0].innerHTML, 'a')
+			assert.strictEqual(listElement.childNodes[1].innerHTML, 'b')
+			arrayVariable.property(0).name.put('A')
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(listElement.childNodes[0].innerHTML, 'A')
+				assert.strictEqual(listElement.children.length, 3)
+			})
+		},
+		listOfMappedObjectsWithChangingType: function() {
+			var TypedArray = VArray.of(Variable.with({name: Variable}))
+			var arrayVariable = new TypedArray([{name:'a'}, {name: 'b'},{name: 'c', isSpan: true}])
+			var listElement = new UL(arrayVariable.map(function(item) {
+				return item.to(function(item) {
+					return item.isSpan ? Span(item.name) : LI(item.name)
+				})
+			}))
+			document.body.appendChild(listElement)
+			assert.strictEqual(listElement.children.length, 3)
+			assert.strictEqual(listElement.childNodes[0].innerHTML, 'a')
+			assert.strictEqual(listElement.childNodes[0].tagName, 'LI')
+			assert.strictEqual(listElement.childNodes[1].innerHTML, 'b')
+			arrayVariable.property(0).name.put('A')
+			arrayVariable.property(0).set('isSpan', true)
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(listElement.childNodes[0].innerHTML, 'A')
+				assert.strictEqual(listElement.childNodes[0].tagName, 'SPAN')
+				assert.strictEqual(listElement.children.length, 3)
+			})
+		},
 		simplePropertyAccess: function() {
 			var MyComponent = extend(Div, {})
 			MyComponent.children = [

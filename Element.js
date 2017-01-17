@@ -178,11 +178,12 @@
 		var textNode
 		if (content.notifies) {
 			textNode = doc.createTextNode('')
-			new TextRenderer({
+			var renderer = new TextRenderer({
 				element: parent,
 				textNode: textNode,
 				variable: content
 			})
+			textNode = renderer.textNode // it can be swapped for another node
 		} else {
 			textNode = doc.createTextNode(content)
 		}
@@ -1140,6 +1141,7 @@
 	}
 
 	Element.append = append
+	Renderer.append = append // make it available to the renderer
 	Element.prepend = prepend
 	Element.refresh = Renderer.refresh
 	Element.options = {
