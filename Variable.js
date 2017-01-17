@@ -579,7 +579,7 @@
 				console.log((new Error().stack || '').replace(/Error/, ''))
 			}
 
-			var contextualInstance = context ? context.getContextualized(this) : this
+			var contextualInstance = context && context.getContextualized(this)
 			if (contextualInstance) {
 				contextualInstance.updated(updateEvent, this, context)
 			}
@@ -1970,7 +1970,7 @@
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Transform.prototype.updated.call(this, event, by, context)
 			}
-			var contextualizedVariable = context ? context.getContextualized(this) : this
+			var contextualizedVariable = context && context.getContextualized(this) || this
 			if (event.type === 'delete') {
 				var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
 				if (index > -1) {
@@ -2011,7 +2011,7 @@
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Variable.prototype.updated.call(this, event, by, context)
 			}
-			var contextualizedVariable = context ? context.getContextualized(this) : this
+			var contextualizedVariable = context && context.getContextualized(this) || this
 			if (event.type === 'delete') {
 				contextualizedVariable.splice(event.previousIndex, 1)
 			} else if (event.type === 'add') {
