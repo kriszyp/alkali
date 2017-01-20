@@ -869,6 +869,38 @@ define([
 			assert.strictEqual(v.property('derived').valueOf(), v.get('derived'))
 		},
 
+		nestedPropertyInvalidation: function() {
+			var outer = { middle: { inner: new Variable() } }
+			var outerVar = new Variable(outer)
+			var tfInvalidated = 0
+			var innerTransform = outerVar.to(function(o) { return o.middle.inner })
+			innerTransform.subscribe(function(e) {
+				tfInvalidated++
+			})
+			// initial invalidation
+			assert.equal(tfInvalidated, 1)
+			var propInvalidated = 0
+			outerVar.property('middle').property('inner').subscribe(function(e) {
+				propInvalidated++
+			})
+			// initial invalidation fires
+			assert.equal(propInvalidated, 1)
+
+			outerVar.updated()
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.equal(tfInvalidated, 2)
+				assert.equal(propInvalidated, 2)
+
+				outer.middle.inner.updated()
+
+				return new Promise(requestAnimationFrame).then(function() {
+					assert.equal(tfInvalidated, 2)
+					// inner property should have been invalidated
+					assert.equal(propInvalidated, 3)
+				})
+			})
+		},
+
 		filterArray: function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var greaterThanFour = arrayVariable.filter(function(item) {
