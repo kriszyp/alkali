@@ -875,12 +875,14 @@ define([
 			var tfInvalidated = 0
 			var innerTransform = outerVar.to(function(o) { return o.middle.inner })
 			innerTransform.subscribe(function(e) {
+				e.value()
 				tfInvalidated++
 			})
 			// initial invalidation
 			assert.equal(tfInvalidated, 1)
 			var propInvalidated = 0
 			outerVar.property('middle').property('inner').subscribe(function(e) {
+				e.value()
 				propInvalidated++
 			})
 			// initial invalidation fires
@@ -894,7 +896,7 @@ define([
 				outer.middle.inner.updated()
 
 				return new Promise(requestAnimationFrame).then(function() {
-					assert.equal(tfInvalidated, 2)
+					assert.equal(tfInvalidated, 3)
 					// inner property should have been invalidated
 					assert.equal(propInvalidated, 3)
 				})
