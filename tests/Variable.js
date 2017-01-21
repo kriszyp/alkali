@@ -889,13 +889,13 @@ define([
 			assert.equal(propInvalidated, 1)
 
 			outerVar.updated()
-			return new Promise(requestAnimationFrame).then(function() {
+			return new Promise(setTimeout).then(function() {
 				assert.equal(tfInvalidated, 2)
 				assert.equal(propInvalidated, 2)
 
 				outer.middle.inner.updated()
 
-				return new Promise(requestAnimationFrame).then(function() {
+				return new Promise(setTimeout).then(function() {
 					assert.equal(tfInvalidated, 3)
 					// inner property should have been invalidated
 					assert.equal(propInvalidated, 3)
