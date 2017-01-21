@@ -77,6 +77,14 @@ declare namespace alkali {
     (v?: string): VariableInstance<string> & string
     new (v?: string): VariableInstance<string> & string
   }
+  export var VNumber: {
+    (v?: number): VariableInstance<number> & number
+    new (v?: number): VariableInstance<number> & number
+  }
+  export var VBoolean: {
+    (v?: boolean): VariableInstance<boolean> & boolean
+    new (v?: boolean): VariableInstance<boolean> & boolean
+  }
 
   export function react<T>(reactiveFunction: () => T): VariableInstance<T>
   export function react<T>(value: T): Reacts<T>
