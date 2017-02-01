@@ -1236,7 +1236,7 @@
 							contextualizedVariable = this
 						}*/
 					if (contextualizedVariable && transformContext && contextualizedVariable.cachedVersion > -1) {
-						transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
+						transformContext.ifNoMatch = contextualizedVariable.cachedVersion
 					}
 				}
 			}
