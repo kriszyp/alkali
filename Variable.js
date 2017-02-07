@@ -354,6 +354,7 @@
 				value = variable.default
 			}
 			if (context) {
+				// maybe we should not do this if this is a promise so we don't double hash
 				parentContext.integrate(context, context.contextualize(this, parentContext) || this)
 			}
 			if (parentContext) {
@@ -369,7 +370,7 @@
 			}
 			if (value && value.then) {
 				return when(value, function(value) {
-					return Variable.prototype.gotValue.call(variable, value, context)
+					return Variable.prototype.gotValue.call(variable, value, parentContext, context)
 				})
 			}
 			return value
