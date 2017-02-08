@@ -63,8 +63,8 @@ declare namespace alkali {
     shift(): T
     splice(start: number, end: number, ...items: T[]): T[]
     static of: {
-      <U extends Variable<any>>(collectionOf: { new (): U }): { new(v?: any[]): VArray<any, U> }
-      new<U extends Variable<any>>(collectionOf: { new (): U }): VArray<any, U>
+      <T, U extends Variable<T>>(collectionOf: { new (): U }): { new(v?: T[]): VArray<T, U> }
+      new<T, U extends Variable<T>>(collectionOf: { new (): U }): VArray<T, U>
       <U>(collectionOf: { new (): U }): { new(v?: any[]): VArray<U, U> }
       new<U>(collectionOf: { new (): U }): VArray<U, U>
     }
