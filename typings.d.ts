@@ -26,10 +26,10 @@ declare namespace alkali {
     collection: VariableClass<{}>
   }
   export interface VariableClass<T> {
-    new(): VariableInstance<any>
-    new(value?: any): VariableInstance<any>
-    <U>(properties: U): VariableClass<U> & T
-    with<U>(properties: U): VariableClass<U> & T
+    new(): VariableInstance<any> & T
+    new(value?: any): VariableInstance<any> & T
+    <U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
+    with<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     hasOwn(Target: () => any)
 
     put(value: T | VariableInstance<T>)
@@ -61,7 +61,7 @@ declare namespace alkali {
     shift(): T
     splice(start: number, end: number, ...items: T[])
     static of: {
-      <U>(collectionOf: { new (): U }): { new(): VArray<U> },
+      <U>(collectionOf: { new (): U }): { new(v?: any[]): VArray<U> },
       new<U>(collectionOf: { new (): U }): VArray<U>
     }
     collectionOf: VariableClass<{}>
