@@ -4,111 +4,115 @@ declare namespace alkali {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
   }
 
-  class VariableInstance<T> {
+  class Variable<T> {
     valueOf(): T
-    property(key: KeyType): VariableInstance<any>
+    property(key: KeyType): Variable<any>
     property<U>(key: KeyType, PropertyClass: {new (): U}): U
-    put(value: T | VariableInstance<T>)
+    put(value: T | Variable<T>)
     get(key: KeyType): any
     set(key: KeyType, value: any)
     undefine(key: KeyType)
-    proxy(variable: VariableInstance<T>)
-    for(subject: any): VariableInstance<T>
-    to<U>(transform: (T) => VariableInstance<U> | U): VariableInstance<U>
+    proxy(variable: Variable<T>)
+    for(subject: any): Variable<T>
+    to<U>(transform: (T) => Variable<U> | U): Variable<U>
     updated()
     subscribe(listener: (event) => {
       value: () => T
     })
 
-    schema: VariableInstance<{}>
-    validation: VariableInstance<{}>
+    static with<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<U>
+
+    schema: Variable<{}>
+    validation: Variable<{}>
 
     collection: VariableClass<{}>
   }
   export interface VariableClass<T> {
-    new(): VariableInstance<any> & T
-    new(value?: any): VariableInstance<any> & T
+    new(): Variable<any> & T
+    new(value?: any): Variable<any> & T
     <U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     with<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     hasOwn(Target: () => any)
 
-    put(value: T | VariableInstance<T>)
+    put(value: T | Variable<T>)
     valueOf(): T
-    for(subject: any): VariableInstance<any>
-    to<U>(transform: (T) => U | VariableInstance<U>): VariableClass<U>
+    for(subject: any): Variable<any>
+    to<U>(transform: (T) => U | Variable<U>): VariableClass<U>
     property(key: KeyType): VariableClass<any>
   }
-  export var Variable: VariableClass<Object>
 
-  export type Reacts<T> = T & VariableInstance<T>
+  export type Reacts<T> = T & Variable<T>
 
   interface VC<U> {
     <T>(properties: T): T & U & VC<T & U>
-    new (properties: U): VariableInstance<U>
+    new (properties: U): Variable<U>
   }
 
-  export class VArray<T> extends VariableInstance<Array<T>> {
-    map<U>(transform: (T) => U): VArray<Array<U>>
-    filter(filterFunction: (T) => any): VArray<Array<T>>
-    reduce<U>(reducer: (T, U) => U): VariableInstance<U>
-    reduceRight<U>(reducer: (T, U) => U): VariableInstance<U>
-    some(filter: (T) => any): VariableInstance<boolean>
-    every(filter: (T) => any): VariableInstance<boolean>
-    slice(start: number, end?:number): VariableInstance<T>
+  export class VArray<T, V> extends Variable<Array<T>> {
+    map<U>(transform: (V) => U): VArray<U, U>
+    filter(filterFunction: (V) => any): VArray<T, V>
+    forEach(each: (V) => {})
+    reduce<U>(reducer: (T, U) => U): Variable<U>
+    reduceRight<U>(reducer: (T, U) => U): Variable<U>
+    some(filter: (T) => any): Variable<boolean>
+    every(filter: (T) => any): Variable<boolean>
+    slice(start: number, end?:number): Variable<T>
     push(...items: T[]): number
     unshift(...items: T[]): number
     pop(): T
     shift(): T
-    splice(start: number, end: number, ...items: T[])
+    splice(start: number, end: number, ...items: T[]): T[]
     static of: {
-      <U>(collectionOf: { new (): U }): { new(v?: any[]): VArray<U> },
-      new<U>(collectionOf: { new (): U }): VArray<U>
+      <U extends Variable<any>>(collectionOf: { new (): U }): { new(v?: any[]): VArray<any, U> }
+      new<U extends Variable<any>>(collectionOf: { new (): U }): VArray<any, U>
+      <U>(collectionOf: { new (): U }): { new(v?: any[]): VArray<U, U> }
+      new<U>(collectionOf: { new (): U }): VArray<U, U>
     }
     collectionOf: VariableClass<{}>
   }
-  export class VMap<T> extends VariableInstance<T> {
+  export class VMap<T> extends Variable<T> {
   }
-  export class VSet<T> extends VariableInstance<T> {    
+  export class VSet<T> extends Variable<T> {    
   }
-  export class VPromise<T> extends VariableInstance<Promise<T>> {
-    to<U>(transform: (T) => VPromise<U> | VariableInstance<U> | Promise<U> | U): VPromise<U>
+  export class VPromise<T> extends Variable<Promise<T>> {
+    to<U>(transform: (T) => VPromise<U> | Variable<U> | Promise<U> | U): VPromise<U>
   }
   export var VString: {
-    (v?: string): VariableInstance<string> & string
-    new (v?: string): VariableInstance<string> & string
+    (v?: string): Variable<string> & string
+    new (v?: string): Variable<string> & string
   }
   export var VNumber: {
-    (v?: number): VariableInstance<number> & number
-    new (v?: number): VariableInstance<number> & number
+    (v?: number): Variable<number> & number
+    new (v?: number): Variable<number> & number
   }
   export var VBoolean: {
-    (v?: boolean): VariableInstance<boolean> & boolean
-    new (v?: boolean): VariableInstance<boolean> & boolean
+    (v?: boolean): Variable<boolean> & boolean
+    new (v?: boolean): Variable<boolean> & boolean
   }
 
-  export function react<T>(reactiveFunction: () => T): VariableInstance<T>
+  export function react<T>(reactiveFunction: () => T): Variable<T>
   export function react<T>(value: T): Reacts<T>
-  export function all<T>(inputs: Array<VariableInstance<T>>): VariableInstance<Array<T>>
+  export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>
   export function spawn<T>(yieldingFunction: () => T): Promise<T>
 
   // operators
-  export function not(variable: VariableInstance<any> | any): VariableInstance<boolean>
-  export function add(a: VariableInstance<number> | number, b: VariableInstance<number> | number): VariableInstance<number>
-  export function subtract(a: VariableInstance<number> | number, b: VariableInstance<number> | number): VariableInstance<number>
-  export function multiply(a: VariableInstance<number> | number, b: VariableInstance<number> | number): VariableInstance<number>
-  export function divide(a: VariableInstance<number> | number, b: VariableInstance<number> | number): VariableInstance<number>
-  export function remainder(a: VariableInstance<number> | number): VariableInstance<number>
-  export function greater(a: VariableInstance<number> | number, b: VariableInstance<number> | number): VariableInstance<boolean>
-  export function greaterOrEqual(a: VariableInstance<number> | number, b: VariableInstance<number> | number): VariableInstance<boolean>
-  export function less(a: VariableInstance<number> | number, b: VariableInstance<number> | number): VariableInstance<boolean>
-  export function lessOrEqual(a: VariableInstance<number> | number, b: VariableInstance<number> | number): VariableInstance<boolean>
-  export function equal(a: VariableInstance<any> | any, b: VariableInstance<any> | any): VariableInstance<boolean>
-  export function and(a: VariableInstance<any> | any, b: VariableInstance<any> | any): VariableInstance<any>
-  export function or(a: VariableInstance<any> | any, b: VariableInstance<any> | any): VariableInstance<any>
-  export function round(a: VariableInstance<number> | number): VariableInstance<number>
+  export function not(variable: Variable<any> | any): Variable<boolean>
+  export function add(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
+  export function subtract(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
+  export function multiply(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
+  export function divide(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
+  export function remainder(a: Variable<number> | number): Variable<number>
+  export function greater(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
+  export function greaterOrEqual(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
+  export function less(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
+  export function lessOrEqual(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
+  export function equal(a: Variable<any> | any, b: Variable<any> | any): Variable<boolean>
+  export function and(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
+  export function or(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
+  export function round(a: Variable<number> | number): Variable<number>
 
   interface RendererProperties<T> {
-    variable: VariableInstance<T>
+    variable: Variable<T>
     element: HTMLElement
     renderUpdate?: (value: T, element: HTMLElement) => void
     shouldRender?: (element: HTMLElement) => boolean
@@ -144,9 +148,9 @@ declare namespace alkali {
   export class ListRenderer<T> {
     constructor(properties: ListRendererProperties<T>)
   }
-  type Vstring = string | VariableInstance<string>
-  type Vboolean = boolean | VariableInstance<boolean>
-  type Vnumber = number | VariableInstance<number>
+  type Vstring = string | Variable<string>
+  type Vboolean = boolean | Variable<boolean>
+  type Vnumber = number | Variable<number>
   type Vstyle = Vstring | Vnumber | Vboolean
 
   interface ElementProperties {
@@ -506,9 +510,9 @@ declare namespace alkali {
     [name: string]: any
   }
 
-  type ElementChild = string | VariableInstance<any> | ElementClass<Node> | VariableClass<any> | Array<ElementChild2> | Node | number
-  type ElementChild2 = string | VariableInstance<any> | ElementClass<Node> | VariableClass<any> | Array<ElementChild3> | Node | number
-  type ElementChild3 = string | VariableInstance<any> | ElementClass<Node> | VariableClass<any> | Array<any> | Node | number
+  type ElementChild = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<ElementChild2> | Node | number
+  type ElementChild2 = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<ElementChild3> | Node | number
+  type ElementChild3 = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<any> | Node | number
 
   export interface ElementClass<Element> {
     new (selector?: string): Element
