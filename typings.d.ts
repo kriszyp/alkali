@@ -70,9 +70,9 @@ declare namespace alkali {
     }
     collectionOf: VariableClass<{}>
   }
-  export class VMap<T> extends Variable<T> {
+  export class VMap<K, V> extends Variable<Map<K, V>> {
   }
-  export class VSet<T> extends Variable<T> {    
+  export class VSet<T> extends Variable<Set<T>> {    
   }
   export class VPromise<T> extends Variable<Promise<T>> {
     to<U>(transform: (T) => VPromise<U> | Variable<U> | Promise<U> | U): VPromise<U>
