@@ -1266,7 +1266,7 @@
 					// get it out of the cache
 					return contextualizedVariable.cachedValue
 				}
-				var result = transform ? transform.apply(variable, resolved) : resolved
+				var result = transform ? transform.apply(variable, resolved) : resolved[0]
 				// cache it
 				contextualizedVariable.cachedValue = result
 				contextualizedVariable.cachedVersion = version
