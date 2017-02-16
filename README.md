@@ -253,6 +253,7 @@ We can also define properties with a specific primitive type. Alkali exports cla
 * VDate
 * VSet
 * VPromise
+* VMap
 
 Each of these have methods corresponding to the methods on the original primitive. For non-mutating accessor methods, the method will return a new variable representing the result of applying the method to the value. For example:
 ```
@@ -941,25 +942,24 @@ Note that this functionality currently will only work predictably on all browser
 
 The following methods are also available on variables (but mostly used internally):
 
-### updated(updateEvent)
+### `updated(updateEvent)`
 
 This is called to indicate that the variable has been updated. This is typically called between dependent variables, but you can also call this to indicate that an object in a variable has been modified.
 
-### stopNotifies(target)
-
-This stops the notifications to the dependent variable, undoing the action of `notifies`.
-
-### apply(instance, functionVariable)
+### `apply(instance, functionVariable)`
 
 This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables are updated, than the returned variable will update. The function can be re-executed with the changed values on the next call to valueOf.
 
-### is(sourceVariable)
+### `is(sourceVariable)`
 
 This will cause the variable to act as a direct proxy for the source variable, and changes to this variable will be directed to the source variable, and vice versa.
 
-### Variable.proxy(source)
+### `Variable.proxy(source)`
 
 This will utilize ES2015 Proxy's to create a proxy object that will intercept all property access and modification, make them act like `property` and `set` methods.
+
+## `Transform(source)`
+The `Transform` class is available for defining transforms with a class structure. For simple transforms, the `to` method will usually suffice, but if you would like to use a class structure with methods that can be used by/for the transform, this extension of a `Variable` class can be useful. The `Transform` constructor takes a `source` argument (available as a property0, and can define a `transform(source)` method. Instances are standard variables, and can be used as such. Additional sources can be defined with properties `source1`, `source2`, etc. and will be passed in as additional arguments to the `transform` method.
 
 ## Variables with Maps
 JavaScript `Map` objects can be used as the value for a variable, with the `Map` properties mapped to the variable properties. This can be done using the `VMap` constructor. The `Map` can be provided as a standard value as the argument or through `put`:
