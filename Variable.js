@@ -296,6 +296,9 @@
 							listeners.observer.addKey(key)
 						}
 					//}
+					if (valueContext) {
+						context.hash(valueContext.version)
+					}
 					return value
 				}
 				if (object && object.then && !object.notifies) {
