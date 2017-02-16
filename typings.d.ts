@@ -620,6 +620,7 @@ declare namespace alkali {
   export var Br: ElementClass<HTMLElement>
   export var Area: ElementClass<HTMLAreaElement>
   export var A: ElementClass<HTMLElement>
+  export var B: ElementClass<HTMLElement>
 
   export var Anchor: ElementClass<HTMLAnchorElement>
   export var Paragraph: ElementClass<HTMLParagraphElement>
