@@ -114,8 +114,18 @@ define([
 			})
 		},
 		numberInput: function() {
-			var numberVariable = new Variable(2020)
+			var numberVariable = new Variable(0)
 			var numberInput = new NumberInput(numberVariable)
+			assert.strictEqual(numberInput.type, 'number')
+			if (isNaN(numberInput.valueAsNumber)) {
+				// in IE, valueAsNumber doesn't work
+				assert.strictEqual(numberInput.value, '0')
+				return
+			}
+			assert.strictEqual(numberInput.valueAsNumber, 0)
+
+			numberVariable = new Variable(2020)
+			numberInput = new NumberInput(numberVariable)
 			document.body.appendChild(numberInput)
 			assert.strictEqual(numberInput.type, 'number')
 			if (isNaN(numberInput.valueAsNumber)) {
