@@ -260,7 +260,11 @@
 		if (newValue == null || (element.type === 'number' && isNaN(newValue))) {
 			newValue = ''
 		}
-		if (element[this.name] != newValue) {
+		var oldValue = element[this.name]
+		if (typeof oldValue === 'string' && typeof newValue !== 'string') {
+			newValue = newValue == null ? '' : String(newValue)
+		}
+		if (oldValue != newValue) {
 			element[this.name] = newValue
 		}
 	}

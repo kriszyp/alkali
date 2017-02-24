@@ -135,6 +135,12 @@ define([
 			})
 			assert.strictEqual(new Radio().type, 'radio')
 		},
+		numberInput0: function() {
+			var numberInput = new NumberInput(new Variable(0))
+			document.body.appendChild(numberInput)
+			assert.strictEqual(numberInput.type, 'number')
+			assert.strictEqual(numberInput.valueAsNumber, 0)
+		},
 		dateInput: function() {
 			var startingDate = new Date(1458345600000)
 			var dateVariable = new Variable(startingDate)
