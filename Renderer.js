@@ -264,7 +264,7 @@
 		if (newValue == null || (element.type === 'number' && isNaN(newValue))) {
 			newValue = ''
 		}
-		if (element[this.name] != newValue) {
+		if ((element.type === 'number' && element[this.name] !== newValue) || element[this.name] != newValue) {
 			element[this.name] = newValue
 		}
 	}
