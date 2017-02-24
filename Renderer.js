@@ -194,15 +194,11 @@
 	}
 	ElementRenderer.prototype.updateElement = function(element) {
 		this.invalidated = false
-		try {
-			if (!this.omitValueOf) {
-				var value = this.variable.valueOf(this)
-				var contextualized = this.contextualized || this.variable
-				// TODO: we may need to handle recontextualization if it returns a promise
-				contextualized.notifies(this)
-			}
-		} catch (error) {
-			element.appendChild(document.createTextNode(error))
+		if (!this.omitValueOf) {
+			var value = this.variable.valueOf(this)
+			var contextualized = this.contextualized || this.variable
+			// TODO: we may need to handle recontextualization if it returns a promise
+			contextualized.notifies(this)
 		}
 		if(value !== undefined || this.started || this.omitValueOf){
 			this.started = true
