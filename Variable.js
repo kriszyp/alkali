@@ -8,6 +8,7 @@
 	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	var isGenerator = lang.isGenerator
+	var undefined // makes it faster to be locally scoped
 	// update types
 	var RequestChange = 3
 	var RequestSet = 4
@@ -286,25 +287,36 @@
 				var property = this
 				var parent = this.parent
 				var object = parent.getValue ? parent.getValue(valueContext) : parent.value
-				var gotValueAndListen = function(object) {
-					var value = object == null ? undefined :
-						typeof object.property === 'function' ? object.property(key) :
-						typeof object.get === 'function' ? object.get(key) : object[key]
-					//if (property.listeners) {
-						var listeners = propertyListenersMap.get(object)
-						if (listeners && listeners.observer && listeners.observer.addKey) {
-							listeners.observer.addKey(key)
-						}
-					//}
-					if (valueContext) {
-						context.hash(valueContext.version)
-					}
-					return value
-				}
 				if (object && object.then && !object.notifies) {
-					return when(object, gotValueAndListen)
+					return when(object, function(object) {
+						var value = object == null ? undefined :
+							typeof object.property === 'function' ? object.property(key) :
+							typeof object.get === 'function' ? object.get(key) : object[key]
+						//if (property.listeners) {
+							var listeners = propertyListenersMap.get(object)
+							if (listeners && listeners.observer && listeners.observer.addKey) {
+								listeners.observer.addKey(key)
+							}
+						//}
+						if (valueContext) {
+							context.hash(valueContext.version)
+						}
+						return value
+					})
 				}
-				return gotValueAndListen(object)
+				var value = object == null ? undefined :
+					typeof object.property === 'function' ? object.property(key) :
+					typeof object.get === 'function' ? object.get(key) : object[key]
+				//if (property.listeners) {
+					var listeners = propertyListenersMap.get(object)
+					if (listeners && listeners.observer && listeners.observer.addKey) {
+						listeners.observer.addKey(key)
+					}
+				//}
+				if (valueContext) {
+					context.hash(valueContext.version)
+				}
+				return value
 			}
 			return this.value
 		},
@@ -610,7 +622,7 @@
 				var variable = this
 				// make a copy, in case they change
 				listeners = listeners.slice()
-				for (var i = 0; i < listeners.length; i++) {
+				for (var i = 0, l = listeners.length; i < l; i++) {
 					var dependent = listeners[i]
 					if ((updateEvent instanceof PropertyChangeEvent) &&
 							dependent.parent) {
