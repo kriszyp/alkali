@@ -825,10 +825,11 @@
 				}, context)
 			}
 			if (this.collectionOf) {
+				var variable = this
 				return when(this.valueOf(callbackOrContext), function(value) {
 					if (value && value.forEach) {
 						value.forEach(function(item) {
-							callbackOrItemClass.call(this, this.collectionOf.from(item))
+							callbackOrItemClass.call(variable, variable.collectionOf.from(item))
 						})
 					}
 				})
@@ -1064,9 +1065,13 @@
 				}
 			}
 			prototype = ExtendedVariable.prototype = Object.create(this.prototype)
-			ExtendedVariable.prototype.constructor = ExtendedVariable
+			prototype.constructor = ExtendedVariable
 			setPrototypeOf(ExtendedVariable, this)
 		}
+		return ExtendedVariable.assign(properties)
+	}
+	Variable.assign = function(properties) {
+		var prototype = this.prototype
 		for (var key in properties) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
 			var value = descriptor.value
@@ -1105,16 +1110,16 @@
 			Object.defineProperty(prototype, key, descriptor)
 			if (value !== undefined) {
 				// TODO: If there is a getter/setter here, use defineProperty
-				ExtendedVariable[key] = value
+				this[key] = value
 			} else {
 				// getter/setter
-				Object.defineProperty(ExtendedVariable, key, descriptor)
+				Object.defineProperty(this, key, descriptor)
 			}
 		}
 		if (properties && properties.hasOwn) {
-			hasOwn.call(ExtendedVariable, properties.hasOwn)
+			hasOwn.call(this, properties.hasOwn)
 		}
-		return ExtendedVariable
+		return this
 	}
 
 	Object.defineProperty(Variable, 'defaultInstance', {
@@ -1197,7 +1202,20 @@
 
 	if (typeof Symbol !== 'undefined') {
 		Variable.prototype[Symbol.iterator] = function() {
-			return this.valueOf()[Symbol.iterator]()
+			var iterator = this.valueOf()[Symbol.iterator]()
+			var collectionOf = this.collectionOf
+			if (collectionOf) {
+				return {
+					next: function() {
+						var result = iterator.next()
+						if (!result.done) {
+							result.value = collectionOf.from(result.value)
+						}
+						return result
+					}
+				}
+			}
+			return iterator
 		}
 	}
 
