@@ -21,6 +21,7 @@ declare namespace alkali {
     })
 
     static with<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<U>
+    static assign<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<U>
 
     schema: Variable<{}>
     validation: Variable<{}>
@@ -32,6 +33,7 @@ declare namespace alkali {
     new(value?: any): Variable<any> & T
     <U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     with<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
+    assign<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     hasOwn(Target: () => any)
 
     put(value: T | Variable<T>)
