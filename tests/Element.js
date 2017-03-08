@@ -4,7 +4,8 @@ define([
 	'intern!object',
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Element, Variable, registerSuite, assert, Promise) {
+], function (Element, VariableExports, registerSuite, assert, Promise) {
+	var Variable = VariableExports.Variable
 	var Div = Element.Div
 	var Label = Element.Label
 	var Span = Element.Span
@@ -28,7 +29,7 @@ define([
 	var prepend = Element.prepend
 	var extend = Element.extend
 	var assign = Element.assign
-	var VArray = Variable.VArray
+	var VArray = VariableExports.VArray
 	registerSuite({
 		name: 'Element',
 		simpleElement: function () {

@@ -4,7 +4,8 @@ define([
 	'dstore/Memory',
 	'intern!object',
 	'intern/chai!assert'
-], function (Variable, dstore, Memory, registerSuite, assert) {
+], function (VariableExports, dstore, Memory, registerSuite, assert) {
+	var Variable = VariableExports.Variable
 	var DstoreVariable = dstore.DstoreVariable
 	function MockStore() {
 		this.handlers = []

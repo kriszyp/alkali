@@ -4,12 +4,13 @@ define([
 	'../react',
 	'intern!object',
 	'intern/chai!assert'
-], function (Element, Variable, react, registerSuite, assert) {
+], function (Element, VariableExports, react, registerSuite, assert) {
 	function valueOfAndNotify(variable, callback) {
-		return variable.valueOf(new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
+		return variable.valueOf(new VariableExports.NotifyingContext(typeof callback === 'object' ? callback : {
 			updated: callback
 		}))
 	}
+	var Variable = VariableExports.Variable
 	var Div = Element.Div
 	var defineTag = Element.defineTag
 	registerSuite({

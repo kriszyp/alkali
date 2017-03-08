@@ -1,14 +1,14 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
   define(['../Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
   module.exports = factory(require('../Variable')) // Node
-}}(this, function (Variable) {
+}}(this, function (VariableExports) {
 
 return {
   reactive: function(target, key) {
     var Type = Reflect.getMetadata('design:type', target, key)
     if (!Type.notifies) {
       //if (Type === Array) {}
-      Type = Variable
+      Type = VariableExports.Variable
     }
     Object.defineProperty(target, key, {
       get: function() {

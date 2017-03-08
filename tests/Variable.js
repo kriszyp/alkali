@@ -3,16 +3,17 @@ define([
 	'intern!object',
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Variable, registerSuite, assert, Promise) {
-	var VArray = Variable.VArray
-	var VString = Variable.VString
-	var VSet = Variable.VSet
-	var VDate = Variable.VDate
-	var VNumber = Variable.VNumber
-	var VPromise = Variable.VPromise
-	var Transform = Variable.Transform
+], function (VariableExports, registerSuite, assert, Promise) {
+	var Variable = VariableExports.Variable
+	var VArray = VariableExports.VArray
+	var VString = VariableExports.VString
+	var VSet = VariableExports.VSet
+	var VDate = VariableExports.VDate
+	var VNumber = VariableExports.VNumber
+	var VPromise = VariableExports.VPromise
+	var Transform = VariableExports.Transform
 	function valueOfAndNotify(variable, callback) {
-		var context = new Variable.NotifyingContext(typeof callback === 'object' ? callback : {
+		var context = new VariableExports.NotifyingContext(typeof callback === 'object' ? callback : {
 			updated: callback
 		})
 		return variable.valueOf(context)
@@ -35,7 +36,7 @@ define([
 		'simple caching value': function () {
 			var invalidated = false
 			var value = 1
-			var variable = new Variable.Transform(null, function () {
+			var variable = new Transform(null, function () {
 				return value
 			})
 			variable.setReverse(function (newValue) {
@@ -72,7 +73,7 @@ define([
 		'on/off': function () {
 			var invalidated = false
 			var value = 1
-			var variable = new Variable.Transform(null, function () {
+			var variable = new Transform(null, function () {
 				return value
 			})
 			variable.setReverse(function (newValue) {

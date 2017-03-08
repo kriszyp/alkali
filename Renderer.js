@@ -1,14 +1,14 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
 	define(['./util/lang', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
   module.exports = factory(require('./util/lang'), require('./Variable')) // Node
-}}(this, function (lang, Variable) {
+}}(this, function (lang, VariableExports) {
 	var doc = typeof document !== 'undefined' && document
 	var invalidatedElements
 	var queued
 	var toRender = []
 	var nextId = 1
 	var requestAnimationFrame = lang.requestAnimationFrame
-	var Context = Variable.Context
+	var Context = VariableExports.Context
 
 	function Renderer(options) {
 		var variable = options.variable
@@ -89,7 +89,7 @@
 			// this doesn't need its own version/hash
 		},
 		newContext: function() {
-			return new Variable.Context(this.element)
+			return new Context(this.element)
 		},
 		integrate: function(context, contextualized) {
 			this.addInput(contextualized)

@@ -1,7 +1,8 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
 	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
   module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable')) // Node
-}}(this, function (lang, Renderer, Variable) {
+}}(this, function (lang, Renderer, VariableExports) {
+	var Variable = VariableExports.Variable
 	var knownElementProperties = [
 		'textContent', // Node
 		'id', 'className', 'innerHTML', // Element
@@ -9,7 +10,7 @@
 
 	var SELECTOR_REGEX = /^(\.|#)([-\w]+)(.+)?/
 	var isGenerator = lang.isGenerator
-	var Context = Variable.Context
+	var Context = VariableExports.Context
 	var PropertyRenderer = Renderer.PropertyRenderer
 	var InputPropertyRenderer = Renderer.InputPropertyRenderer
 	var AttributeRenderer = Renderer.AttributeRenderer
@@ -257,7 +258,7 @@
 			// and maybe, at some point, find an optimization to eliminate the bind()
 			new PropertyRenderer({
 				name: key,
-				variable: new Variable.GeneratorVariable(value.bind(element, properties)),
+				variable: new VariableExports.GeneratorVariable(value.bind(element, properties)),
 				element: element
 			})
 		},
@@ -443,7 +444,7 @@
 		var nativeGenerators
 		var propertyHandlers = element._propertyHandlers
 		for (var key in generators) {
-			var variable = new Variable.GeneratorVariable(generators[key].bind(element, properties))
+			var variable = new VariableExports.GeneratorVariable(generators[key].bind(element, properties))
 			if (propertyHandlers[key]) {
 				(nativeGenerators || (nativeGenerators = {}))[key] = variable
 			} else if (styleDefinitions[key]) {
@@ -519,7 +520,7 @@
 				element.addEventListener(inputEvents[i], function (event) {
 					var value = element[key]
 					var result = variable.put(conversion ? conversion(value, element) : value, new Context(element))
-					if (result === Variable.deny) {
+					if (result === VariableExports.deny) {
 						throw new Error('Variable change denied')
 					}
 				})
@@ -1259,7 +1260,7 @@
 		return ThisElementVariable.property(key)
 	}
 
-	var Item = Element.Item = Variable.Item
+	var Item = Element.Item = VariableExports.Item
 
 	function enterRenderer(Renderer, options/*, target*/) {
 		// this will be used for optimized class-level variables
@@ -1407,7 +1408,7 @@
 		})
 	}
 
-	lang.copy(Variable.Context.prototype, {
+	lang.copy(VariableExports.Context.prototype, {
 		specify: function(Variable) {
 			var element = this.subject
 			var distinctive = true

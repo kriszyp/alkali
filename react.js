@@ -1,12 +1,14 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
   define(['./util/lang', './operators', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
   module.exports = factory(require('./util/lang'), require('./operators'), require('./Variable')) // Node
-}}(this, function (lang, operators, Variable) {
+}}(this, function (lang, operators, VariableExports) {
 
+  var Transform = VariableExports.Transform
+  var Variable = VariableExports.Variable
   var isGenerator = lang.isGenerator
-  var ObjectTransform = lang.compose(Variable.Transform, function ObjectTransform(source, transform, sources) {
+  var ObjectTransform = lang.compose(Transform, function ObjectTransform(source, transform, sources) {
     this.sources = sources
-    Variable.Transform.apply(this, arguments)
+    Transform.apply(this, arguments)
   }, {
     _getAsObject: function() {
       return this.transform.apply(this, preserveObjects(this.sources))
@@ -28,7 +30,7 @@
 		if (options && options.reverse) {
 			generator.reverse = options.reverse
 		}
-		return new Variable.GeneratorVariable(generator)
+		return new VariableExports.GeneratorVariable(generator)
 	}
   lang.copy(react, operators)
   react.from = function(value, options) {
@@ -59,7 +61,7 @@
     if (target.property && typeof target === 'function') {
       return target.apply(null, preserveObjects(args))
     }
-    return new Variable.Transform(args[0], target, args)
+    return new Transform(args[0], target, args)
   }
   react.mcall = function(target, key, args) {
     var method = target[key]
@@ -67,13 +69,13 @@
       // for now we check to see if looks like it could handle a variable, or is a bind call
       return method.apply(target, preserveObjects(args))
     }
-    return new Variable.Transform(args[0], target[key].bind(target), args)
+    return new Transform(args[0], target[key].bind(target), args)
   }
   react.ncall = function(target, args) {
     if (target.property && typeof target === 'function') {
       return new (target.bind.apply(target, [null].concat(preserveObjects(args))))()
     }
-    return new Variable.Transform(args[0], function() {
+    return new Transform(args[0], function() {
       return new (target.bind.apply(target, [null].concat(arguments)))()
     }, args)
   }

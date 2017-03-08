@@ -1,9 +1,9 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
 	define(['./Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
   module.exports = factory(require('./Variable')) // Node
-}}(this, function (Variable) {
+}}(this, function (VariableExports) {
 
-	var deny = Variable.deny;
+	var deny = VariableExports.deny;
 	var operatingFunctions = {};
 	var operators = {};
 	function getOperatingFunction(expression){
@@ -36,7 +36,7 @@
 				reverseA = reverseA && getOperatingFunction(reverseA);
 				reverseB = reverseB && getOperatingFunction(reverseB);
 				forward.reverse = reverse;
-				operators[operator] = operatorHandler = new Variable(forward);
+				operators[operator] = operatorHandler = new VariableExports.Variable(forward);
 
 				addFlags(operatorHandler);
 				args = Array.prototype.slice.call(args);

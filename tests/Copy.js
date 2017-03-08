@@ -3,7 +3,8 @@ define([
 	'../Copy',
 	'intern!object',
 	'intern/chai!assert'
-], function (Variable, Copy, registerSuite, assert) {
+], function (VariableExports, Copy, registerSuite, assert) {
+	var Variable = VariableExports.Variable
 	registerSuite({
 		name: 'Copy Variable',
 

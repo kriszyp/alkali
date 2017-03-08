@@ -4,7 +4,8 @@ declare namespace alkali {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
   }
 
-  class Variable<T> {
+  export class Variable<T> {
+    constructor(value?: T)
     valueOf(): T
     property(key: KeyType): Variable<any>
     property<U>(key: KeyType, PropertyClass: {new (): U}): U
@@ -32,7 +33,7 @@ declare namespace alkali {
     new(): Variable<any> & T
     new(value?: any): Variable<any> & T
     <U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
-    with<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
+    with<U, V extends this>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U & V>
     assign<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     hasOwn(Target: () => any)
 
@@ -50,10 +51,10 @@ declare namespace alkali {
     new (properties: U): Variable<U>
   }
 
-  export class VArray<T, V> extends Variable<Array<T>> {
-    map<U>(transform: (V) => U): VArray<U, U>
-    filter(filterFunction: (V) => any): VArray<T, V>
-    forEach(each: (V) => {})
+  export class VArray<T> extends Variable<Array<T>> {
+    map<U>(transform: (T) => U): VArray<U>
+    filter(filterFunction: (T) => any): VArray<T>
+    forEach(each: (T) => {})
     reduce<U>(reducer: (T, U) => U): Variable<U>
     reduceRight<U>(reducer: (T, U) => U): Variable<U>
     some(filter: (T) => any): Variable<boolean>
@@ -65,10 +66,10 @@ declare namespace alkali {
     shift(): T
     splice(start: number, end: number, ...items: T[]): T[]
     static of: {
-      <T, U extends Variable<T>>(collectionOf: { new (): U }): { new(v?: T[]): VArray<T, U> }
-      new<T, U extends Variable<T>>(collectionOf: { new (): U }): VArray<T, U>
-      <U>(collectionOf: { new (): U }): { new(v?: any[]): VArray<U, U> }
-      new<U>(collectionOf: { new (): U }): VArray<U, U>
+      /*<T, U extends Variable<T>>(collectionOf: { new (): U }): { new(v?: T[]): VArray<T, U> }
+      new<T, U extends Variable<T>>(collectionOf: { new (): U }): VArray<T, U>*/
+      <U>(collectionOf: { new (): U }): { new(v?: any[]): VArray<U> }
+      new<U>(collectionOf: { new (): U }): VArray<U>
     }
     collectionOf: VariableClass<{}>
   }
@@ -79,19 +80,14 @@ declare namespace alkali {
   export class VPromise<T> extends Variable<Promise<T>> {
     to<U>(transform: (T) => VPromise<U> | Variable<U> | Promise<U> | U): VPromise<U>
   }
-  export var VString: {
-    (v?: string): Variable<string> & string
-    new (v?: string): Variable<string> & string
+  export class VString extends Variable<string> {
   }
-  export var VNumber: {
-    (v?: number): Variable<number> & number
-    new (v?: number): Variable<number> & number
+  export class VNumber extends Variable<number> {
   }
-  export var VBoolean: {
-    (v?: boolean): Variable<boolean> & boolean
-    new (v?: boolean): Variable<boolean> & boolean
+  export class VBoolean extends Variable<boolean> {
   }
 
+  export function reactive(target: {}, key: string): void
   export function react<T>(reactiveFunction: () => T): Variable<T>
   export function react<T>(value: T): Reacts<T>
   export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>

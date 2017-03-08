@@ -1,4 +1,5 @@
-define(['../util/lang', '../Variable'], function(lang, Variable){
+define(['../util/lang', '../Variable'], function(lang, VariableExports){
+	var Variable = VariableExports.Variable
 	var DstoreVariable = lang.compose(Variable, function DstoreVariable(value){
 		this.value = value
 	},

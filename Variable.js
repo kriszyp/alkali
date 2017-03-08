@@ -1378,7 +1378,7 @@
 		}
 	})
 
-	var Item = Variable.Item = lang.compose(Variable, function Item(value, content) {
+	var Item = lang.compose(Variable, function Item(value, content) {
 		this.value = value
 		this.collection = content
 	}, {})
@@ -1506,7 +1506,7 @@
 	}
 
 	var getValue
-	var GeneratorVariable = Variable.GeneratorVariable = lang.compose(Transform, function ReactiveGenerator(generator){
+	var GeneratorVariable = lang.compose(Transform, function ReactiveGenerator(generator){
 		this.generator = generator
 	}, {
 		transform: {
@@ -1604,9 +1604,6 @@
 			return Type.with(value)
 		}
 	}
-
-	Variable.deny = deny
-	Variable.noChange = noChange
 
 	function objectUpdated(object) {
 		// simply notifies any subscribers to an object, that it has changed
@@ -1828,11 +1825,7 @@
 			}
 		}
 	})
-	// these are just for exporting
 	Variable.nextId = 1
-	Variable.Context = Context
-	Variable.NotifyingContext = NotifyingContext
-
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply
@@ -1882,7 +1875,7 @@
 		return makeSubVar(this, typeof value === 'object' ? value : Number(value), VNumber)
 	}
 	
-	Variable.VString = Variable.with({
+	VString = Variable.with({
 		charAt: VFunction.returns(VString),
 		codeCharAt: VFunction.returns(VNumber),
 		indexOf: VFunction.returns(VNumber),
@@ -1896,7 +1889,7 @@
 		length: VNumber
 	}, VString)
 
-	Variable.VNumber = Variable.with({
+	VNumber = Variable.with({
 		toFixed: VFunction.returns(VString),
 		toExponential: VFunction.returns(VString),
 		toPrecision: VFunction.returns(VString),
@@ -1906,12 +1899,12 @@
 	function VBoolean(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : Boolean(value), VBoolean)
 	}
-	Variable.VBoolean = Variable.with({}, VBoolean)
+	VBoolean = Variable.with({}, VBoolean)
 
 	function VSet(value) {
 		return makeSubVar(this, value instanceof Array ? new Set(value) : value, VSet)
 	}
-	Variable.VSet = Variable.with({
+	VSet = Variable.with({
 		has: VFunction.returns(VBoolean),
 		add: VMethod,
 		clear: VMethod,
@@ -1926,7 +1919,7 @@
 	function VDate(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : new Date(value), VDate)
 	}
-	Variable.VDate = Variable.with({
+	VDate = Variable.with({
 		toDateString: VFunction.returns(VString),
 		toTimeString: VFunction.returns(VString),
 		toGMTString: VFunction.returns(VString),
@@ -1935,7 +1928,7 @@
 		setTime: VMethod
 	}, VDate)
 
-	Variable.VPromise = lang.compose(Variable, function VPromise(value) {
+	var VPromise = lang.compose(Variable, function VPromise(value) {
 		return makeSubVar(this, value, VPromise)
 	}, {
 		then: function(onResolve, onError) {
@@ -1948,6 +1941,66 @@
 		},
 	})
 
+	var primitives = {
+		'string': VString,
+		'number': VNumber,
+		'boolean': VBoolean
+	}
+	function getType(Type) {
+		if (typeof Type === 'string') {
+			return primitives[Type]
+		} else if (typeof Type === 'object') {
+			if (Type instanceof Array) {
+				return VArray.of(getType(Type[0]))
+			}
+			var typedObject = {}
+			for (var key in Type) {
+				typedObject[key] = getType(Type[key])
+			}
+			return Variable.with(typedObject)
+		}
+		return Type
+	}
+	var exports = {
+		__esModule: true,
+		Variable: Variable,
+		VArray: VArray,
+		default: Variable,
+		VString: VString,
+		VNumber: VNumber,
+		VBoolean: VBoolean,
+		VPromise: VPromise,
+		VDate: VDate,
+		VSet: VSet,
+		VMap: VMap,
+		Transform: Transform,
+		deny: deny,
+		noChange: noChange,
+		Context: Context,
+		GeneratorVariable: GeneratorVariable,
+		Item: Item,
+		NotifyingContext: NotifyingContext,
+		Context: Context,
+		all: all,
+		objectUpdated: objectUpdated,
+		reactive: { // for decorators
+	    get: function(target, key, Type) {
+	      var property = (target._properties || (target._properties = {}))[key]
+	      if (!property) {
+	        target._properties[key] = property = new (getType(Type))()
+	        if (target.getValue) {
+	          property.key = key
+	          property.parent = target
+	        }
+	      }
+	      return property
+	    },
+	    set: function(target, key, value) {
+	      var property = target[key]
+	      property.parent ? property._changeValue(null, RequestSet, value) : property.put(value)
+	    }
+	  }
+	}
 
 	var IterativeMethod = lang.compose(Transform, function(source, method, args) {
 		this.source = source
@@ -2142,7 +2195,7 @@
 				}
 				var variable = variables.get(this)
 				if (!variable) {
-					variables.set(this, variable = new Variable.GeneratorVariable(value.bind(this)))
+					variables.set(this, variable = new GeneratorVariable(value.bind(this)))
 				}
 				return variable
 			},
@@ -2151,7 +2204,7 @@
 	}
 
 	Variable.all = all
-	Variable.objectUpdated = objectUpdated
+	Variable.Context = Context
 
-	return Variable
+	return exports
 }))

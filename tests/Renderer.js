@@ -4,7 +4,8 @@ define([
 	'intern!object',
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Renderer, Variable, registerSuite, assert, Promise) {
+], function (Renderer, VariableExports, registerSuite, assert, Promise) {
+	var Variable = VariableExports.Variable
 	var div = document.createElement('div');
 	registerSuite({
 		name: 'Renderer',
