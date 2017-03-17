@@ -60,11 +60,11 @@ declare namespace alkali {
     some(filter: (T) => any): Variable<boolean>
     every(filter: (T) => any): Variable<boolean>
     slice(start: number, end?:number): Variable<T>
-    push(...items: T[]): number
-    unshift(...items: T[]): number
+    push(...items: any[]): number
+    unshift(...items: any[]): number
     pop(): T
     shift(): T
-    splice(start: number, end: number, ...items: T[]): T[]
+    splice(start: number, end: number, ...items: any[]): T[]
     static of: {
       /*<T, U extends Variable<T>>(collectionOf: { new (): U }): { new(v?: T[]): VArray<T, U> }
       new<T, U extends Variable<T>>(collectionOf: { new (): U }): VArray<T, U>*/

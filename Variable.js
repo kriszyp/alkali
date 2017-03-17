@@ -1086,6 +1086,10 @@
 									this._properties[key] = property = new Class()
 									property.key = key
 									property.parent = this
+									if (property.listeners) {
+										// if it already has listeners, need to reinit it with the parent
+										property.init()
+									}
 								}
 								return property
 							},
@@ -1232,6 +1236,10 @@
 				propertyVariable = new (PropertyClass || this.PropertyClass)()
 				propertyVariable.key = key
 				propertyVariable.parent = this
+				if (propertyVariable.listeners) {
+					// if it already has listeners, need to reinit it with the parent
+					propertyVariable.init()
+				}
 				properties.set(key, propertyVariable)
 			}
 			return propertyVariable
@@ -1983,24 +1991,48 @@
 		Context: Context,
 		all: all,
 		objectUpdated: objectUpdated,
-		reactive: { // for decorators
-	    get: function(target, key, Type) {
-	      var property = (target._properties || (target._properties = {}))[key]
-	      if (!property) {
-	        target._properties[key] = property = new (getType(Type))()
-	        if (target.getValue) {
-	          property.key = key
-	          property.parent = target
-	        }
-	      }
-	      return property
-	    },
-	    set: function(target, key, value) {
-	      var property = target[key]
-	      property.parent ? property._changeValue(null, RequestSet, value) : property.put(value)
-	    }
-	  }
+		reactive: reactive
 	}
+	var typeScriptConversions = new Map()
+	typeScriptConversions.set(Array, VArray)
+	typeScriptConversions.set(String, VString)
+	typeScriptConversions.set(Number, VNumber)
+	typeScriptConversions.set(Boolean, VBoolean)
+	function reactive(target, key) { // for typescript decorators
+    var Type = Reflect.getMetadata('design:type', target, key)
+    console.log('Type', Type)
+    if (!Type.notifies) {
+    	Type = typeScriptConversions.get(Type) || Variable
+    }
+    Object.defineProperty(target, key, {
+      get: function() {
+      	return reactive.get(this, key, Type)
+      },
+      set: function(value) {
+      	reactive.set(this, key, value)
+      }
+    })
+  }
+	reactive.get = function(target, key, Type) { // for babel decorators
+    var property = (target._properties || (target._properties = {}))[key]
+    if (!property) {
+      target._properties[key] = property = new (getType(Type))()
+      if (target.getValue) {
+        property.key = key
+        property.parent = target
+				if (property.listeners) {
+					// if it already has listeners, need to reinit it with the parent
+					property.init()
+				}
+      }
+    }
+    return property
+  }
+  reactive.set = function(target, key, value) {
+    var property = target[key]
+    property.parent ? property._changeValue(null, RequestSet, value) : property.put(value)
+  }
+
 
 	var IterativeMethod = lang.compose(Transform, function(source, method, args) {
 		this.source = source
