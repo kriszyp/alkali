@@ -77,6 +77,10 @@
 				if (!context || this.contextMatches(context)) {
 					// do this only once, until we render again
 					this.invalidated = true
+					if (this.deferredRender) {
+						this.deferredRender.isCanceled = true
+						this.deferredRender = null
+					}
 					var renderer = this
 					requestAnimationFrame(function(){
 						invalidatedElements = null
@@ -207,9 +211,15 @@
 					this.renderLoading(value, element)
 				}
 				var renderer = this
-				value.then(function (value) {
-					renderer.renderUpdate(value, element)
-				})
+				var deferredRender = this.deferredRender = function (value) {
+					if (!deferredRender.isCanceled) {
+						if (deferredRender === renderer.deferredRender) {
+							renderer.deferredRender = null
+						}
+						renderer.renderUpdate(value, element)
+					}
+				}
+				value.then(deferredRender)
 			}else{
 				this.renderUpdate(value, element)
 			}

@@ -742,6 +742,28 @@ define([
 			assert.equal(div.childNodes[2].textContent, '0')
 		},
 
+		listUpdateDuringPromise: function() {
+			var v = new VArray(new Promise(function (resolve) {
+				setTimeout(function() {
+					resolve([1, 2])
+				})
+			}))
+			var div = document.body.appendChild(new Div(
+				v.map(function(v) { return v * 2 })
+			))
+			var lastPromise
+			v.put(lastPromise = new Promise(function (resolve) {
+				setTimeout(function() {
+					resolve([3, 4])
+				})
+			}))
+			return lastPromise.then(function() {
+				return new Promise(setTimeout).then(function() {
+					return new Promise(setTimeout).then(function() {
+						assert.equal(div.innerHTML, '68')
+					})
+			})
+		},
 		performanceBaseline: function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 100; i++) {
