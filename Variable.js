@@ -855,7 +855,7 @@
 			if (reverse) {
 				transformFunction.reverse = function(value, args, context) {
 					// for direct to, we can just use the first argument
-					reverse.call(this, args[0], context)
+					reverse.call(this, value, args[0], context)
 				}
 			}
 			if (transformFunction.prototype instanceof Variable) {
