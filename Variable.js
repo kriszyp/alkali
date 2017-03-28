@@ -1546,49 +1546,55 @@
 						var nextVariable = stepReturn.value
 						// compare with the arguments from the last
 						// execution to see if they are the same
-						var argumentName = i > 0 ? 'source' + i : 'source'
-						if (this[argumentName] !== nextVariable) {
-							if (this[argumentName]) {
-								this[argumentName].stopNotifies(this)
-							}
-							// subscribe if it is a variable
-							if (nextVariable && nextVariable.notifies) {
-								if (this.listeners) {
-									nextVariable.notifies(this)
+						try {
+							var argumentName = i > 0 ? 'source' + i : 'source'
+							if (this[argumentName] !== nextVariable) {
+								if (this[argumentName]) {
+									this[argumentName].stopNotifies(this)
 								}
-								this[argumentName] = nextVariable
-							} else if (typeof nextVariable === 'function' && isGenerator(nextVariable)) {
+								// subscribe if it is a variable
+								if (nextVariable && nextVariable.notifies) {
+									if (this.listeners) {
+										nextVariable.notifies(this)
+									}
+									this[argumentName] = nextVariable
+								} else if (typeof nextVariable === 'function' && isGenerator(nextVariable)) {
+									resuming = {
+										i: i,
+										iterator: nextVariable()
+									}
+									next.call(this)
+									i = resuming.i
+								} else {
+									this[argumentName] = null
+								}
+							}
+							i++
+							if (context) {
+								context.nextProperty = argumentName
+							}
+							lastValue = nextVariable && nextVariable.valueOf(context)
+							if (lastValue && lastValue.then) {
+								// if it is a promise, we will wait on it
+								var variable = this
 								resuming = {
 									i: i,
-									iterator: nextVariable()
+									iterator: generatorIterator
 								}
-								next.call(this)
-								i = resuming.i
-							} else {
-								this[argumentName] = null
+								// and return the promise so that the next caller can wait on this
+								return lastValue.then(function(value) {
+									resuming.value = value
+									return next.call(variable)
+								}, function(error) {
+									resuming.value = error
+									resuming.isThrowing = true
+									return next.call(variable)
+								})
 							}
-						}
-						i++
-						if (context) {
-							context.nextProperty = argumentName
-						}
-						lastValue = nextVariable && nextVariable.valueOf(context)
-						if (lastValue && lastValue.then) {
-							// if it is a promise, we will wait on it
-							var variable = this
-							resuming = {
-								i: i,
-								iterator: generatorIterator
-							}
-							// and return the promise so that the next caller can wait on this
-							return lastValue.then(function(value) {
-								resuming.value = value
-								return next.call(variable)
-							}, function(error) {
-								resuming.value = error
-								resuming.isThrowing = true
-								return next.call(variable)
-							})
+							isThrowing = false
+						} catch (error) {
+							isThrowing = true
+							lastValue = error
 						}
 					} while(true)
 				}
