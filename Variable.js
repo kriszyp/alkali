@@ -2016,7 +2016,8 @@
       },
       set: function(value) {
       	reactive.set(this, key, value)
-      }
+      },
+      enumerable: true
     })
   }
 	reactive.get = function(target, key, Type) { // for babel decorators
