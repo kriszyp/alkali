@@ -762,6 +762,7 @@ define([
 					return new Promise(setTimeout).then(function() {
 						assert.equal(div.innerHTML, '68')
 					})
+				})
 			})
 		},
 		performanceBaseline: function() {
