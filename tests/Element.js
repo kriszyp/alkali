@@ -760,8 +760,11 @@ define([
 			return lastPromise.then(function() {
 				return new Promise(setTimeout).then(function() {
 					return new Promise(setTimeout).then(function() {
-						assert.equal(div.innerHTML, '68')
+						return new Promise(setTimeout).then(function() {
+							assert.equal(div.innerHTML, '68')
+						})
 					})
+				})
 			})
 		},
 		performanceBaseline: function() {
