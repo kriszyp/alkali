@@ -1247,7 +1247,9 @@
 	})
 
 	var Transform = Variable.Transform = lang.compose(Variable, function Transform(source, transform, sources) {
-		this.source = source
+		if (source !== undefined || sources) {
+			this.source = source
+		}
 		if (transform) {
 			this.transform = transform
 			if (sources) {
