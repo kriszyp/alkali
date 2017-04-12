@@ -368,6 +368,11 @@
 			if (value === undefined) {
 				value = variable.default
 			}
+			if (value && value.then) {
+				return when(value, function(value) {
+					return Variable.prototype.gotValue.call(variable, value, parentContext, context)
+				})
+			}
 			if (context) {
 				// maybe we should not do this if this is a promise so we don't double hash
 				parentContext.integrate(context, context.contextualize(this, parentContext) || this)
@@ -382,11 +387,6 @@
 				if (!context) {
 					parentContext.addInput(this)
 				}
-			}
-			if (value && value.then) {
-				return when(value, function(value) {
-					return Variable.prototype.gotValue.call(variable, value, parentContext, context)
-				})
 			}
 			return value
 		},
@@ -1287,18 +1287,31 @@
 			}
 			var args = []
 			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
+			var lastArg
+			var i = 0
+			var variable = this
+			function getNextArg() {
+				// for now, we are sequentially resolving arguments so that hashes are deterministally in order
+				// at some point it would be nice to come up with a scheme for deferred context so we can do it in
+				// parallel
+				argument = variable[argumentName = i > 0 ? 'source' + i : 'source']
+				if (!argument && !(argumentName in variable)) {
+					return
+				}
 				if (transformContext) {
 					transformContext.nextProperty = argumentName
 				}
-				args[i] = argument && argument.valueOf(transformContext)
+				return when(argument && argument.valueOf(transformContext), function(resolved) {
+					args[i++] = resolved
+					return getNextArg()
+				})
 			}
-			// get the version in there
-			transformContext.nextProperty = 'transform'
-			var transform = this.transform && this.transform.valueOf(transformContext)
-			var variable = this
-			return whenAll(args, function(resolved) {
+
+			return when(getNextArg(), function() {
+				transformContext.nextProperty = 'transform'
+				var transform = variable.transform && variable.transform.valueOf(transformContext)
 				if (variable.version) {
+					// get the version in there
 					transformContext.hash(variable.version ^ 55555555555)
 				}
 				var contextualizedVariable = transformContext.contextualize(variable, context)
@@ -1307,7 +1320,7 @@
 					// get it out of the cache
 					return contextualizedVariable.cachedValue
 				}
-				var result = transform ? transform.apply(variable, resolved) : resolved[0]
+				var result = transform ? transform.apply(variable, args) : args[0]
 				// cache it
 				contextualizedVariable.cachedValue = result
 				contextualizedVariable.cachedVersion = version
