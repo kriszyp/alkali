@@ -1296,17 +1296,21 @@
 				// for now, we are sequentially resolving arguments so that hashes are deterministally in order
 				// at some point it would be nice to come up with a scheme for deferred context so we can do it in
 				// parallel
-				argument = variable[argumentName = i > 0 ? 'source' + i : 'source']
-				if (!argument && !(argumentName in variable)) {
-					return
+				while ((argument = variable[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in variable) {
+					if (transformContext) {
+						transformContext.nextProperty = argumentName
+					}
+					argument = argument && argument.valueOf(transformContext)
+					if (argument && argument.then) {
+						// only go through for a promise to avoid excessive stack recursion
+						return argument.then(function(resolved) {
+							args[i++] = resolved
+							return getNextArg()
+						})
+					} else {
+						args[i++] = argument
+					}
 				}
-				if (transformContext) {
-					transformContext.nextProperty = argumentName
-				}
-				return when(argument && argument.valueOf(transformContext), function(resolved) {
-					args[i++] = resolved
-					return getNextArg()
-				})
 			}
 
 			return when(getNextArg(), function() {
