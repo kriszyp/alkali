@@ -369,12 +369,19 @@
 				value = variable.default
 			}
 			if (value && value.then) {
-				return when(value, function(value) {
-					return Variable.prototype.gotValue.call(variable, value, parentContext, context)
+				return value.then(function(value) {
+					if (value && value.subscribe) {
+						return Variable.prototype.gotValue.call(variable, value, parentContext, context)
+					}
+					if (context) {
+						parentContext.integrate(context, context.contextualize(variable, parentContext) || variable)
+					} else if (parentContext) {
+						parentContext.addInput(variable)
+					}
+					return value
 				})
 			}
 			if (context) {
-				// maybe we should not do this if this is a promise so we don't double hash
 				parentContext.integrate(context, context.contextualize(this, parentContext) || this)
 			}
 			if (parentContext) {
@@ -1657,7 +1664,7 @@
 	function all(array, transform) {
 		// This is intended to mirror Promise.all. It actually takes
 		// an iterable, but for now we are just looking for array-like
-		if (array.length > -1) {
+		if (array instanceof Array) {
 			if (array.length > 0 || typeof transform === 'function') {
 				// TODO: Return VArray Transform
 				return new Transform(array[0], typeof transform === 'function' ? transform : argsToArray, array)
@@ -1667,8 +1674,7 @@
 		}
 		if (arguments.length > 1) {
 			// support multiple arguments as an array
-			// TODO: Return VArray Transform
-			return new Transform(arguments[0], argsToArray, arguments)
+			return new Transform(arguments[0], argsToArray, arguments).as(VArray)
 		}
 		if (typeof array === 'object') {
 			// allow an object as a hash to be mapped
