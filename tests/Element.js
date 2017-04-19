@@ -742,6 +742,12 @@ define([
 			assert.equal(div.childNodes[2].textContent, '0')
 		},
 
+		undefinedNode: function() {
+			var div = document.body.appendChild(new Div([undefined, null, UL]))
+			assert.equal(div.childNodes[0].tagName, 'UL')
+			assert.equal(div.childNodes[1], undefined)
+		},
+
 		listUpdateDuringPromise: function() {
 			var v = new VArray(new Promise(function (resolve) {
 				setTimeout(function() {
@@ -759,10 +765,10 @@ define([
 			}))
 			return lastPromise.then(function() {
 				return new Promise(setTimeout).then(function() {
-					return new Promise(setTimeout).then(function() {
-						return new Promise(setTimeout).then(function() {
-							assert.equal(div.innerHTML, '68')
-						})
+					return new Promise(function(resolve) {
+						setTimeout(resolve, 250)
+					}).then(function() {
+						assert.equal(div.innerHTML, '68')
 					})
 				})
 			})
