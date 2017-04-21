@@ -70,10 +70,10 @@
 	}
 
 	var buggyConstructorSetter = false
-	var testElement = document.createElement('font')
+	var testElement = doc.createElement('font')
 	var originalConstructor = testElement.constructor
 	testElement.constructor = function(){}
-	if (document.createElement('font').constructor == testElement.constructor) {
+	if (doc.createElement('font').constructor == testElement.constructor) {
 		// In safari, setting the constructor can actually assign it at the prototype level, instead of at the instance
 		testElement.__proto__.constructor = originalConstructor // restore the original constructor
 		buggyConstructorSetter = true
