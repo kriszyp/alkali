@@ -650,7 +650,10 @@
 				}
 			}
 			if (this.parent) {
-					this.parent.updated(new PropertyChangeEvent(this.key, updateEvent, this.parent), this, context)
+				this.parent.updated(new PropertyChangeEvent(this.key, updateEvent, this.parent), this, context)
+			}
+			if (this.collection) {
+				this.collection.updated(updateEvent, this, context)
 			}
 			return updateEvent
 		},
@@ -831,12 +834,13 @@
 					callbackOrContext.call(this, itemVariable)
 				}, context)
 			}
-			if (this.collectionOf) {
+			var collectionOf = this.collectionOf
+			if (collectionOf) {
 				var variable = this
 				return when(this.valueOf(callbackOrContext), function(value) {
 					if (value && value.forEach) {
-						value.forEach(function(item) {
-							callbackOrItemClass.call(variable, variable.collectionOf.from(item))
+						value.forEach(function(item, index) {
+							callbackOrItemClass.call(variable, variable.property(index, collectionOf))
 						})
 					}
 				})
@@ -1214,13 +1218,16 @@
 	if (typeof Symbol !== 'undefined') {
 		Variable.prototype[Symbol.iterator] = function() {
 			var iterator = this.valueOf()[Symbol.iterator]()
+			var variable = this
 			var collectionOf = this.collectionOf
 			if (collectionOf) {
+				var parent = this
+				var i = 0
 				return {
 					next: function() {
 						var result = iterator.next()
 						if (!result.done) {
-							result.value = collectionOf.from(result.value)
+							result.value = variable.property(i++, collectionOf)
 						}
 						return result
 					}
@@ -2095,9 +2102,12 @@
 			}
 		},
 		_mappedItems: function(array) {
-			var collectionOf = this.source && this.source.collectionOf
+			var source = this.source
+			var collectionOf = source && source.collectionOf
 			return collectionOf ? array.map(function(item) {
-				return collectionOf.from(item)
+				var wrapped = collectionOf.from(item)
+				wrapped.collection = source
+				return wrapped
 			}) : array
 		},
 
