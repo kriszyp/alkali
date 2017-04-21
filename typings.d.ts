@@ -94,20 +94,20 @@ declare namespace alkali {
   export function spawn<T>(yieldingFunction: () => T): Promise<T>
 
   // operators
-  export function not(variable: Variable<any> | any): Variable<boolean>
-  export function add(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
-  export function subtract(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
-  export function multiply(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
-  export function divide(a: Variable<number> | number, b: Variable<number> | number): Variable<number>
-  export function remainder(a: Variable<number> | number): Variable<number>
-  export function greater(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
-  export function greaterOrEqual(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
-  export function less(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
-  export function lessOrEqual(a: Variable<number> | number, b: Variable<number> | number): Variable<boolean>
-  export function equal(a: Variable<any> | any, b: Variable<any> | any): Variable<boolean>
+  export function not(variable: Variable<any> | any): VBoolean
+  export function add(a: Variable<number> | number, b: Variable<number> | number): VNumber
+  export function subtract(a: Variable<number> | number, b: Variable<number> | number): VNumber
+  export function multiply(a: Variable<number> | number, b: Variable<number> | number): VNumber
+  export function divide(a: Variable<number> | number, b: Variable<number> | number): VNumber
+  export function remainder(a: Variable<number> | number): VNumber
+  export function greater(a: Variable<number> | number, b: Variable<number> | number): VBoolean
+  export function greaterOrEqual(a: Variable<number> | number, b: Variable<number> | number): VBoolean
+  export function less(a: Variable<number> | number, b: Variable<number> | number): VBoolean
+  export function lessOrEqual(a: Variable<number> | number, b: Variable<number> | number): VBoolean
+  export function equal(a: Variable<any> | any, b: Variable<any> | any): VBoolean
   export function and(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
   export function or(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
-  export function round(a: Variable<number> | number): Variable<number>
+  export function round(a: Variable<number> | number): VNumber
 
   interface RendererProperties<T> {
     variable: Variable<T>

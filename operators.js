@@ -4,6 +4,8 @@
 }}(this, function (VariableExports) {
 
 	var deny = VariableExports.deny;
+	var VBoolean = VariableExports.VBoolean
+	var VNumber = VariableExports.VNumber
 	var operatingFunctions = {};
 	var operators = {};
 	function getOperatingFunction(expression){
@@ -12,7 +14,7 @@
 			(operatingFunctions[expression] =
 				new Function('a', 'b', 'deny', 'return ' + expression));
 	}
-	function operator(operator, name, precedence, forward, reverseA, reverseB){
+	function operator(operator, type, name, precedence, forward, reverseA, reverseB){
 		// defines the standard operators
 		var reverse = function(output, inputs){
 			var a = inputs[0],
@@ -51,28 +53,29 @@
 		addFlags(operatorHandler);
 		operators[operator] = operatorHandler;
 		operators[name] = function() {
-			return operatorHandler.apply(null, arguments)
+			var result = operatorHandler.apply(null, arguments)
+			return type ? result.as(type) : result
 		}
 	}
 	// using order precedence from:
 	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-	operator('+', 'add', 6, 'a+b', 'a-b', 'a-b');
-	operator('-', 'subtract', 6, 'a-b', 'a+b', 'b-a');
-	operator('*', 'multiply', 5, 'a*b', 'a/b', 'a/b');
-	operator('/', 'divide', 5, 'a/b', 'a*b', 'b/a');
+	operator('+', VNumber, 'add', 6, 'a+b', 'a-b', 'a-b');
+	operator('-', VNumber, 'subtract', 6, 'a-b', 'a+b', 'b-a');
+	operator('*', VNumber, 'multiply', 5, 'a*b', 'a/b', 'a/b');
+	operator('/', VNumber, 'divide', 5, 'a/b', 'a*b', 'b/a');
 //	operator('^', 7, 'a^b', 'a^(-b)', 'Math.log(a)/Math.log(b)');
-	operator('?', 'if', 16, 'b[a?0:1]', 'a===b[0]||(a===b[1]?false:deny)', '[a,b]');
-	operator(':', 'choose', 15, '[a,b]', 'a[0]?a[1]:deny', 'a[1]');
-	operator('!', 'not', 4, '!a', '!a', false);
-	operator('%', 'remainder', 5, 'a%b');
-	operator('>', 'greater', 8, 'a>b');
-	operator('>=', 'greaterOrEqual', 8, 'a>=b');
-	operator('<', 'less', 8, 'a<b');
-	operator('<=', 'lessOrEqual', 8, 'a<=b');
-	operator('===', 'strictEqual', 9, 'a===b');
-	operator('==', 'equal', 9, 'a==b');
-	operator('&', 'and', 8, 'a&&b');
-	operator('|', 'or', 8, 'a||b');
+	operator('?', null, 'if', 16, 'b[a?0:1]', 'a===b[0]||(a===b[1]?false:deny)', '[a,b]');
+	operator(':', null, 'choose', 15, '[a,b]', 'a[0]?a[1]:deny', 'a[1]');
+	operator('!', VBoolean, 'not', 4, '!a', '!a', false);
+	operator('%', VNumber, 'remainder', 5, 'a%b');
+	operator('>', VBoolean, 'greater', 8, 'a>b');
+	operator('>=', VBoolean, 'greaterOrEqual', 8, 'a>=b');
+	operator('<', VBoolean, 'less', 8, 'a<b');
+	operator('<=', VBoolean, 'lessOrEqual', 8, 'a<=b');
+	operator('===', VBoolean, 'strictEqual', 9, 'a===b');
+	operator('==', VBoolean, 'equal', 9, 'a==b');
+	operator('&', VBoolean, 'and', 8, 'a&&b');
+	operator('|', VBoolean, 'or', 8, 'a||b');
 	operator('round', 'round', 8, 'Math.round(a*Math.pow(10,b||1))/Math.pow(10,b||1)', 'a', 'a');
 	return operators;
 }))
