@@ -69,6 +69,17 @@
 		// SELECT: 1, we exclude this, so the default "content" of the element can be the options
 	}
 
+	var buggyConstructorSetter = false
+	var testElement = document.createElement('font')
+	var originalConstructor = testElement.constructor
+	testElement.constructor = function(){}
+	if (document.createElement('font').constructor == testElement.constructor) {
+		// In safari, setting the constructor can actually assign it at the prototype level, instead of at the instance
+		testElement.__proto__.constructor = originalConstructor // restore the original constructor
+		buggyConstructorSetter = true
+	}
+
+
 	function booleanStyle(options) {
 		return function(element, value, key) {
 			if (typeof value !== 'string') {
@@ -803,7 +814,12 @@
 			setPrototypeOf(element, this.prototype)
 		}
 		if (element.constructor != this) {
-			element.constructor = this // need to do this for hasOwn contextualization to work
+			if (buggyConstructorSetter) {
+				// in safari, directly setting the constructor messes up the native prototype
+				Object.defineProperty(element, 'constructor', { value: this })
+			} else {
+				element.constructor = this // need to do this for hasOwn contextualization to work
+			}
 		}
 		if (arguments.length > 0) {
 			// copy applyOnCreate when we have arguments
@@ -1170,8 +1186,9 @@
 			return Class.apply(this, arguments)
 		}
 		setPrototypeOf(ExtendedElement, Class)
-		var prototype = ExtendedElement.prototype = Object.create(Class.prototype)
-		prototype.constructor = ExtendedElement
+		var prototype = ExtendedElement.prototype = Object.create(Class.prototype, {
+			constructor: { value: ExtendedElement }
+		})
 		Object.getOwnPropertyNames(properties).forEach(function(key) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
 			if (classHandlers[key]) {
