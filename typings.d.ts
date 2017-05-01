@@ -86,6 +86,12 @@ declare namespace alkali {
   }
   export class VBoolean extends Variable<boolean> {
   }
+  export class Item extends Variable<any> {
+  }
+  export class Copy extends Variable<any> {
+  }
+  export class Transform extends Variable<any> {
+  }
 
   export function reactive(target: {}, key: string): void
   export function react<T>(reactiveFunction: () => T): Variable<T>
@@ -167,8 +173,8 @@ declare namespace alkali {
     msContentZoomFactor?: Vstring
     msRegionOverflow?: Vstring
     innerHTML?: Vstring
-    onariarequest?: (ev: AriaRequestEvent) => any
-    oncommand?: (ev: CommandEvent) => any
+    onariarequest?: (ev: Event) => any
+    oncommand?: (ev: Event) => any
     ongotpointercapture?: (ev: PointerEvent) => any
     onlostpointercapture?: (ev: PointerEvent) => any
     onmsgesturechange?: (ev: MSGestureEvent) => any
@@ -582,6 +588,7 @@ declare namespace alkali {
   export var LI: ElementClass<HTMLLIElement>
   export var KeyGen: ElementClass<HTMLElement>
   export var Image: ElementClass<HTMLImageElement>
+  export var Img: ElementClass<HTMLImageElement>
   export var IFrame: ElementClass<HTMLIFrameElement>
   export var H1: ElementClass<HTMLHeadingElement>
   export var H2: ElementClass<HTMLHeadingElement>
@@ -595,6 +602,8 @@ declare namespace alkali {
   export var Form: ElementClass<HTMLFormElement>
   export var Font: ElementClass<HTMLFontElement>
   export var Embed: ElementClass<HTMLEmbedElement>
+  export var Em: ElementClass<HTMLElement>
+  export var Code: ElementClass<HTMLElement>
   export var Article: ElementClass<HTMLElement>
   export var Aside: ElementClass<HTMLElement>
   export var Figure: ElementClass<HTMLElement>
@@ -619,6 +628,7 @@ declare namespace alkali {
   export var Area: ElementClass<HTMLAreaElement>
   export var A: ElementClass<HTMLElement>
   export var B: ElementClass<HTMLElement>
+  export var I: ElementClass<HTMLElement>
 
   export var Anchor: ElementClass<HTMLAnchorElement>
   export var Paragraph: ElementClass<HTMLParagraphElement>
@@ -673,6 +683,7 @@ declare namespace alkali {
   export function prepend(...args: Array<ElementChild>): HTMLElement
   export function onShowElement(element: Node)
   export function onElementRemoval(element: Node, onlyChildren?: boolean)
+  export function content<T>(node: T): T
 }
 declare module 'alkali' {
     export = alkali
