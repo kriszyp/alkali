@@ -2083,14 +2083,11 @@
 			var method = this.method
 			var isStrictArray = this.source && this.source._isStrictArray
 			if (array && array.forEach) {
-				array = this._mappedItems(array)
+				// already an array
+				//array = this._mappedItems(array)
 			} else if (isStrictArray) {
 				array = []
 			} else {
-				if (method === 'map'){
-					// fast path, and special behavior for map
-					return this.arguments[0](array)
-				}
 				// if not an array convert to an array
 				array = [array]
 			}
@@ -2104,7 +2101,7 @@
 		_mappedItems: function(array) {
 			var source = this.source
 			var collectionOf = source && source.collectionOf
-			return collectionOf ? array.map(function(item) {
+			return collectionOf ? array.map(function(item, i) {
 				var wrapped = collectionOf.from(item)
 				wrapped.collection = source
 				return wrapped
@@ -2141,13 +2138,13 @@
 					contextualizedVariable.splice(index, 1)
 				}
 			} else if (event.type === 'add') {
-				if (this._mappedItems([event.value]).filter(this.arguments[0]).length > 0) {
+				if ([event.value].filter(this.arguments[0]).length > 0) {
 					contextualizedVariable.push(event.value)
 				}
 			} else if (event.type === 'update') {
 				var object = event.parent.valueOf(context)
 				var index = contextualizedVariable.cachedValue.indexOf(object)
-				var matches = this._mappedItems([object]).filter(this.arguments[0]).length > 0
+				var matches = [object].filter(this.arguments[0]).length > 0
 				if (index > -1) {
 					if (matches) {
 						return new PropertyChangeEvent(index, event, contextualizedVariable.cachedValue,
@@ -2171,6 +2168,23 @@
 	defineArrayMethod('map', function Mapped(source) {
 		this._isStrictArray = source._isStrictArray
 	}, {
+		transform: function(array) {
+			var isStrictArray = this.source && this.source._isStrictArray
+			var mapFunction = this.arguments[0]
+			if (array && array.map) {
+				var source = this.source
+				var collectionOf = source && source.collectionOf
+				return array.map(collectionOf ? function(item, i) {
+					return mapFunction(source.property(i), i)
+				} : mapFunction)
+			} else if (!isStrictArray) {
+				if (method === 'map'){
+					// fast path, and special behavior for map
+					return mapFunction(array)
+				}
+			}
+			return IterativeMethod.prototype.transform.call(this, array)
+		},
 		updated: function(event, by, context) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Variable.prototype.updated.call(this, event, by, context)
@@ -2179,8 +2193,12 @@
 			if (event.type === 'delete') {
 				contextualizedVariable.splice(event.previousIndex, 1)
 			} else if (event.type === 'add') {
-				contextualizedVariable.push(this.arguments[0].apply(this.arguments[1], this._mappedItems([event.value])))
+				var array = contextualizedVariable.cachedValue
+				contextualizedVariable.push(this.arguments[0].call(this.arguments[1], this.source.property(array && array.length)))
 			} else if (event.type === 'update') {
+				if (this.getCollectionOf()) {
+					return // if it has typed items, we don't need to propagate update events, since they will be handled by the variable item.
+				}
 				var object = event.parent.valueOf(context)
 				var array = contextualizedVariable.cachedValue
 				var index = event.key
@@ -2193,7 +2211,7 @@
 					index = array && array.map && array.indexOf(object)
 				}
 				if (index > -1) {
-					contextualizedVariable.splice(index, 1, this.arguments[0].apply(this.arguments[1], this._mappedItems([value])))
+					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], this.source.property(index)))
 				} else {
 					return Transform.prototype.updated.call(this, event, by, context)
 				}

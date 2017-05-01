@@ -714,6 +714,34 @@ define([
 			assert.strictEqual(b.valueOf(), 'b')
 		},
 
+		'array events': function() {
+			var va = new (VArray.of(Variable))([{a: 1}, {a: 2}])
+			var mapCount = 0
+			var lastItemVar
+			var ava = va.map(function(item) {
+				mapCount++
+				lastItemVar = item
+				return item.get('a')
+			})
+			var arrayChangeCount = 0
+			ava.subscribe(function(event) {
+				arrayChangeCount++
+				event.value()
+			})
+			assert.equal(mapCount, 2)
+			assert.equal(arrayChangeCount, 1)
+			lastItemVar.set('b', 3)
+			return new Promise(setTimeout).then(function() {
+				assert.equal(mapCount, 2)
+				assert.equal(arrayChangeCount, 1)
+				va.push({a: 3})
+				return new Promise(setTimeout).then(function() {
+					assert.equal(mapCount, 3)
+					assert.equal(arrayChangeCount, 2)
+				})
+			})
+		},
+
 		promise: function () {
 			var resolvePromise
 			var promise = new Promise(function(resolve){
