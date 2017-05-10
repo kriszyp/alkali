@@ -932,6 +932,31 @@ define([
 			})
 		},
 
+		outerVariableCaching: function() {
+			var label = new Variable()
+			var internal
+			var outerExecutionCount = 0
+    	var l2 = label.to(function(initial) {
+    		outerExecutionCount++
+	      if (initial) {
+	        internal = new Variable(1)
+	        return internal.to(function(val) {
+	          if (val) {
+	            return initial + '-' + val
+	          }
+	        })
+	      }
+	    })
+	    valueOfAndNotify(l2, function() { })
+    	assert.equal(outerExecutionCount, 1)
+	    label.put('start')
+    	assert.equal(l2.valueOf(), 'start-1')
+    	assert.equal(outerExecutionCount, 2)
+	    internal.put(3)
+	    assert.equal(l2.valueOf(), 'start-3')
+    	assert.equal(outerExecutionCount, 2)
+		},
+
 		filterArray: function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var greaterThanFour = arrayVariable.filter(function(item) {

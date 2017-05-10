@@ -1371,7 +1371,7 @@
 			}
 		},
 
-		updated: function(updateEvent, by, context) {
+		updated: function(updateEvent, by, context, isDownstream) {
 			this.invalidated = true
 			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
 				// search for the output in the sources
@@ -1384,7 +1384,7 @@
 					}
 				}
 			}
-			return Variable.prototype.updated.call(this, updateEvent, by, context)
+			return Variable.prototype.updated.call(this, updateEvent, by, context, isDownstream)
 		},
 
 		getUpdates: function(since) {
@@ -2137,7 +2137,7 @@
 	}
 
 	defineArrayMethod('filter', function Filtered() {}, {
-		updated: function(event, by, context) {
+		updated: function(event, by, context, isDownstream) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Transform.prototype.updated.call(this, event, by, context)
 			}
@@ -2171,7 +2171,7 @@
 				}
 				return
 			} else {
-				return Transform.prototype.updated.call(this, event, by, context)
+				return Transform.prototype.updated.call(this, event, by, context, isDownstream)
 			}
 		}
 	}, VArray)
@@ -2195,7 +2195,7 @@
 			}
 			return IterativeMethod.prototype.transform.call(this, array)
 		},
-		updated: function(event, by, context) {
+		updated: function(event, by, context, isDownstream) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Variable.prototype.updated.call(this, event, by, context)
 			}
@@ -2223,10 +2223,10 @@
 				if (index > -1) {
 					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], this.source.property(index)))
 				} else {
-					return Transform.prototype.updated.call(this, event, by, context)
+					return Transform.prototype.updated.call(this, event, by, context, isDownstream)
 				}
 			} else {
-				return Transform.prototype.updated.call(this, event, by, context)
+				return Transform.prototype.updated.call(this, event, by, context, isDownstream)
 			}
 		}
 	}, VArray)
