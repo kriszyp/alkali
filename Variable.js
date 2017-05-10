@@ -47,6 +47,9 @@
 			return new Context(this.subject)
 		},
 		version: 2166136261, // FNV-1a prime seed
+		restart: function() {
+			this.version = 2166136261
+		},
 		contextualize: function(variable, parentContext) {
 			// resolve the contextualization of a variable, and updates this context to be aware of what distinctive aspect of the context has
 			// been used for resolution
@@ -1343,9 +1346,12 @@
 				var result = transform ? transform.apply(variable, args) : args[0]
 				// cache it
 				contextualizedVariable.cachedValue = result
-				contextualizedVariable.cachedVersion = version
+				contextualizedVariable.cachedVersion = transformContext.version
 				if (result && result.then) {
-					result.then(null, function() {
+					result.then(function() {
+						// if it was a generator then the version could have been computed asynchronously as well
+						contextualizedVariable.cachedVersion = transformContext.version
+					}, function() {
 						// clear out the cache on an error
 						contextualizedVariable.cachedValue = null
 						contextualizedVariable.cachedVersion = 0
@@ -1567,6 +1573,10 @@
 						isThrowing = resuming.isThrowing
 					} else {
 						// a fresh start
+						if (context) {
+							// must restart the context, if the input values had previously been checked and hashed against this context, must restart them.
+							context.restart()
+						}
 						i = 0
 						generatorIterator = this.generator()
 					}
