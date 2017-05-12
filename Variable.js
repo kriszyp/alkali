@@ -453,7 +453,7 @@
 					parent.put(object = typeof key == 'number' ? [] : {}, context)
 				} else if (typeof object != 'object') {
 					// if the parent is not an object, we can't set anything (that will be retained)
-					return deny
+					throw new Error('Can not set property on non-object')
 				}
 				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
 				if (oldValue === newValue && typeof newValue != 'object') {
@@ -667,6 +667,9 @@
 		},
 
 		notifies: function(target) {
+			if (!target) {
+				throw new Error('No listener provided for notification')
+			}
 			var listeners = this.listeners
 			if (!listeners || !this.hasOwnProperty('listeners')) {
 				this.listeners = listeners = [target]
@@ -827,7 +830,7 @@
 			return this.valueOf()
 		},
 		toString: function() {
-			return this.valueOf()
+			return String(this.valueOf())
 		},
 		forEach: function(callbackOrItemClass, callbackOrContext, context) {
 			// iterate through current value of variable
@@ -1415,7 +1418,7 @@
 				} else if (originalValue && originalValue.put) {
 					return originalValue.put(value)
 				} else {
-					return deny
+					throw new Error('Can not put value into a one-way transform, that lacks a reversal')
 				}
 			})
 		},
@@ -1682,6 +1685,9 @@
 		// This is intended to mirror Promise.all. It actually takes
 		// an iterable, but for now we are just looking for array-like
 		if (array instanceof Array) {
+			if (array.length > 1000) {
+				 //throw new Error('too big')
+			}
 			if (array.length > 0 || typeof transform === 'function') {
 				// TODO: Return VArray Transform
 				return new Transform(array[0], typeof transform === 'function' ? transform : argsToArray, array)
