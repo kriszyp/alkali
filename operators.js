@@ -3,7 +3,6 @@
   module.exports = factory(require('./Variable')) // Node
 }}(this, function (VariableExports) {
 
-	var deny = VariableExports.deny;
 	var VBoolean = VariableExports.VBoolean
 	var VNumber = VariableExports.VNumber
 	var operatingFunctions = {};
@@ -12,22 +11,25 @@
 		// jshint evil: true
 		return operatingFunctions[expression] ||
 			(operatingFunctions[expression] =
-				new Function('a', 'b', 'deny', 'return ' + expression));
+				new Function('a', 'b', 'return ' + expression));
 	}
 	function operator(operator, type, name, precedence, forward, reverseA, reverseB){
 		// defines the standard operators
 		var reverse = function(output, inputs){
 			var a = inputs[0],
-				b = inputs[1];
+				b = inputs[1]
+			var firstError
 			if(a && a.put){
-				var result = reverseA(output, b && b.valueOf());
-				if(result !== deny){
-					a.put(result);
+				try {
+					return a.put(reverseA(output, b && b.valueOf()))
+				} catch(e) {
+					firstError = e
 				}
-			}else if(b && b.put){
-				b.put(reverseB(output, a && a.valueOf()));
-			}else{
-				return deny;
+			}
+			if(b && b.put){
+				b.put(reverseB(output, a && a.valueOf()))
+			} else {
+				throw (firstError && firstError.message ? firstError : new Error('Can not assign change value to constant operators'))
 			}
 		};
 		// define a function that can lazily ensure the operating function
@@ -42,7 +44,6 @@
 
 				addFlags(operatorHandler);
 				args = Array.prototype.slice.call(args);
-				args.push(deny)
 				return operatorHandler.apply(instance, args);
 			}
 		};
@@ -64,8 +65,8 @@
 	operator('*', VNumber, 'multiply', 5, 'a*b', 'a/b', 'a/b');
 	operator('/', VNumber, 'divide', 5, 'a/b', 'a*b', 'b/a');
 //	operator('^', 7, 'a^b', 'a^(-b)', 'Math.log(a)/Math.log(b)');
-	operator('?', null, 'if', 16, 'b[a?0:1]', 'a===b[0]||(a===b[1]?false:deny)', '[a,b]');
-	operator(':', null, 'choose', 15, '[a,b]', 'a[0]?a[1]:deny', 'a[1]');
+	operator('?', null, 'if', 16, 'b[a?0:1]', 'a===b[0]||(a===b[1]?false:(function(){throw new Error()})())', '[a,b]');
+	operator(':', null, 'choose', 15, '[a,b]', 'a[0]?a[1]:(function(){throw new Error()})()', 'a[1]');
 	operator('!', VBoolean, 'not', 4, '!a', '!a', false);
 	operator('%', VNumber, 'remainder', 5, 'a%b');
 	operator('>', VBoolean, 'greater', 8, 'a>b');
