@@ -15,6 +15,7 @@
 
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap')
 	var isStructureChecked = new WeakMap()
+	var nextVersion = Date.now()
 
 	var CacheEntry = lang.compose(WeakMap, function() {
 	},{
@@ -46,9 +47,10 @@
 		newContext: function(variable) {
 			return new Context(this.subject)
 		},
-		version: 2166136261, // FNV-1a prime seed
+		//version: 2166136261, // FNV-1a prime seed
+		version: 0,
 		restart: function() {
-			this.version = 2166136261
+			//this.version = 2166136261
 		},
 		contextualize: function(variable, parentContext) {
 			// resolve the contextualization of a variable, and updates this context to be aware of what distinctive aspect of the context has
@@ -96,7 +98,14 @@
 				(xor & 16777215) * 1099511627776 + // compute hash on lower 24 bits that overflow into upper 32 bits
 				((this.version / 4294967296 >>> 0) * 435 & 2097151) * 4294967296 // hash on upper 32 bits*/
 			// 54 bit derivative of FNV1a that better uses JS numbers/operators
-			return this.version = (this.version ^ (version || 0)) * 1049011 + (this.version / 5555555 >>> 0)
+			
+			// a fast, efficient hash
+			//return this.version = (this.version ^ (version || 0)) * 1049011 + (this.version / 5555555 >>> 0)
+			// if we are using globally monotonically increasing version, we can just use max
+			if (isNaN(version)) {
+				throw new Error('Bad version')
+			}
+			return this.version = Math.max(this.version, version)
 		},
 		merge: function(childContext) {
 			if (!this.distinctSubject) {
@@ -558,17 +567,20 @@
 			})
 		},
 
+		version: 0,
+		versionWithChildren: 0,
+
 		updateVersion: function(version) {
-			this.version = Math.max(this.version || 0, this.versionWithChildren || 0) + 1
+			this.version = nextVersion = Math.max(Date.now(), nextVersion + 1)
 		},
 
 		getVersion: function(context) {
-			return Math.max(this.version || 0,
+			return Math.max(this.version,
 				this.returnedVariable && this.returnedVariable.getVersion ? this.returnedVariable.getFullVersion(context) : 0,
 				this.parent ? this.parent.getVersion(context) : 0)
 		},
 		getFullVersion: function(context) {
-			return Math.max(this.versionWithChildren || 0, this.getVersion(context))
+			return Math.max(this.versionWithChildren, this.getVersion(context))
 		},
 
 		getSubject: function(selectVariable) {
@@ -593,6 +605,7 @@
 		updated: function(updateEvent, by, context, isDownstream) {
 			if (!updateEvent) {
 				updateEvent = new RefreshEvent()
+				updateEvent.source = this
 			}
 			if (updateEvent.visited.has(this)){
 				// if this event has already visited this variable, skip it
@@ -1309,36 +1322,20 @@
 			}
 			var args = []
 			var argument, argumentName
-			var lastArg
-			var i = 0
-			var variable = this
-			function getNextArg() {
-				// for now, we are sequentially resolving arguments so that hashes are deterministally in order
-				// at some point it would be nice to come up with a scheme for deferred context so we can do it in
-				// parallel
-				while ((argument = variable[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in variable) {
-					if (transformContext) {
-						transformContext.nextProperty = argumentName
-					}
-					argument = argument && argument.valueOf(transformContext)
-					if (argument && argument.then) {
-						// only go through for a promise to avoid excessive stack recursion
-						return argument.then(function(resolved) {
-							args[i++] = resolved
-							return getNextArg()
-						})
-					} else {
-						args[i++] = argument
-					}
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
+				if (transformContext) {
+					transformContext.nextProperty = argumentName
 				}
+				args[i] = argument && argument.valueOf(transformContext)
 			}
-
-			return when(getNextArg(), function() {
-				transformContext.nextProperty = 'transform'
-				var transform = variable.transform && variable.transform.valueOf(transformContext)
+			// get the version in there
+	 		transformContext.nextProperty = 'transform'
+	 		var transform = this.transform && this.transform.valueOf(transformContext)
+	 		var variable = this
+ 			return whenAll(args, function(resolved) {
 				if (variable.version) {
 					// get the version in there
-					transformContext.hash(variable.version ^ 55555555555)
+					transformContext.hash(variable.version)
 				}
 				var contextualizedVariable = transformContext.contextualize(variable, context)
 				var version = transformContext.version
@@ -1346,7 +1343,7 @@
 					// get it out of the cache
 					return contextualizedVariable.cachedValue
 				}
-				var result = transform ? transform.apply(variable, args) : args[0]
+				var result = transform ? transform.apply(variable, resolved) : resolved[0]
 				// cache it
 				contextualizedVariable.cachedValue = result
 				contextualizedVariable.cachedVersion = transformContext.version
@@ -1887,7 +1884,7 @@
 			}
 		}
 	})
-	Variable.nextId = 1
+	Variable.nextVersion = Date.now()
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply
