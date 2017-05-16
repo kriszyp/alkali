@@ -12,6 +12,7 @@
 	// update types
 	var RequestChange = 3
 	var RequestSet = 4
+	var NOT_MODIFIED = {}
 
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap')
 	var isStructureChecked = new WeakMap()
@@ -1298,7 +1299,7 @@
 			if (contextualizedVariable) {
 				if (contextualizedVariable.invalidated) {
 					contextualizedVariable.invalidated = false
-				} else if (contextualizedVariable.listeners && contextualizedVariable.cachedVersion) {
+				} else if (contextualizedVariable.listeners && contextualizedVariable.cachedVersion > -1) {
 					// it is live, so we can shortcut and just return the cached value
 					if (transformContext) {
 						transformContext.version = contextualizedVariable.cachedVersion
@@ -1312,15 +1313,22 @@
 						/*if (!contextualizedVariable && this.context && this.context.matches(context)) {
 							contextualizedVariable = this
 						}*/
-					if (contextualizedVariable && transformContext && contextualizedVariable.cachedVersion > -1) {
-						transformContext.ifNoMatch = contextualizedVariable.cachedVersion
-					}
 				}
 			}
 			if (!transformContext) {
 				transformContext = context ? context.newContext() : new Context()
 			}
+			// get the version in there
+	 		transformContext.nextProperty = 'transform'
+	 		var transform = this.transform && this.transform.valueOf(transformContext)
 			var args = []
+			if (this.version) {
+				// get the version in there
+				transformContext.hash(this.version)
+			}
+			if (contextualizedVariable && this.cachedVersion >= transformContext.version && contextualizedVariable.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
+				transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
+			}
 			var argument, argumentName
 			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 				if (transformContext) {
@@ -1328,19 +1336,19 @@
 				}
 				args[i] = argument && argument.valueOf(transformContext)
 			}
-			// get the version in there
-	 		transformContext.nextProperty = 'transform'
-	 		var transform = this.transform && this.transform.valueOf(transformContext)
 	 		var variable = this
  			return whenAll(args, function(resolved) {
-				if (variable.version) {
-					// get the version in there
-					transformContext.hash(variable.version)
-				}
+ 				if (transformContext.ifModifiedSince !== undefined) {
+ 					transformContext.ifModifiedSince = undefined
+ 				}
 				var contextualizedVariable = transformContext.contextualize(variable, context)
 				var version = transformContext.version
 				if (contextualizedVariable && contextualizedVariable.cachedVersion === version) {
 					// get it out of the cache
+					if (context && context.ifModifiedSince >= version && !contextualizedVariable.returnedVariable) {
+						return NOT_MODIFIED
+					}
+
 					return contextualizedVariable.cachedValue
 				}
 				var result = transform ? transform.apply(variable, resolved) : resolved[0]
@@ -2042,7 +2050,8 @@
 		Context: Context,
 		all: all,
 		objectUpdated: objectUpdated,
-		reactive: reactive
+		reactive: reactive,
+		NOT_MODIFIED: NOT_MODIFIED
 	}
 	var typeScriptConversions = new Map()
 	typeScriptConversions.set(Array, VArray)
