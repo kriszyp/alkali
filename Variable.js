@@ -636,7 +636,7 @@
 
 			this.lastUpdate = updateEvent */
 			if (updateEvent instanceof PropertyChangeEvent) {
-				this.versionWithChildren = Math.max(this.version || 0, this.versionWithChildren || 0) + 1
+				this.versionWithChildren = Math.max(Date.now(), nextVersion + 1)
 			} else if (!isDownstream) {
 				this.updateVersion()
 			}
