@@ -22,8 +22,12 @@
 			if(a && a.put){
 				try {
 					return a.put(reverseA(output, b && b.valueOf()))
-				} catch(e) {
-					firstError = e
+				} catch(error) {
+					if (error.deniedPut) {
+						firstError = error
+					} else {
+						throw error
+					}
 				}
 			}
 			if(b && b.put){

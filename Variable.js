@@ -463,7 +463,10 @@
 					parent.put(object = typeof key == 'number' ? [] : {}, context)
 				} else if (typeof object != 'object') {
 					// if the parent is not an object, we can't set anything (that will be retained)
-					throw new Error('Can not set property on non-object')
+					var error = new Error('Can not set property on non-object')
+					error.deniedPut = true
+					throw error
+
 				}
 				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
 				if (oldValue === newValue && typeof newValue != 'object') {
@@ -762,7 +765,13 @@
 				if (oldValue && oldValue.put &&
 						// if it is set to fixed, we see we can put in the current variable
 						(variable.fixed || !(value && value.put))) {
-					return oldValue.put(value)
+					try {
+						return oldValue.put(value)
+					} catch (error) {
+						if (!error.deniedPut) {
+							throw error
+						}// else if the put was denied, continue on and set the value on this variable
+					}
 				}
 				return whenStrict(variable.setValue(value, context), function(value) {
 					var event = new RefreshEvent()
@@ -1423,7 +1432,9 @@
 				} else if (originalValue && originalValue.put) {
 					return originalValue.put(value)
 				} else {
-					throw new Error('Can not put value into a one-way transform, that lacks a reversal')
+					var error = new Error('Can not put value into a one-way transform, that lacks a reversal')
+					error.deniedPut = true
+					throw error
 				}
 			})
 		},
