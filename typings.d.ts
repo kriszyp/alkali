@@ -8,7 +8,7 @@ declare namespace alkali {
     constructor(value?: T)
     valueOf(): T
     property(key: KeyType): Variable<any>
-    property<U>(key: KeyType, PropertyClass: {new (): U}): U
+    property<U>(key: KeyType, PropertyClass: { new(): U }): U
     put(value: T | Variable<T>)
     get(key: KeyType): any
     set(key: KeyType, value: any)
@@ -20,9 +20,10 @@ declare namespace alkali {
     subscribe(listener: (event) => {
       value: () => T
     })
+    as<U>(Type: { new(): U }): U
 
-    static with<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<U>
-    static assign<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<U>
+    static with<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
+    static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
 
     schema: Variable<{}>
     validation: Variable<{}>
