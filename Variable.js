@@ -625,7 +625,7 @@
 			updateEvent.visited.add(this)
 			if (this.__debug) {
 				// debug is on
-				console.log('Variable changed at')
+				console.log('Variable ' + this.__debug + ' changed at')
 				console.log((new Error().stack || '').replace(/Error/, ''))
 			}
 
@@ -1062,12 +1062,15 @@
 		},
 		get _debug() {
 			if (this.__debug === undefined) {
-				this.__debug = true
+				this.__debug = this.name || (Math.random() + '').slice(2)
 			}
 			return this.__debug
 		},
 		set _debug(_debug) {
 			this.__debug = _debug
+		},
+		get _lastUpdated() {
+			return new Date(this.getVersion())
 		}
 	}
 
