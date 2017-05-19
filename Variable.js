@@ -294,12 +294,19 @@
 					if (!valueContext) {
 						valueContext = context.newContext()
 					}
-					valueContext.nextProperty = 'parent'
 				}
 				var key = this.key
 				var property = this
 				var parent = this.parent
-				var object = parent.getValue ? parent.getValue(valueContext) : parent.value
+				var object
+				if (parent.getValue) {
+					// parent needs value context, might want to do separate context,
+					// but would need to treat special so it retrieves the version
+					// only and not the versionWithChildren
+					object = parent.getValue(context, valueContext)
+				} else {
+					object = parent.value
+				}
 				if (object && object.then && !object.notifies) {
 					return when(object, function(object) {
 						var value = object == null ? undefined :
