@@ -270,6 +270,51 @@
 			return Variable.with(value)
 		}
 	}
+
+	Variable._logStackTrace = function(v) {
+		var stack = (new Error().stack || '').split(/[\r\n]+/)
+		if (stack[0] && /^Error\s*/.test(stack[0])) stack.shift()
+		if (stack[0] && /_logStackTrace/.test(stack[0])) stack.shift()
+		var coalesce = (this._debugOpts && this._debugOpts.coalesce) || []
+		if (this._debugOpts && this._debugOpts.shortStackTrace) {
+			// find the first non-coalesced line
+			var line = stack.find(line => !coalesce.some(({re}) => re.test(line))) || stack[0]
+			console.log('Variable ' + v.__debug + ' changed', line && line.replace(/^\s+/, ''))
+		} else {
+			if (coalesce.length) {
+				var s = []
+				var re
+				for (var i = 0; i < stack.length; i++) {
+					var line = stack[i]
+					if (re) {
+						if (re.test(line)) continue
+						re = null
+					}
+					re = coalesce.find(({re}) => re.test(line))
+					line = line.replace(/^\s+/,'')
+					if (re) {
+						s.push('(' + re.name + ') ' + line)
+						re = re.re
+					} else {
+						s.push(line)
+					}
+				}
+				stack = s
+			}
+			var stackObject = this._debugOpts && this._debugOpts.stackObject
+			if (stackObject) {
+				console.log('Variable ' + v.__debug + ' changed', stack)
+			} else {
+				console.log('Variable ' + v.__debug + ' changed\r\n' + stack.join('\r\n'))
+			}
+		}
+	}
+
+	Variable._debugOpts = {
+		coalesce: [{ name: 'alkali', re: /\/alkali\// }, { name: 'Promise', re: /(Promise\.)|(PromiseArray\.)|(\/bluebird\/)/ }],
+		stackObject: false
+	}
+
 	var VariablePrototype = Variable.prototype = {
 		// for debugging use
 		get _currentValue() {
@@ -631,8 +676,7 @@
 			updateEvent.visited.add(this)
 			if (this.__debug) {
 				// debug is on
-				console.log('Variable ' + this.__debug + ' changed at')
-				console.log((new Error().stack || '').replace(/Error/, ''))
+				Variable._logStackTrace(this)
 			}
 
 			var contextualInstance = context && context.getContextualized(this)
