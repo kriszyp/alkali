@@ -294,6 +294,12 @@
 					if (!valueContext) {
 						valueContext = context.newContext()
 					}
+					if (context.ifModifiedSince != null) {
+						// just too complicated to handle NOT_MODIFED objects for now
+						// TODO: Maybe handle this and delegate NOT_MODIFIED through this
+						// chain and through gotValue
+						context.ifModifiedSince = undefined 
+					}
 				}
 				var key = this.key
 				var property = this

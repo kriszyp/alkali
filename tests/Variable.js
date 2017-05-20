@@ -1108,6 +1108,39 @@ define([
 			assert.strictEqual(bar.property('foo').valueOf(), '2')
 		},
 
+		switchedPropertyVariable: function() {
+			var view = new Variable(0)
+			var scope = new Variable(0)
+			var testData = {
+			  0: new Variable([['a'], ['b'], ['c']]).to(function(d) {
+			  	return {
+			  		filtered: view.to(function(v) {
+			  			return d[v]
+			  		})
+			  	}
+			  }),
+			  1: new Variable([['d'], ['e'], ['f']]).to(function(d) {
+			  	return {
+			  		filtered: view.to(function(v) {
+			  			return d[v]
+			  		})
+			  	}
+			  })
+			}
+			var source = scope.to(function(s) {
+				return testData[s]
+			})
+			.property('filtered')
+      //.to(td => td.filtered)
+			var final = source.to(function(c) {
+				return '('+c.join()+')'
+			})
+			var updated = false
+			assert.equal(final.valueOf(), '(a)')
+			assert.isFalse(updated)
+		  view.put(1)
+			assert.equal(final.valueOf(), '(b)')
+		},
 		JSON: function() {
 			var obj = new Variable({foo: new Variable('bar')})
 			assert.strictEqual(JSON.stringify(obj), '{"foo":"bar"}')
