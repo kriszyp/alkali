@@ -1998,8 +1998,9 @@
 				var variable = this
 				return when(this.valueOf(), function(value) {
 					var returnValue = value[method].apply(value, args)
-					variable.put(value)
-					return returnValue
+					return when(variable.put(value), function() {
+						return returnValue
+					})
 				})
 			}
 		}		
