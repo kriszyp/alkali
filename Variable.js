@@ -278,7 +278,14 @@
 		var coalesce = (this._debugOpts && this._debugOpts.coalesce) || []
 		if (this._debugOpts && this._debugOpts.shortStackTrace) {
 			// find the first non-coalesced line
-			var line = stack.find(line => !coalesce.some(({re}) => re.test(line))) || stack[0]
+			var line
+			stack.some(function(line) {
+				if (!coalesce.some(function(re) {
+					return re.re.test(line)
+				})) {
+					line = stack[0]
+				}
+			})
 			console.log('Variable ' + v.__debug + ' changed', line && line.replace(/^\s+/, ''))
 		} else {
 			if (coalesce.length) {
@@ -290,7 +297,10 @@
 						if (re.test(line)) continue
 						re = null
 					}
-					re = coalesce.find(({re}) => re.test(line))
+					re
+					coalesce.some(function(re) {
+						return re = re.re.test(line)
+					})
 					line = line.replace(/^\s+/,'')
 					if (re) {
 						s.push('(' + re.name + ') ' + line)
