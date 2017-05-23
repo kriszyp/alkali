@@ -1420,6 +1420,14 @@
 
 					return contextualizedVariable.cachedValue
 				}
+				if (resolved[0] == NOT_MODIFIED) {
+					throw new Error('A not-modified signal was passed to a transform, which usually means a version number was decreased (they must monotically increase), computed version' + version +
+						' this variable version: ' + contextualizedVariable.version + ' cached version: ' +
+						contextualizedVariable.cachedVersion + ' ifModifiedSince: ' +
+						transformContext.ifModifiedSince +
+						' source version: ' + contextualizedVariable.source.version +
+						' source cached version: ' + contextualizedVariable.source.cachedVersion)
+				}
 				var result = transform ? transform.apply(variable, resolved) : resolved[0]
 				// cache it
 				contextualizedVariable.cachedValue = result
