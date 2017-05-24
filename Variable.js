@@ -1669,7 +1669,6 @@
 						lastValue = resuming.value
 						isThrowing = resuming.isThrowing
 					} else {
-						// a fresh start
 						if (context) {
 							// must restart the context, if the input values had previously been checked and hashed against this context, must restart them.
 							context.restart()
@@ -1681,6 +1680,27 @@
 					do {
 						var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](lastValue)
 						if (stepReturn.done) {
+							var oldSources = this.sources || []
+							var newLength = i
+							var newSources = []
+							while(this[argumentName = i > 0 ? 'source' + i : 'source']) {
+								// clear out old properties
+								this[argumentName] = undefined
+								i++
+							}
+							for (i = 0; i < newLength; i++) {
+								// create new array
+								var argumentName = i > 0 ? 'source' + i : 'source'
+								if (this[argumentName] && this[argumentName].notifies) {
+									newSources.push(this[argumentName])
+								}
+							}
+							for (i = 0; i < oldSources.length; i++) {
+								if (newSources.indexOf(oldSources[i]) == -1) {
+									oldSources[i].stopNotifies(this)
+								}
+							}
+							this.sources = newSources
 							return stepReturn.value
 						}
 						var nextVariable = stepReturn.value
@@ -1689,9 +1709,6 @@
 						try {
 							var argumentName = i > 0 ? 'source' + i : 'source'
 							if (this[argumentName] !== nextVariable) {
-								if (this[argumentName]) {
-									this[argumentName].stopNotifies(this)
-								}
 								// subscribe if it is a variable
 								if (nextVariable && nextVariable.notifies) {
 									if (this.listeners) {
