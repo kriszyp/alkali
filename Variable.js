@@ -1708,7 +1708,7 @@
 						// execution to see if they are the same
 						try {
 							var argumentName = i > 0 ? 'source' + i : 'source'
-							if (this[argumentName] !== nextVariable) {
+							if (this[argumentName] !== nextVariable || this[argumentName] === undefined) {
 								// subscribe if it is a variable
 								if (nextVariable && nextVariable.notifies) {
 									if (this.listeners) {
