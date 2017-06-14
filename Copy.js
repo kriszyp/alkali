@@ -63,14 +63,9 @@
 			// copy back to the original object
 			var original = this.copiedFrom.valueOf()
 			var newCopiedFrom = deepCopy(this.valueOf(), original)
-			if (original !== newCopiedFrom) {
-				// if we have replaced it with a new object/value, put it
-				this.copiedFrom.put && this.copiedFrom.put(newCopiedFrom)
-			} else {
-				// else we have modified an existing object, but we still need to notify
-				if (this.copiedFrom.notifies && this.copiedFrom.updated) { // copiedFrom doesn't have to be a variable, it can be a plain object
-					this.copiedFrom.updated()
-				}
+			if (this.copiedFrom.put) { // copiedFrom doesn't have to be a variable, it can be a plain object
+				// assign it now
+				this.copiedFrom.put(newCopiedFrom)
 			}
 			this.isDirty.put(false)
 			this.onSave && this.onSave()
