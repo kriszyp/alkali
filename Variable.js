@@ -681,7 +681,7 @@
 			}
 			if (updateEvent.visited.has(this)){
 				// if this event has already visited this variable, skip it
-				return
+				return updateEvent
 			}
 			updateEvent.visited.add(this)
 			if (this.__debug) {
