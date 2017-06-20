@@ -1377,7 +1377,8 @@
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			if (contextualizedVariable) {
 				if (contextualizedVariable.invalidated) {
-					contextualizedVariable.invalidated = false
+					contextualizedVariable.invalidated = 'resolving'
+					// will un-invalidate this later (contextualizedVariable.invalidated = false)
 				} else if (contextualizedVariable.listeners && contextualizedVariable.cachedVersion > -1) {
 					// it is live, so we can shortcut and just return the cached value
 					if (transformContext) {
@@ -1439,9 +1440,12 @@
 						' source cached version: ' + contextualizedVariable.source.cachedVersion)
 				}
 				var result = transform ? transform.apply(variable, resolved) : resolved[0]
+				if (contextualizedVariable.invalidated == 'resolving') {
+					contextualizedVariable.invalidated = false
+				}
 				// cache it
-				contextualizedVariable.cachedValue = result
 				contextualizedVariable.cachedVersion = transformContext.version
+				contextualizedVariable.cachedValue = result
 				if (result && result.then) {
 					result.then(function() {
 						// if it was a generator then the version could have been computed asynchronously as well
