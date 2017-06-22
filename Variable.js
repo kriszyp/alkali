@@ -1375,10 +1375,12 @@
 		getValue: function(context, transformContext) {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = context ? context.getContextualized(this) : this
+			var readyState
 			if (contextualizedVariable) {
-				if (contextualizedVariable.invalidated) {
-					contextualizedVariable.invalidated = 'resolving'
-					// will un-invalidate this later (contextualizedVariable.invalidated = false)
+				if (contextualizedVariable.readyState == 'invalidated')
+					readyState = contextualizedVariable.readyState = nextVersion.toString()
+				else if (isFinite(contextualizedVariable.readyState)) {
+					// will un-invalidate this later (contextualizedVariable.readyState = 'up-to-date')
 				} else if (contextualizedVariable.listeners && contextualizedVariable.cachedVersion > -1) {
 					// it is live, so we can shortcut and just return the cached value
 					if (transformContext) {
@@ -1394,6 +1396,7 @@
 							contextualizedVariable = this
 						}*/
 				}
+				readyState = contextualizedVariable.readyState
 			}
 			if (!transformContext) {
 				transformContext = context ? context.newContext() : new Context()
@@ -1425,6 +1428,7 @@
 				var version = transformContext.version
 				if (contextualizedVariable && contextualizedVariable.cachedVersion === version) {
 					// get it out of the cache
+					contextualizedVariable.readyState = 'up-to-date' // mark it as up-to-date now
 					if (context && context.ifModifiedSince >= version && !contextualizedVariable.returnedVariable) {
 						return NOT_MODIFIED
 					}
@@ -1440,21 +1444,23 @@
 						' source cached version: ' + contextualizedVariable.source.cachedVersion)
 				}
 				var result = transform ? transform.apply(variable, resolved) : resolved[0]
-				if (contextualizedVariable.invalidated == 'resolving') {
-					contextualizedVariable.invalidated = false
-				}
-				// cache it
-				contextualizedVariable.cachedVersion = transformContext.version
-				contextualizedVariable.cachedValue = result
-				if (result && result.then) {
-					result.then(function() {
-						// if it was a generator then the version could have been computed asynchronously as well
-						contextualizedVariable.cachedVersion = transformContext.version
-					}, function() {
-						// clear out the cache on an error
-						contextualizedVariable.cachedValue = null
-						contextualizedVariable.cachedVersion = 0
-					})
+				// an empty ready state means it is up-to-date as well
+				if (readyState == contextualizedVariable.readyState) {
+					if (contextualizedVariable.readyState)
+						contextualizedVariable.readyState = 'up-to-date' // mark it as up-to-date now
+					// cache it
+					contextualizedVariable.cachedVersion = transformContext.version
+					contextualizedVariable.cachedValue = result
+					if (result && result.then) {
+						result.then(function() {
+							// if it was a generator then the version could have been computed asynchronously as well
+							contextualizedVariable.cachedVersion = transformContext.version
+						}, function() {
+							// clear out the cache on an error
+							contextualizedVariable.cachedValue = null
+							contextualizedVariable.cachedVersion = 0
+						})
+					}
 				}
 				return result
 			})
@@ -1471,7 +1477,7 @@
 		},
 
 		updated: function(updateEvent, by, context, isDownstream) {
-			this.invalidated = true
+			this.readyState = 'invalidated'
 			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
 				// search for the output in the sources
 				var argument, argumentName
