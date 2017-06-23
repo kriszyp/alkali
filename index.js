@@ -9,9 +9,7 @@
 	main.Element = Element
 	lang.copy(main, VariableExports)
 	main.react = react
-	main.spawn = function(func) {
-		return react(func).valueOf()
-	}
+	main.spawn = lang.spawn
 	main.Renderer = Renderer.ElementRenderer
 	lang.copy(main, Renderer)
 	lang.copy(main, operators)

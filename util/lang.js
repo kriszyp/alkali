@@ -403,5 +403,41 @@
 		}
 	}
 	lang.isGenerator = isGenerator
+
+	function spawn(generator) {
+		var generatorIterator = typeof generator === 'function' ? generator() : generator
+		var resuming
+		var nextValue
+		var isThrowing
+		return next()
+		function next() {
+			do {
+				var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](nextValue)
+				if (stepReturn.done) {
+					return stepReturn.value
+				}
+				nextValue = stepReturn.value
+				// compare with the arguments from the last
+				// execution to see if they are the same
+				if (typeof nextValue === 'function' && isGenerator(nextVariable)) {
+					nextValue = run(nextValue())
+				}
+				if (nextValue && nextValue.then) {
+					// if it is a promise, we will wait on it
+					// and return the promise so that the next caller can wait on this
+					return nextValue.then(function(value) {
+						nextValue = value
+						return next()
+					}, function(error) {
+						nextValue = error
+						isThrowing = true
+						return next()
+					})
+				}
+				isThrowing = false
+			} while(true)
+		}
+	}
+	lang.spawn = spawn
 	return lang
 }))
