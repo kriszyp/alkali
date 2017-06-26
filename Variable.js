@@ -1375,7 +1375,7 @@
 		getValue: function(context, transformContext) {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = context ? context.getContextualized(this) : this
-			var readyState
+			var readyState = null
 			if (contextualizedVariable) {
 				if (contextualizedVariable.readyState == 'invalidated')
 					readyState = contextualizedVariable.readyState = nextVersion.toString()
@@ -1445,7 +1445,7 @@
 				}
 				var result = transform ? transform.apply(variable, resolved) : resolved[0]
 				// an empty ready state means it is up-to-date as well
-				if (readyState == contextualizedVariable.readyState) {
+				if (readyState == contextualizedVariable.readyState || readyState === null) {
 					if (contextualizedVariable.readyState)
 						contextualizedVariable.readyState = 'up-to-date' // mark it as up-to-date now
 					// cache it
