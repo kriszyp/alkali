@@ -1144,6 +1144,47 @@ define([
 		JSON: function() {
 			var obj = new Variable({foo: new Variable('bar')})
 			assert.strictEqual(JSON.stringify(obj), '{"foo":"bar"}')
+		},
+
+		'by default, initialized variable does not proxy': function() {
+			var sourceVariable = new Variable({foo: 1})
+			var containingVariable = new Variable(sourceVariable)
+			sourceVariable.set('foo', 2) // this will propagate down to containingVariable
+			containingVariable.set('foo', 3) // this will not affect the sourceVariable
+			assert.equal(containingVariable.get('foo'), 3)
+			assert.equal(sourceVariable.get('foo'), 2)
+		},
+
+		'by default, initialized property does not proxy': function() {
+			var source = new Variable('a')
+			// transform as initial value
+			var defaults = source.to(function(v) {
+				var d = {};
+				d[v] = true;
+				return d;
+			})
+			var selection = new Variable(defaults)
+			var pa = selection.property('a')
+			var pb = selection.property('b')
+			assert.deepEqual(defaults.valueOf(), { a: true })
+			assert.deepEqual(selection.valueOf(), { a : true })
+			assert.equal(pa.valueOf(), true)
+			assert.equal(pb.valueOf(), undefined)
+
+			pa.put(false) // XXX: updates value of defaults
+			//selection.set('a', false)
+			// selection should have a distinct value from defaults, and should no longer track defaults
+			assert.deepEqual(defaults.valueOf(), { a: true })
+			assert.deepEqual(selection.valueOf(), { a : false })
+			assert.equal(pa.valueOf(), false)
+			assert.equal(pb.valueOf(), undefined)
+
+			// updating the upstream source should not (no longer) affect downstream variable initialized with reference to source-derived transform
+			source.put('b')
+			assert.deepEqual(defaults.valueOf(), { b: true })
+			assert.deepEqual(selection.valueOf(), { a : false })
+			assert.equal(pa.valueOf(), false)
+			assert.equal(pb.valueOf(), undefined)
 		}
 	})
 })
