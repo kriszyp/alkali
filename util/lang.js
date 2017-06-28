@@ -369,6 +369,13 @@
 			for(var i in properties) {
 				prototype[i] = properties[i]
 			}
+			// copy descriptors
+			if (properties) {
+				var pnames = Object.getOwnPropertyNames(properties)
+				for (var i = 0; i < pnames.length; i++) {
+					Object.defineProperty(prototype, pnames[i], Object.getOwnPropertyDescriptor(properties, pnames[i]))
+				}
+      }
 			prototype.constructor = constructor
 			return constructor
 		},

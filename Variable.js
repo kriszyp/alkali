@@ -32,6 +32,9 @@
 		}
 		return callback(value)
 	}
+	function isStrictlyThenable(o) {
+		return o && o.then && !o.notifies
+	}
 	function whenStrict(value, callback) {
 		if (value && value.then && !value.notifies) {
 			return value.then(callback)
@@ -907,7 +910,7 @@
 			this.put(value)
 		},
 		setValue: function(value) {
-			this.value = value
+			return this.value = value
 		},
 		onValue: function(listener) {
 			return this.subscribe(function(event) {
@@ -2125,6 +2128,70 @@
 		},
 	})
 
+	var VPromised = lang.compose(Variable, function VPromised(value) {
+		return makeSubVar(this, value, VPromised)
+	}, {
+		_resolve: function(promise) {
+			// promise
+			if (this._promised) {
+				// ignore any outstanding promise
+				this._promised.cancelled = true
+			}
+			const self = this
+			const promised = this._promised = function(val) {
+				if (!promised.cancelled) {
+					self._resolvedValue = val
+					self.updated()
+				}
+			}
+			promise.then(promised)
+		},
+
+		set value(v) {
+			this._value = v
+			if (isStrictlyThenable(v)) {
+				this._resolve(v)
+			} else {
+				this._resolvedValue = v
+			}
+		},
+
+		get value() {
+			return this._value
+		},
+
+		setValue: function(v) {
+			return this.value = v
+		},
+
+		getValue: function(context, transformContext) {
+		//gotValue: function(value, parentContext, context) {
+			var v = Variable.prototype.getValue.call(this, context, transformContext)
+			//var v = Variable.prototype.gotValue.call(this, value, parentContext, context)
+			if (isStrictlyThenable(v)) {
+				this._resolve(v)
+				return this._resolvedValue
+			}
+			return v
+		},
+
+		// valueOf: function(context) {
+		// 	var v = Variable.prototype.valueOf.call(this, context)
+		// 	if (isStrictlyThenable(v)) {
+		// 		this._resolve(v)
+		// 		v = this._resolvedValue && this._resolvedValue.valueOf()
+		// 		if (isStrictlyThenable(v)) {
+		// 			// XXX: the resolved value we captured isn't really resolved (may be a var)
+		// 			// return undefined :/
+		// 			return undefined
+		// 		}
+		// 		return v
+		// 	} else {
+		// 		return v
+		// 	}
+		// }
+	})
+
 	var primitives = {
 		'string': VString,
 		'number': VNumber,
@@ -2154,6 +2221,7 @@
 		VNumber: VNumber,
 		VBoolean: VBoolean,
 		VPromise: VPromise,
+		VPromised: VPromised,
 		VDate: VDate,
 		VSet: VSet,
 		VMap: VMap,

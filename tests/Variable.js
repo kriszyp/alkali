@@ -11,6 +11,7 @@ define([
 	var VDate = VariableExports.VDate
 	var VNumber = VariableExports.VNumber
 	var VPromise = VariableExports.VPromise
+	var VPromised = VariableExports.VPromised
 	var Transform = VariableExports.Transform
 	function valueOfAndNotify(variable, callback) {
 		var context = new VariableExports.NotifyingContext(typeof callback === 'object' ? callback : {
@@ -1144,6 +1145,115 @@ define([
 		JSON: function() {
 			var obj = new Variable({foo: new Variable('bar')})
 			assert.strictEqual(JSON.stringify(obj), '{"foo":"bar"}')
+		},
+
+		VPromised: function() {
+			var v = new VPromised(new Promise(function (r) {
+				setTimeout(function() {	r('a') }, 100)
+			}))
+			assert.equal(v.valueOf(), undefined)
+			return new Promise(setTimeout).then(function () {
+				// still initial/undefined value
+				assert.equal(v.valueOf(), undefined)
+				return new Promise(function (r) { setTimeout(r, 150) }).then(function() {
+					// should contain resolved value now
+					assert.equal(v.valueOf(), 'a')
+					v.put(new Promise(function (r) {
+						setTimeout(function() {	r('b')	}, 100)
+					}))
+					assert.equal(v.valueOf(), 'a')
+					return new Promise(function (r) { setTimeout(r, 300) }).then(function() {
+						assert.equal(v.valueOf(), 'b')
+					})
+				})
+			})
+		},
+
+		VPromisedWithInitialValue: function() {
+			var v = new VPromised('z')
+			assert.equal(v.valueOf(), 'z')
+			v.put(new Promise(function (r) {
+				setTimeout(function() { r('b') }, 100)
+			}))
+			// still initial value
+			assert.equal(v.valueOf(), 'z')
+			return new Promise(function (r) { setTimeout(r, 110) }).then(function() {
+				// should contain new resolved value now
+				assert.equal(v.valueOf(), 'b')
+			})
+		},
+
+		AsVPromised: function() {
+			var s = new Variable()
+			var v = s.as(VPromised)
+			assert.equal(v.valueOf(), undefined)
+			s.put(new Promise(function (r) {
+				setTimeout(function() { r('a') }, 100)
+			}))
+			assert.equal(v.valueOf(), undefined)
+			return new Promise(setTimeout).then(function () {
+				// still initial/undefined value
+				assert.equal(v.valueOf(), undefined)
+				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
+					// should contain resolved value now
+					assert.equal(v.valueOf(), 'a')
+				})
+			})
+		},
+
+		AsVPromisedWithInitial: function() {
+			var s = new Variable('z')
+			var v = s.as(VPromised)
+			assert.equal(v.valueOf(), 'z')
+			s.put(new Promise(function (r) {
+				setTimeout(function() { r('a') }, 100)
+			}))
+			// XXX: VPromised doesn't properly capture initial nested variable value, so can only return undefined
+			assert.equal(v.valueOf(), /* '<z>' */ undefined)
+			return new Promise(setTimeout).then(function () {
+				// still initial value
+				// XXX: VPromised doesn't properly capture initial nested variable value, so can only return undefined
+				assert.equal(v.valueOf(), /* '<z>' */ undefined)
+				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
+					// should contain resolved value now
+					assert.equal(v.valueOf(), 'a')
+				})
+			})
+		},
+
+		VPromisedAsTransform: function() {
+			var s = new Variable()
+			var t = s.as(VPromised).to(function(primitiveValue) { return '<' + primitiveValue + '>' })
+			s.put(new Promise(function (r) {
+				setTimeout(function() { r('a') }, 100)
+			}))
+			assert.equal(t.valueOf(), undefined)
+			return new Promise(setTimeout).then(function () {
+				// still initial/undefined value
+				assert.equal(t.valueOf(), undefined)
+				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
+					// should contain resolved value now
+					assert.equal(t.valueOf(), '<a>')
+				})
+			})
+		},
+
+		VPromisedAsTransformWithInitial: function() {
+			var s = new Variable('z')
+			var t = s.as(VPromised).to(function(primitiveValue) { return '<' + primitiveValue + '>' })
+			s.put(new Promise(function (r) {
+				setTimeout(function() { r('a') }, 100)
+			}))
+			// XXX: VPromised doesn't properly capture initial nested variable value, so can only return undefined
+			assert.equal(t.valueOf(), /* '<z>' */ undefined)
+			return new Promise(setTimeout).then(function () {
+				// XXX: VPromised doesn't properly capture initial nested variable value, so can only return undefined
+				assert.equal(t.valueOf(), /* '<z>' */ undefined)
+				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
+					// should contain resolved value now
+					assert.equal(t.valueOf(), '<a>')
+				})
+			})
 		}
 	})
 })
