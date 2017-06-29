@@ -1254,6 +1254,29 @@ define([
 					assert.equal(t.valueOf(), '<a>')
 				})
 			})
-		}
+		},
+
+		asPromised: function() {
+			var s = new Variable(new Promise(function (r) {
+				setTimeout(function() {	r('a') }, 100)
+			}))
+			var v = s.asPromised()
+			assert.equal(v.valueOf(), undefined)
+			return new Promise(setTimeout).then(function () {
+				// still initial/undefined value
+				assert.equal(v.valueOf(), undefined)
+				return new Promise(function (r) { setTimeout(r, 150) }).then(function() {
+					// should contain resolved value now
+					assert.equal(v.valueOf(), 'a')
+					s.put(new Promise(function (r) {
+						setTimeout(function() {	r('b')	}, 100)
+					}))
+					assert.equal(v.valueOf(), 'a')
+					return new Promise(function (r) { setTimeout(r, 300) }).then(function() {
+						assert.equal(v.valueOf(), 'b')
+					})
+				})
+			})
+		},
 	})
 })

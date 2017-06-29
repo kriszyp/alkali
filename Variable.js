@@ -985,6 +985,13 @@
 			// easiest way to cast to a variable class
 			return new Class(this)
 		},
+		asPromised: function(defaultValue) {
+			const output = new Variable(defaultValue)
+			this.subscribe(function(e) {
+				Promise.resolve(e.value()).then(function(value) { output.put(value) })
+			})
+			return new Transform(output)
+		},
 		get schema() {
 			// default schema is the constructor
 			if (this.returnedVariable) {
