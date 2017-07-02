@@ -1195,6 +1195,32 @@ define([
 			assert.equal(pa.valueOf(), undefined)
 			assert.equal(pb.valueOf(), true)
 			assert.equal(reverseCalled, 0)
+		},
+
+		'Variable default returned when variable value is undefined': function() {
+			var v = new Variable()
+			v.default = 'a'
+			assert.equal(v.valueOf(), 'a')
+			v.put('b')
+			assert.equal(v.valueOf(), 'b')
+			v.put(undefined)
+			assert.equal(v.valueOf(), 'a')
+		},
+
+		'Variable default is not resolved': function() {
+			var d = new Variable('default')
+			var v = new Variable()
+			v.default = d
+			assert.notEqual(v.valueOf(), 'default')
+			assert.equal(v.valueOf(), d)
+		},
+
+		'Property resolves to default value': function() {
+			var v = new Variable()
+			v.default = { v: 'default' }
+			var vp = v.property('v')
+			assert.deepEqual(v.valueOf(), { v: 'default' })
+			assert.deepEqual(vp.valueOf(), 'default')
 		}
 	})
 })
