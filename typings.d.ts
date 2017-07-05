@@ -79,7 +79,7 @@ declare namespace alkali {
   export class VSet<T> extends Variable<Set<T>> {    
   }
   export class VPromise<T> extends Variable<Promise<T>> {
-    to<U>(transform: (T) => VPromise<U> | Variable<U> | Promise<U> | U): VPromise<U>
+    //to<U>(transform: (T) => VPromise<U> | Variable<U> | Promise<U> | U): VPromise<U>
   }
   export class VString extends Variable<string> {
   }
