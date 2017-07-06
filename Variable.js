@@ -259,11 +259,7 @@
 	function Variable(value) {
 		if (this instanceof Variable) {
 			// new call, may eventually use new.target
-			if (value === undefined) {
-				if (this.default !== undefined) {
-					this.value = this.default
-				}
-			} else {
+			if (value !== undefined) {
 				this.value = value
 			}
 		} else {
@@ -340,7 +336,7 @@
 				this.getValue(context, context && (valueContext = context.newContext())) :
 				this.value, context, valueContext)
 		},
-		getValue: function(context, valueContext) {
+		getValue: function(context, valueContext, forModification) {
 			if (context) {
 				context.hash(this.version)
 			}
@@ -364,7 +360,7 @@
 					// parent needs value context, might want to do separate context,
 					// but would need to treat special so it retrieves the version
 					// only and not the versionWithChildren
-					object = parent.getValue(context, valueContext)
+					object = parent.getValue(context, valueContext, forModification)
 				} else {
 					object = parent.value
 				}
@@ -399,7 +395,9 @@
 				}
 				return value
 			}
-			return this.value
+			return this.hasOwnProperty('value') ?
+				this.value :
+				forModification ? (this.value = lang.deepCopy(this.default && this.default.valueOf(valueContext))) : this.default
 		},
 		gotValue: function(value, parentContext, context) {
 			var previousNotifyingValue = this.returnedVariable
@@ -445,9 +443,6 @@
 					context.nextProperty = 'returnedVariable'
 				}
 				value = value.valueOf(context)
-			}
-			if (value === undefined) {
-				value = variable.default
 			}
 			if (value && value.then) {
 				return value.then(function(value) {
@@ -525,7 +520,7 @@
 				return this.put(newValue, context)
 			}
 			var variable = this
-			return whenStrict(parent.getValue ? parent.getValue(context) : parent.value, function(object) {
+			return whenStrict(parent.getValue ? parent.getValue(context, null, true) : parent.value, function(object) {
 				if (object == null) {
 					// nothing there yet, create an object to hold the new property
 					parent.put(object = typeof key == 'number' ? [] : {}, context)
@@ -825,7 +820,7 @@
 			if (this.parent) {
 				return this._changeValue(context, RequestChange, value)
 			}
-			return whenStrict(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
+			return whenStrict(this.getValue ? this.getValue(context, null, true) : this.value, function(oldValue) {
 				if (oldValue === value && typeof value != 'object') {
 					return noChange
 				}
@@ -1337,7 +1332,9 @@
 	}
 
 	var VMap = Variable.VMap = lang.compose(Variable, function(value){
-		this.value = typeof value === 'undefined' ? this.default : value
+		if (typeof value !== 'undefined') {
+			this.value = value
+		}
 	}, {
 		fixed: true,
 		// TODO: Move all the get and set functionality for maps out of Variable

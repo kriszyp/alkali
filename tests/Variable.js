@@ -1203,16 +1203,16 @@ define([
 			assert.equal(v.valueOf(), 'a')
 			v.put('b')
 			assert.equal(v.valueOf(), 'b')
+			/* Isn't this an explicit assignment of the variable?
 			v.put(undefined)
-			assert.equal(v.valueOf(), 'a')
+			assert.equal(v.valueOf(), 'a')*/
 		},
 
 		'Variable default is not resolved': function() {
 			var d = new Variable('default')
 			var v = new Variable()
 			v.default = d
-			assert.notEqual(v.valueOf(), 'default')
-			assert.equal(v.valueOf(), d)
+			assert.strictEqual(v.valueOf(), 'default')
 		},
 
 		'Property resolves to default value': function() {
@@ -1221,6 +1221,16 @@ define([
 			var vp = v.property('v')
 			assert.deepEqual(v.valueOf(), { v: 'default' })
 			assert.deepEqual(vp.valueOf(), 'default')
+		},
+		
+		'Assignment does not change defaults': function() {
+			var v = new Variable()
+			var defaultObject = v.default = { v: 'default' }
+			var vp = v.property('v')
+			assert.equal(vp.valueOf(), 'default')
+			vp.put('new value')
+			assert.equal(vp.valueOf(), 'new value')
+			assert.equal(defaultObject.v, 'default')
 		}
 	})
 })
