@@ -154,7 +154,7 @@ define([
 				}
 				return sum
 			})
-			var sequencePromise = sequence.valueOf() // start it
+			var sequencePromise = sequence.then(function(value) { return value }) // start it
 			currentResolver(2)
 			return Promise.resolve().then(() => {
 				assert.strictEqual(sum, 2)

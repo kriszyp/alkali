@@ -4,18 +4,19 @@ declare namespace alkali {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
   }
 
-  export class Variable<T> {
-    constructor(value?: T)
+  export class Variable<T> implements Promise<T> {
+    constructor(value?: T | Promise<T>)
     valueOf(): T
-    property(key: KeyType): Variable<any>
+    then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
+    property<K extends keyof T>(key: KeyType): Variable<T[K]>
     property<U>(key: KeyType, PropertyClass: { new(): U }): U
-    put(value: T | Variable<T>)
-    get(key: KeyType): any
-    set(key: KeyType, value: any)
+    put(value: T | Variable<T> | Promise<T>)
+    get<K extends keyof T>(key: KeyType): T[K]
+    set<K extends keyof T>(key: KeyType, value: T[K] | Variable<T[K]> | Promise<T[K]>)
     undefine(key: KeyType)
     proxy(variable: Variable<T>)
     for(subject: any): Variable<T>
-    to<U>(transform: (T) => Variable<U> | U): Variable<U>
+    to<U>(transform: (T) => Variable<U> | Promise<U> | U): Variable<U>
     updated()
     subscribe(listener: (event) => {
       value: () => T
@@ -38,8 +39,9 @@ declare namespace alkali {
     assign<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     hasOwn(Target: () => any)
 
-    put(value: T | Variable<T>)
+    put(value: T | Variable<T> | Promise<T>)
     valueOf(): T
+    then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
     for(subject: any): Variable<any>
     to<U>(transform: (T) => U | Variable<U>): VariableClass<U>
     property(key: KeyType): VariableClass<any>

@@ -369,13 +369,6 @@
 			for(var i in properties) {
 				prototype[i] = properties[i]
 			}
-			// copy descriptors
-			if (properties) {
-				var pnames = Object.getOwnPropertyNames(properties)
-				for (var i = 0; i < pnames.length; i++) {
-					Object.defineProperty(prototype, pnames[i], Object.getOwnPropertyDescriptor(properties, pnames[i]))
-				}
-      }
 			prototype.constructor = constructor
 			return constructor
 		},
@@ -432,14 +425,24 @@
 				if (nextValue && nextValue.then) {
 					// if it is a promise, we will wait on it
 					// and return the promise so that the next caller can wait on this
-					return nextValue.then(function(value) {
+					var resolved
+					var isSync
+					var result = nextValue.then(function(value) {
 						nextValue = value
-						return next()
+						if (isSync === false) {
+							return next()
+						} else {
+							isSync = true
+						}
 					}, function(error) {
 						nextValue = error
 						isThrowing = true
 						return next()
 					})
+					if (!isSync) {
+						isSync = false
+						return result
+					} // else keeping looping to avoid recursion
 				}
 				isThrowing = false
 			} while(true)

@@ -57,9 +57,9 @@
 			})
 		}
 		if (options.updateOnStart === false){
-			// even if we don't render on start, we still need to compute the value so we can depend on the computed variables
-			this.variable.valueOf(this)
 			var contextualized = this.contextualized || this.variable
+			this.variable.valueOf(this)
+			// even if we don't render on start, we still need to compute the value so we can depend on the computed 
 			// TODO: we may need to handle recontextualization if it returns a promise
 			contextualized.notifies(this)
 		} else {
@@ -198,30 +198,37 @@
 	}
 	ElementRenderer.prototype.updateElement = function(element) {
 		this.invalidated = false
-		if (!this.omitValueOf) {
-			var value = this.variable.valueOf(this)
-			var contextualized = this.contextualized || this.variable
-			// TODO: we may need to handle recontextualization if it returns a promise
-			contextualized.notifies(this)
-		}
-		if(value !== undefined || this.started || this.omitValueOf){
+		if (this.omitValueOf) {
 			this.started = true
-			if(value && value.then){
-				if(this.renderLoading){
-					this.renderLoading(value, element)
+			this.renderUpdate(undefined, element)
+			return
+		}
+		var resolved
+		var renderer = this
+		var deferredRender = this.variable.then(function(value) {
+			resolved = true
+			console.log("resolved value for renderer to", value, deferredRender && !deferredRender.isCanceled)
+			if (!deferredRender || !deferredRender.isCanceled) {
+				if (deferredRender && deferredRender === renderer.deferredRender) {
+					renderer.deferredRender = null
 				}
-				var renderer = this
-				var deferredRender = this.deferredRender = function (value) {
-					if (!deferredRender.isCanceled) {
-						if (deferredRender === renderer.deferredRender) {
-							renderer.deferredRender = null
-						}
-						renderer.renderUpdate(value, element)
-					}
+				var contextualized = renderer.contextualized || renderer.variable
+				contextualized.notifies(renderer)
+				if(value !== undefined || renderer.started){
+					renderer.started = true
+					renderer.renderUpdate(value, element)
 				}
-				value.then(deferredRender)
-			}else{
-				this.renderUpdate(value, element)
+			}
+		}, null, this)
+		if(!resolved){
+			console.log('waiting for value for rendrer')
+			// start listening for changes immediately
+			var contextualized = this.contextualized || this.variable
+			contextualized.notifies(renderer)
+			this.deferredRender = deferredRender
+			if (this.renderLoading) {
+				// if we have loading renderer call it
+				this.renderLoading(deferredRender, element)
 			}
 		}
 	}

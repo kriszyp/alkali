@@ -10,8 +10,6 @@ define([
 	var VSet = VariableExports.VSet
 	var VDate = VariableExports.VDate
 	var VNumber = VariableExports.VNumber
-	var VPromise = VariableExports.VPromise
-	var VPromised = VariableExports.VPromised
 	var Transform = VariableExports.Transform
 	function valueOfAndNotify(variable, callback) {
 		var context = new VariableExports.NotifyingContext(typeof callback === 'object' ? callback : {
@@ -536,14 +534,11 @@ define([
 			assert.equal(a.valueOf(), false)
 			assert.equal(c.valueOf(), false)
 		},
-		VPromise: function() {
-			var p = new VPromise('hi')
-			var called
-			p.then(function(value) {
-				called = true
+		variablePromise: function() {
+			var p = new Variable(Promise.resolve('hi'))
+			return p.then(function(value) {
 				assert.equal(value, 'hi')
 			})
-			assert.isTrue(called)
 		},
 		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)
@@ -753,7 +748,7 @@ define([
 				return value + 2
 			})
 			var sum
-			var finished = plus2.valueOf().then(function(result){
+			var finished = plus2.then(function(result){
 				sum = result
 			})
 			assert.isUndefined(sum)
@@ -767,7 +762,7 @@ define([
 			var inner = new Variable('a')
 			var resolvePromise
 			var promise = new Promise(function(resolve) {
-					resolvePromise = resolve
+				resolvePromise = resolve
 			})
 			var promiseVar = new Variable(promise)
 			outerCallbackInvoked = 0
@@ -780,9 +775,9 @@ define([
 				})
 			})
 			var result
-			var finished = composed.valueOf().then(function(composedValue) {
-														console.log('composedValue', composedValue)
-					result = composedValue
+			var finished = composed.then(function(composedValue) {
+				console.log('composedValue', composedValue)
+				result = composedValue
 			})
 			assert.isUndefined(result)
 			resolvePromise('promise')
@@ -1147,8 +1142,8 @@ define([
 			assert.strictEqual(JSON.stringify(obj), '{"foo":"bar"}')
 		},
 
-		VPromised: function() {
-			var v = new VPromised(new Promise(function (r) {
+		promised: function() {
+			var v = new Variable(new Promise(function (r) {
 				setTimeout(function() {	r('a') }, 100)
 			}))
 			assert.equal(v.valueOf(), undefined)
@@ -1169,8 +1164,8 @@ define([
 			})
 		},
 
-		VPromisedWithInitialValue: function() {
-			var v = new VPromised('z')
+		promisedWithInitialValue: function() {
+			var v = new Variable('z')
 			assert.equal(v.valueOf(), 'z')
 			v.put(new Promise(function (r) {
 				setTimeout(function() { r('b') }, 100)
@@ -1183,47 +1178,9 @@ define([
 			})
 		},
 
-		AsVPromised: function() {
+		promisedAsTransform: function() {
 			var s = new Variable()
-			var v = s.as(VPromised)
-			assert.equal(v.valueOf(), undefined)
-			s.put(new Promise(function (r) {
-				setTimeout(function() { r('a') }, 100)
-			}))
-			assert.equal(v.valueOf(), undefined)
-			return new Promise(setTimeout).then(function () {
-				// still initial/undefined value
-				assert.equal(v.valueOf(), undefined)
-				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
-					// should contain resolved value now
-					assert.equal(v.valueOf(), 'a')
-				})
-			})
-		},
-
-		AsVPromisedWithInitial: function() {
-			var s = new Variable('z')
-			var v = s.as(VPromised)
-			assert.equal(v.valueOf(), 'z')
-			s.put(new Promise(function (r) {
-				setTimeout(function() { r('a') }, 100)
-			}))
-			// XXX: VPromised doesn't properly capture initial nested variable value, so can only return undefined
-			assert.equal(v.valueOf(), /* '<z>' */ undefined)
-			return new Promise(setTimeout).then(function () {
-				// still initial value
-				// XXX: VPromised doesn't properly capture initial nested variable value, so can only return undefined
-				assert.equal(v.valueOf(), /* '<z>' */ undefined)
-				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
-					// should contain resolved value now
-					assert.equal(v.valueOf(), 'a')
-				})
-			})
-		},
-
-		VPromisedAsTransform: function() {
-			var s = new Variable()
-			var t = s.as(VPromised).to(function(primitiveValue) { return '<' + primitiveValue + '>' })
+			var t = s.to(function(primitiveValue) { return '<' + primitiveValue + '>' })
 			s.put(new Promise(function (r) {
 				setTimeout(function() { r('a') }, 100)
 			}))
@@ -1238,45 +1195,20 @@ define([
 			})
 		},
 
-		VPromisedAsTransformWithInitial: function() {
+		promisedAsTransformWithInitial: function() {
 			var s = new Variable('z')
-			var t = s.as(VPromised).to(function(primitiveValue) { return '<' + primitiveValue + '>' })
+			var t = s.to(function(primitiveValue) { return '<' + primitiveValue + '>' })
 			s.put(new Promise(function (r) {
 				setTimeout(function() { r('a') }, 100)
 			}))
-			// XXX: VPromised doesn't properly capture initial nested variable value, so can only return undefined
-			assert.equal(t.valueOf(), /* '<z>' */ undefined)
+			assert.equal(t.valueOf(), '<z>' )
 			return new Promise(setTimeout).then(function () {
-				// XXX: VPromised doesn't properly capture initial nested variable value, so can only return undefined
-				assert.equal(t.valueOf(), /* '<z>' */ undefined)
+				assert.equal(t.valueOf(), '<z>')
 				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
 					// should contain resolved value now
 					assert.equal(t.valueOf(), '<a>')
 				})
 			})
-		},
-
-		asPromised: function() {
-			var s = new Variable(new Promise(function (r) {
-				setTimeout(function() {	r('a') }, 100)
-			}))
-			var v = s.asPromised()
-			assert.equal(v.valueOf(), undefined)
-			return new Promise(setTimeout).then(function () {
-				// still initial/undefined value
-				assert.equal(v.valueOf(), undefined)
-				return new Promise(function (r) { setTimeout(r, 150) }).then(function() {
-					// should contain resolved value now
-					assert.equal(v.valueOf(), 'a')
-					s.put(new Promise(function (r) {
-						setTimeout(function() {	r('b')	}, 100)
-					}))
-					assert.equal(v.valueOf(), 'a')
-					return new Promise(function (r) { setTimeout(r, 300) }).then(function() {
-						assert.equal(v.valueOf(), 'b')
-					})
-				})
-			})
-		},
+		}
 	})
 })

@@ -62,7 +62,7 @@ define([
 			});
 			resolvePromise(4);
 
-			return variable.valueOf().then(function() {
+			return variable.then(function() {
 				return new Promise(requestAnimationFrame);
 			});
 

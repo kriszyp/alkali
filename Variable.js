@@ -26,9 +26,9 @@
 	})
 	var listenerId = 1
 
-	function when(value, callback) {
+	function when(value, callback, errback) {
 		if (value && value.then) {
-			return value.then(callback)
+			return value.then(callback, errback)
 		}
 		return callback(value)
 	}
@@ -259,6 +259,44 @@
 		}
 	}
 
+	function assignPromise(variable, promise, callback) {
+		var isSync
+		promise.then(function(value) {
+			if (isSync !== false) {
+				// synchronous resolution
+				isSync = true
+			} else if (variable.promise === promise) {
+				// async resolution make sure we are the still the most recent promise
+				variable.promise = null
+			} else {
+				// if async and we are not the most recent, just return
+				return
+			}
+			if (callback) { // custom handler
+				callback(value) 
+			} else {
+				variable.value = value
+			}
+		}, function(error) {
+			if (isSync !== false) {
+				// synchronous resolution
+				isSync = true
+			} else if (variable.promise === promise) {
+				// async resolution make sure we are the still the most recent promise
+				variable.promise = null
+			} else {
+				// if async and we are not the most recent, just return
+				return
+			}
+			variable.error = error
+		})
+		if (!isSync) {
+			isSync = false
+			variable.promise = promise
+		}
+		return promise
+	}
+
 	function Variable(value) {
 		if (this instanceof Variable) {
 			// new call, may eventually use new.target
@@ -266,6 +304,8 @@
 				if (this.default !== undefined) {
 					this.value = this.default
 				}
+			} else if (value && value.then && !value.notifies) {
+				assignPromise(this, value)
 			} else {
 				this.value = value
 			}
@@ -339,11 +379,17 @@
 		constructor: Variable,
 		valueOf: function(context) {
 			var valueContext
-			return this.gotValue(this.getValue ?
-				this.getValue(context, context && (valueContext = context.newContext())) :
-				this.value, context, valueContext)
+			return this.gotValue(true, this.getValue(true, context, context && (valueContext = context.newContext())), context, valueContext)
 		},
-		getValue: function(context, valueContext) {
+		then: function(onResolve, onError, context) {
+			var valueContext
+			var result = this.gotValue(false, this.getValue(false, context, context && (valueContext = context.newContext())), context, valueContext)
+			if (onResolve || onError) {
+				return when(result, onResolve, onError)
+			}
+			return result
+		},
+		getValue: function(sync, context, valueContext) {
 			if (context) {
 				context.hash(this.version)
 			}
@@ -367,11 +413,11 @@
 					// parent needs value context, might want to do separate context,
 					// but would need to treat special so it retrieves the version
 					// only and not the versionWithChildren
-					object = parent.getValue(context, valueContext)
+					object = parent.getValue(sync, context, valueContext)
 				} else {
 					object = parent.value
 				}
-				if (object && object.then && !object.notifies) {
+				if (!sync && object && object.then && !object.notifies) {
 					return when(object, function(object) {
 						var value = object == null ? undefined :
 							typeof object.property === 'function' ? object.property(key) :
@@ -402,9 +448,9 @@
 				}
 				return value
 			}
-			return this.value
+			return sync ? this.value : (this.promise || this.value)
 		},
-		gotValue: function(value, parentContext, context) {
+		gotValue: function(sync, value, parentContext, context) {
 			var previousNotifyingValue = this.returnedVariable
 			var variable = this
 			if (previousNotifyingValue) {
@@ -447,15 +493,17 @@
 				if (context) {
 					context.nextProperty = 'returnedVariable'
 				}
-				value = value.valueOf(context)
+				if (sync) {
+					value = value.valueOf(context)
+				}
 			}
 			if (value === undefined) {
 				value = variable.default
 			}
-			if (value && value.then) {
+			if (!sync && value && value.then) {
 				return value.then(function(value) {
 					if (value && value.subscribe) {
-						return Variable.prototype.gotValue.call(variable, value, parentContext, context)
+						return Variable.prototype.gotValue.call(sync, variable, value, parentContext, context)
 					}
 					if (context) {
 						parentContext.integrate(context, context.contextualize(variable, parentContext) || variable)
@@ -463,7 +511,7 @@
 						parentContext.addInput(variable)
 					}
 					return value
-				})
+				}, null, context)
 			}
 			if (context) {
 				parentContext.integrate(context, context.contextualize(this, parentContext) || this)
@@ -528,54 +576,59 @@
 				return this.put(newValue, context)
 			}
 			var variable = this
-			return whenStrict(parent.getValue ? parent.getValue(context) : parent.value, function(object) {
-				if (object == null) {
-					// nothing there yet, create an object to hold the new property
-					parent.put(object = typeof key == 'number' ? [] : {}, context)
-				} else if (typeof object != 'object') {
-					// if the parent is not an object, we can't set anything (that will be retained)
-					var error = new Error('Can not set property on non-object')
-					error.deniedPut = true
-					throw error
+			var object = parent.getValue ? parent.getValue(true, context) : parent.value
+			if (object == null) {
+				// nothing there yet, create an object to hold the new property
+				parent.put(object = typeof key == 'number' ? [] : {}, context)
+			} else if (typeof object != 'object') {
+				// if the parent is not an object, we can't set anything (that will be retained)
+				var error = new Error('Can not set property on non-object')
+				error.deniedPut = true
+				throw error
 
-				}
-				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-				if (oldValue === newValue && typeof newValue != 'object') {
-					// no actual change to make
-					return noChange
-				}
-				if (typeof object.set === 'function') {
-					object.set(key, newValue)
+			}
+			var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
+			if (oldValue === newValue && typeof newValue != 'object') {
+				// no actual change to make
+				return noChange
+			}
+			if (typeof object.set === 'function') {
+				object.set(key, newValue)
+			} else {
+				if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
+					// if a put and the property value is a variable, assign it to that.
+					oldValue.put(newValue)
 				} else {
-					if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
-						// if a put and the property value is a variable, assign it to that.
-						oldValue.put(newValue)
+					if (newValue && newValue.then && !newValue.notifies) {
+						newValue = assignPromise(this, newValue, function(value) {
+							object[key] = value
+						})
 					} else {
 						object[key] = newValue
-						// or set the setter/getter
 					}
+					// or set the setter/getter
 				}
-				var event = new RefreshEvent()
-				event.oldValue = oldValue
-				event.target = variable
-				variable.updated(event, variable, context)
+			}
+			var event = new RefreshEvent()
+			event.oldValue = oldValue
+			event.target = variable
+			variable.updated(event, variable, context)
 
-				// now notify any object listeners
-				var listeners = propertyListenersMap.get(object)
-				// we need to do it before the other listeners, so we can update it before
-				// we trigger a full clobbering of the object
-				if (listeners) {
-					listeners = listeners.slice(0)
-					for (var i = 0, l = listeners.length; i < l; i++) {
-						var listener = listeners[i]
-						if (listener !== parent) {
-							// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
-							listener._propertyChange(key, object, context, type)
-						}
+			// now notify any object listeners
+			var listeners = propertyListenersMap.get(object)
+			// we need to do it before the other listeners, so we can update it before
+			// we trigger a full clobbering of the object
+			if (listeners) {
+				listeners = listeners.slice(0)
+				for (var i = 0, l = listeners.length; i < l; i++) {
+					var listener = listeners[i]
+					if (listener !== parent) {
+						// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
+						listener._propertyChange(key, object, context, type)
 					}
 				}
-				return newValue
-			})
+			}
+			return newValue
 		},
 
 		_propertyChange: function(propertyName, object, context, type) {
@@ -828,49 +881,49 @@
 			if (this.parent) {
 				return this._changeValue(context, RequestChange, value)
 			}
-			return whenStrict(this.getValue ? this.getValue(context) : this.value, function(oldValue) {
-				if (oldValue === value && typeof value != 'object') {
-					return noChange
+			var oldValue = this.getValue ? this.getValue(true, context) : this.value
+			if (oldValue === value && typeof value != 'object') {
+				return noChange
+			}
+			if (oldValue && oldValue.put &&
+					// if it is set to fixed, we see we can put in the current variable
+					(variable.fixed || !(value && value.put))) {
+				try {
+					return oldValue.put(value)
+				} catch (error) {
+					if (!error.deniedPut) {
+						throw error
+					}// else if the put was denied, continue on and set the value on this variable
 				}
-				if (oldValue && oldValue.put &&
-						// if it is set to fixed, we see we can put in the current variable
-						(variable.fixed || !(value && value.put))) {
-					try {
-						return oldValue.put(value)
-					} catch (error) {
-						if (!error.deniedPut) {
-							throw error
-						}// else if the put was denied, continue on and set the value on this variable
-					}
-				}
-				return whenStrict(variable.setValue(value, context), function(value) {
-					var event = new RefreshEvent()
-					event.oldValue = oldValue
-					event.target = variable
-					variable.updated(event, variable, context)
-					return value
-				})
-			})
+			}
+			if (value && value.then && !value.notifies) {
+				value = assignPromise(this, value)
+			} else {
+				variable.value = value
+			}
+			var event = new RefreshEvent()
+			event.oldValue = oldValue
+			event.target = variable
+			variable.updated(event, variable, context)
+			return value
 		},
 		get: function(key) {
 			if (this[key] || (this._properties && this._properties[key])) {
 				return this.property(key).valueOf()
 			}
-			var object = this.getValue()
+			var object = this.getValue(true)
 			if (!object) {
 				return
 			}
 			if (typeof object.get === 'function') {
 				return object.get(key)
 			}
-			return whenStrict(object, function(object) {
-				var value = object[key]
-				if (value && value.notifies) {
-					// nested variable situation, get underlying value
-					return value.valueOf()
-				}
-				return value
-			})
+			var value = object[key]
+			if (value && value.notifies) {
+				// nested variable situation, get underlying value
+				return value.valueOf()
+			}
+			return value
 		},
 		set: function(key, value) {
 			// TODO: create an optimized route when the property doesn't exist yet
@@ -1382,7 +1435,7 @@
 			}
 		}
 	}, {
-		getValue: function(context, transformContext) {
+		getValue: function(sync, context, transformContext) {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			var readyState = null
@@ -1427,7 +1480,9 @@
 				if (transformContext) {
 					transformContext.nextProperty = argumentName
 				}
-				args[i] = argument && argument.valueOf(transformContext)
+				args[i] = argument && (
+					sync ? argument.valueOf(transformContext) :
+						argument.then(null, null, transformContext))
 			}
 	 		var variable = this
  			return whenAll(args, function(resolved) {
@@ -1459,9 +1514,7 @@
 					if (contextualizedVariable.readyState)
 						contextualizedVariable.readyState = 'up-to-date' // mark it as up-to-date now
 					// cache it
-					contextualizedVariable.cachedVersion = transformContext.version
-					contextualizedVariable.cachedValue = result
-					if (result && result.then) {
+					if (result && result.then && !result.notifies) {
 						result.then(function() {
 							// if it was a generator then the version could have been computed asynchronously as well
 							contextualizedVariable.cachedVersion = transformContext.version
@@ -1470,6 +1523,11 @@
 							contextualizedVariable.cachedValue = null
 							contextualizedVariable.cachedVersion = 0
 						})
+						if (sync) // should we return the stale data if we are in sync mode?
+							return contextualizedVariable.cachedValue
+					} else {
+						contextualizedVariable.cachedVersion = transformContext.version
+						contextualizedVariable.cachedValue = result
 					}
 				}
 				return result
@@ -1784,7 +1842,7 @@
 	}, {
 		transform: function(target) {
 			var target = this.source
-			return target.validate(target, target.schema)
+			return target && target.validate(target, target.schema)
 		}
 	})
 
@@ -1916,7 +1974,11 @@
 		// contextualized valueOf
 		return instanceForContext(this, context).valueOf(context)
 	}
-	Variable.getValue = function(context) {
+	Variable.then = function(callback, errback, context) {
+		// contextualized valueOf
+		return instanceForContext(this, context).then(callback, errback, context)
+	}
+	Variable.getValue = function(sync, context) {
 		// contextualized getValue
 		return instanceForContext(this, context)
 	}
@@ -2125,80 +2187,10 @@
 	var VPromise = lang.compose(Variable, function VPromise(value) {
 		return makeSubVar(this, value, VPromise)
 	}, {
-		then: function(onResolve, onError) {
-			// short hand for this.valueOf().then()
-			var value = this.valueOf()
-			if (value && value.then) {
-				return value.then(onResolve, onError)
-			}
-			return onResolve(value)
+		valueOf: function(context) {
+			return this.then(null, null, context)
 		},
 	})
-
-	var VPromised = lang.compose(Variable, function VPromised(value) {
-		return makeSubVar(this, value, VPromised)
-	}, {
-		_resolve: function(promise) {
-			// promise
-			if (this._promised) {
-				// ignore any outstanding promise
-				this._promised.cancelled = true
-			}
-			const self = this
-			const promised = this._promised = function(val) {
-				if (!promised.cancelled) {
-					self._resolvedValue = val
-					self.updated()
-				}
-			}
-			promise.then(promised)
-		},
-
-		set value(v) {
-			this._value = v
-			if (isStrictlyThenable(v)) {
-				this._resolve(v)
-			} else {
-				this._resolvedValue = v
-			}
-		},
-
-		get value() {
-			return this._value
-		},
-
-		setValue: function(v) {
-			return this.value = v
-		},
-
-		getValue: function(context, transformContext) {
-		//gotValue: function(value, parentContext, context) {
-			var v = Variable.prototype.getValue.call(this, context, transformContext)
-			//var v = Variable.prototype.gotValue.call(this, value, parentContext, context)
-			if (isStrictlyThenable(v)) {
-				this._resolve(v)
-				return this._resolvedValue
-			}
-			return v
-		},
-
-		// valueOf: function(context) {
-		// 	var v = Variable.prototype.valueOf.call(this, context)
-		// 	if (isStrictlyThenable(v)) {
-		// 		this._resolve(v)
-		// 		v = this._resolvedValue && this._resolvedValue.valueOf()
-		// 		if (isStrictlyThenable(v)) {
-		// 			// XXX: the resolved value we captured isn't really resolved (may be a var)
-		// 			// return undefined :/
-		// 			return undefined
-		// 		}
-		// 		return v
-		// 	} else {
-		// 		return v
-		// 	}
-		// }
-	})
-
 	var primitives = {
 		'string': VString,
 		'number': VNumber,
@@ -2228,7 +2220,6 @@
 		VNumber: VNumber,
 		VBoolean: VBoolean,
 		VPromise: VPromise,
-		VPromised: VPromised,
 		VDate: VDate,
 		VSet: VSet,
 		VMap: VMap,

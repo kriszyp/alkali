@@ -34,7 +34,7 @@
 		this.derivativeMap = new lang.WeakMap(null, 'derivative')
 		this.isDirty = new Variable(false)
 	}, {
-		getValue: function(context) {
+		getValue: function(sync, context) {
 			if(this.state) {
 				this.state = null
 			}

@@ -755,11 +755,12 @@ define([
 				})
 			}))
 			var div = document.body.appendChild(new Div(
-				v.map(function(v) { return v * 2 })
+				v.map(function(v) { console.log("rerunning trasnform", v);return v * 2 })
 			))
 			var lastPromise
 			v.put(lastPromise = new Promise(function (resolve) {
 				setTimeout(function() {
+					console.log('resolving 3,4')
 					resolve([3, 4])
 				})
 			}))
