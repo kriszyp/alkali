@@ -4,6 +4,7 @@
 }}(this, function (lang) {
 	var deny = {}
 	var noChange = {}
+	var context
 	var WeakMap = lang.WeakMap
 	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
@@ -51,6 +52,15 @@
 		newContext: function(variable) {
 			return new Context(this.subject)
 		},
+		executeWithin: function(executor) {
+			var previousContext = context
+			try {
+				context = this
+				return executor()
+			} finally {
+				context = previousContext
+			}
+		},
 		//version: 2166136261, // FNV-1a prime seed
 		version: 0,
 		restart: function() {
@@ -87,10 +97,10 @@
 		},
 		integrate: function(context, contextualized) {
 			this.addInput(contextualized)
-			this.hash(context.version)
-			this.hash(Math.max(contextualized.version || 0, contextualized.versionWithChildren || 0))
+			this.setVersion(context.version)
+			this.setVersion(Math.max(contextualized.version || 0, contextualized.versionWithChildren || 0))
 		},
-		hash: function(version) {
+		setVersion: function(version) {
 /*			// FNV1a hash algorithm 32-bit
 			return this.version = (this.version ^ (version || 0)) * 16777619 >>> 0*/
 
@@ -377,27 +387,22 @@
 			this.put(value)
 		},
 		constructor: Variable,
-		valueOf: function(context) {
-			var valueContext
-			return this.gotValue(true, this.getValue(true, context, context && (valueContext = context.newContext())), context, valueContext)
+		valueOf: function() {
+			return this.gotValue(true, this.getValue(true))
 		},
-		then: function(onResolve, onError, context) {
-			var valueContext
-			var result = this.gotValue(false, this.getValue(false, context, context && (valueContext = context.newContext())), context, valueContext)
+		then: function(onResolve, onError) {
+			var result = this.gotValue(this.getValue())
 			if (onResolve || onError) {
 				return when(result, onResolve, onError)
 			}
 			return result
 		},
-		getValue: function(sync, context, valueContext) {
+		getValue: function(sync) {
 			if (context) {
-				context.hash(this.version)
+				context.setVersion(this.version)
 			}
 			if (this.parent) {
 				if (context) {
-					if (!valueContext) {
-						valueContext = context.newContext()
-					}
 					if (context.ifModifiedSince != null) {
 						// just too complicated to handle NOT_MODIFED objects for now
 						// TODO: Maybe handle this and delegate NOT_MODIFIED through this
@@ -428,9 +433,6 @@
 								listeners.observer.addKey(key)
 							}
 						//}
-						if (valueContext) {
-							context.hash(valueContext.version)
-						}
 						return value
 					})
 				}
@@ -443,30 +445,17 @@
 						listeners.observer.addKey(key)
 					}
 				//}
-				if (valueContext) {
-					context.hash(valueContext.version)
-				}
 				return value
 			}
 			return sync ? this.value : (this.promise || this.value)
 		},
-		gotValue: function(sync, value, parentContext, context) {
+		gotValue: function(sync, value) {
 			var previousNotifyingValue = this.returnedVariable
 			var variable = this
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
 					// nothing changed, immediately return valueOf
-					if (parentContext) {
-						if (!context) {
-							context = parentContext.newContext()
-						}
-						context.nextProperty = 'returnedVariable'
-						value = value.valueOf(context)
-						parentContext.integrate(context, context.contextualize(this, parentContext) || this)
-						return value
-					} else {
-						return value.valueOf()
-					}
+					return sync ? value.valueOf() : value.then()
 				}
 				// if there was a another value that we were dependent on before, stop listening to it
 				// TODO: we may want to consider doing cleanup after the next rendering turn
@@ -480,52 +469,27 @@
 				if (variable.listeners) {
 					value.notifies(variable)
 				}
-				/*var parent = variable
-				do {
-					if (parent.listeners) {
-						// the value is another variable, start receiving notifications, if we, or any parent is live
-						variable.returnedVariable.notifies(variable)
-						break
-					}
-					parent.hasNotifyingChild = true
-				} while((parent = parent.parent))*/
-				context = context || parentContext && (context = parentContext.newContext())
-				if (context) {
-					context.nextProperty = 'returnedVariable'
-				}
 				if (sync) {
-					value = value.valueOf(context)
+					value = value.valueOf()
 				}
 			}
 			if (value === undefined) {
 				value = variable.default
 			}
 			if (!sync && value && value.then) {
-				return value.then(function(value) {
+				var deferredContext = context
+				return when(value, function(value) {
 					if (value && value.subscribe) {
-						return Variable.prototype.gotValue.call(sync, variable, value, parentContext, context)
-					}
-					if (context) {
-						parentContext.integrate(context, context.contextualize(variable, parentContext) || variable)
-					} else if (parentContext) {
-						parentContext.addInput(variable)
+						if (deferredContext) {
+							deferredContext.executeWithin(function() {
+								return Variable.prototype.gotValue.call(variable, sync, value)
+							})
+						} else {
+							return Variable.prototype.gotValue.call(variable, sync, value)							
+						}
 					}
 					return value
 				}, null, context)
-			}
-			if (context) {
-				parentContext.integrate(context, context.contextualize(this, parentContext) || this)
-			}
-			if (parentContext) {
-
-				/*if (!contextualized.listeners) {
-					// mark it as initialized, since we have already recursively dependended on sources
-					contextualized.listeners = []
-				}*/
-
-				if (!context) {
-					parentContext.addInput(this)
-				}
 			}
 			return value
 		},
@@ -569,17 +533,17 @@
 			}
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
-		_changeValue: function(context, type, newValue) {
+		_changeValue: function(type, newValue) {
 			var key = this.key
 			var parent = this.parent
 			if (!parent) {
 				return this.put(newValue, context)
 			}
 			var variable = this
-			var object = parent.getValue ? parent.getValue(true, context) : parent.value
+			var object = parent.getValue ? parent.getValue(true) : parent.value
 			if (object == null) {
 				// nothing there yet, create an object to hold the new property
-				parent.put(object = typeof key == 'number' ? [] : {}, context)
+				parent.put(object = typeof key == 'number' ? [] : {})
 			} else if (typeof object != 'object') {
 				// if the parent is not an object, we can't set anything (that will be retained)
 				var error = new Error('Can not set property on non-object')
@@ -612,7 +576,7 @@
 			var event = new RefreshEvent()
 			event.oldValue = oldValue
 			event.target = variable
-			variable.updated(event, variable, context)
+			variable.updated(event, variable)
 
 			// now notify any object listeners
 			var listeners = propertyListenersMap.get(object)
@@ -624,18 +588,18 @@
 					var listener = listeners[i]
 					if (listener !== parent) {
 						// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
-						listener._propertyChange(key, object, context, type)
+						listener._propertyChange(key, object, type)
 					}
 				}
 			}
 			return newValue
 		},
 
-		_propertyChange: function(propertyName, object, context, type) {
+		_propertyChange: function(propertyName, object, type) {
 			if (this.onPropertyChange) {
-				this.onPropertyChange(propertyName, object, context)
+				this.onPropertyChange(propertyName, object)
 			}
-			this.updated(new PropertyChangeEvent(propertyName, new RefreshEvent(), this), null, context)
+			this.updated(new PropertyChangeEvent(propertyName, new RefreshEvent(), this))
 		},
 		eachKey: function(callback) {
 			for (var i in this._properties) {
@@ -702,13 +666,13 @@
 			this.version = nextVersion = Math.max(Date.now(), nextVersion + 1)
 		},
 
-		getVersion: function(context) {
+		getVersion: function() {
 			return Math.max(this.version,
 				this.returnedVariable && this.returnedVariable.getVersion ? this.returnedVariable.getFullVersion(context) : 0,
 				this.parent ? this.parent.getVersion(context) : 0)
 		},
-		getFullVersion: function(context) {
-			return Math.max(this.versionWithChildren, this.getVersion(context))
+		getFullVersion: function() {
+			return Math.max(this.versionWithChildren, this.getVersion())
 		},
 
 		getSubject: function(selectVariable) {
@@ -730,7 +694,7 @@
 			return updates
 		},
 
-		updated: function(updateEvent, by, context, isDownstream) {
+		updated: function(updateEvent, by, isDownstream) {
 			if (!updateEvent) {
 				updateEvent = new RefreshEvent()
 				updateEvent.source = this
@@ -747,7 +711,7 @@
 
 			var contextualInstance = context && context.getContextualized(this)
 			if (contextualInstance) {
-				contextualInstance.updated(updateEvent, this, context)
+				contextualInstance.updated(updateEvent, this)
 			}
 			/*
 			// at some point we could do an update list so that we could incrementally update
@@ -777,26 +741,26 @@
 					if ((updateEvent instanceof PropertyChangeEvent) &&
 							dependent.parent) {
 						if (dependent.key === updateEvent.key) {
-							dependent.updated(updateEvent.childEvent, variable, context, true)
+							dependent.updated(updateEvent.childEvent, variable, true)
 						}
 					} else {
-						dependent.updated(updateEvent, variable, context, true)
+						dependent.updated(updateEvent, variable, true)
 					}
 				}
 			}
 			if (updateEvent instanceof PropertyChangeEvent) {
 				if (this.returnedVariable && this.fixed) {
-					this.returnedVariable.updated(updateEvent, this, context)
+					this.returnedVariable.updated(updateEvent, this)
 				}
 				if (this.constructor.collection) {
-					this.constructor.collection.updated(updateEvent, this, context)
+					this.constructor.collection.updated(updateEvent, this)
 				}
 			}
 			if (this.parent) {
-				this.parent.updated(new PropertyChangeEvent(this.key, updateEvent, this.parent), this, context)
+				this.parent.updated(new PropertyChangeEvent(this.key, updateEvent, this.parent), this)
 			}
 			if (this.collection) {
-				this.collection.updated(updateEvent, this, context)
+				this.collection.updated(updateEvent, this)
 			}
 			return updateEvent
 		},
@@ -876,12 +840,12 @@
 				}
 			}
 		},
-		put: function(value, context) {
+		put: function(value) {
 			var variable = this
 			if (this.parent) {
-				return this._changeValue(context, RequestChange, value)
+				return this._changeValue(RequestChange, value)
 			}
-			var oldValue = this.getValue ? this.getValue(true, context) : this.value
+			var oldValue = this.getValue ? this.getValue(true) : this.value
 			if (oldValue === value && typeof value != 'object') {
 				return noChange
 			}
@@ -904,7 +868,7 @@
 			var event = new RefreshEvent()
 			event.oldValue = oldValue
 			event.target = variable
-			variable.updated(event, variable, context)
+			variable.updated(event, variable)
 			return value
 		},
 		get: function(key) {
@@ -929,8 +893,8 @@
 			// TODO: create an optimized route when the property doesn't exist yet
 			this.property(key)._changeValue(null, RequestSet, value)
 		},
-		undefine: function(key, context) {
-			this.set(key, undefined, context)
+		undefine: function(key) {
+			this.set(key, undefined)
 		},
 		is: function(proxiedVariable) {
 			var thisVariable = this
@@ -978,18 +942,18 @@
 		toString: function() {
 			return String(this.valueOf())
 		},
-		forEach: function(callbackOrItemClass, callbackOrContext, context) {
+		forEach: function(callbackOrItemClass, callback) {
 			// iterate through current value of variable
 			if (callbackOrItemClass.notifies) {
 				return this.forEach(function(item) {
 					var itemVariable = callbackOrItemClass.from(item)
-					callbackOrContext.call(this, itemVariable)
+					callback.call(this, itemVariable)
 				}, context)
 			}
 			var collectionOf = this.collectionOf
 			if (collectionOf) {
 				var variable = this
-				return when(this.valueOf(callbackOrContext), function(value) {
+				return when(this.valueOf(), function(value) {
 					if (value && value.forEach) {
 						value.forEach(function(item, index) {
 							callbackOrItemClass.call(variable, variable.property(index, collectionOf))
@@ -997,7 +961,7 @@
 					}
 				})
 			}
-			return when(this.valueOf(callbackOrContext), function(value) {
+			return when(this.valueOf(callback), function(value) {
 				if (value && value.forEach) {
 					value.forEach(callbackOrItemClass)
 				}else{
@@ -1435,7 +1399,169 @@
 			}
 		}
 	}, {
-		getValue: function(sync, context, transformContext) {
+		getValue: function(sync) {
+			// first check to see if we have the variable already computed
+			var readyState = null
+			if (this.readyState == 'invalidated') {
+				readyState = this.readyState = nextVersion.toString()
+			} else if (isFinite(this.readyState)) {
+				// will un-invalidate this later (contextualizedVariable.readyState = 'up-to-date')
+			} else if (this.listeners && this.cachedVersion > -1) {
+				// it is live, so we can shortcut and just return the cached value
+				if (context) {
+					context.setVersion(contextualizedVariable.cachedVersion)
+				}
+				return this.cachedValue
+			}
+			if (!this.hasOwnProperty('source1') && context) {
+				// TODO: Not sure if this is a helpful optimization or not
+				// if we have a single source, we can use ifModifiedSince
+					/*if (!contextualizedVariable && this.context && this.context.matches(context)) {
+						contextualizedVariable = this
+					}*/
+			}
+			readyState = this.readyState
+			var transformContext = context ? context.newContext() : new Context()
+			var args = []
+			var variable = this
+			transformContext.executeWithin(function() {
+
+				if (variable.version) {
+					// get the version in there
+					transformContext.setVersion(variable.version)
+				}
+				if (contextualizedVariable && this.cachedVersion >= transformContext.version && contextualizedVariable.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
+					transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
+				}
+				var argument, argumentName
+				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
+					if (transformContext) {
+						transformContext.nextProperty = argumentName
+					}
+					args[i] = argument && (
+						sync ? argument.valueOf(transformContext) :
+							argument.then(null, null, transformContext))
+				}
+		 		var variable = this
+	 			return whenAll(args, function(resolved) {
+					transformContext.executeWithin(function() {
+		 				if (transformContext.ifModifiedSince !== undefined) {
+		 					transformContext.ifModifiedSince = undefined
+		 				}
+						var version = transformContext.version
+						if (variable && variable.cachedVersion === version) {
+							// get it out of the cache
+							variable.readyState = 'up-to-date' // mark it as up-to-date now
+							if (context && context.ifModifiedSince >= version && !contextualizedVariable.returnedVariable) {
+								return NOT_MODIFIED
+							}
+
+							return variable.cachedValue
+						}
+						if (resolved[0] == NOT_MODIFIED) {
+							throw new Error('A not-modified signal was passed to a transform, which usually means a version number was decreased (they must monotically increase), computed version' + version +
+								' this variable version: ' + contextualizedVariable.version + ' cached version: ' +
+								contextualizedVariable.cachedVersion + ' ifModifiedSince: ' +
+								transformContext.ifModifiedSince +
+								' source version: ' + contextualizedVariable.source.version +
+								' source cached version: ' + contextualizedVariable.source.cachedVersion)
+						}
+						var result = transform ? transform.apply(variable, resolved) : resolved[0]
+						// an empty ready state means it is up-to-date as well
+						if (readyState == variable.readyState || readyState === null) {
+							if (variable.readyState)
+								variable.readyState = 'up-to-date' // mark it as up-to-date now
+							// cache it
+							if (result && result.then && !result.notifies) {
+								result.then(function() {
+									// if it was a generator then the version could have been computed asynchronously as well
+									variable.cachedVersion = transformContext.version
+								}, function() {
+									// clear out the cache on an error
+									variable.cachedValue = null
+									variable.cachedVersion = 0
+								})
+								if (sync) // should we return the stale data if we are in sync mode?
+									return variable.cachedValue
+							} else {
+								variable.cachedVersion = transformContext.version
+								variable.cachedValue = result
+							}
+						}
+						return result
+					})
+				})
+	 		})
+		},
+		forDependencies: function(callback) {
+			// depend on the args
+			Variable.prototype.forDependencies.call(this, callback)
+			var argument, argumentName
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
+				if (argument && argument.notifies) {
+					callback(argument)
+				}
+			}
+		},
+
+		updated: function(updateEvent, by, isDownstream) {
+			this.readyState = 'invalidated'
+			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
+				// search for the output in the sources
+				var argument, argumentName
+				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
+					if (argument === by) {
+						// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
+						updateEvent = new RefreshEvent()
+						continue
+					}
+				}
+			}
+			return Variable.prototype.updated.call(this, updateEvent, by, context, isDownstream)
+		},
+
+		getUpdates: function(since) {
+			// this always issues updates, nothing incremental can flow through it
+			if (!since || since.version < getVersion()) {
+				return [new RefreshEvent()]
+			}
+		},
+
+		getArguments: function() {
+			var args = []
+			var argument, argumentName
+			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
+				args.push(argument)
+			}
+			return args
+		},
+		put: function(value) {
+			var call = this
+			return when(this.valueOf(), function(originalValue) {
+				if (originalValue === value && typeof value != 'object') {
+					return noChange
+				}
+				var transform = call.transform.valueOf()
+				if (transform.reverse) {
+					(transform.reverse).call(call, value, call.getArguments())
+					call.updated()
+				} else if (originalValue && originalValue.put) {
+					return originalValue.put(value)
+				} else {
+					var error = new Error('Can not put value into a one-way transform, that lacks a reversal')
+					error.deniedPut = true
+					throw error
+				}
+			})
+		},
+		setReverse: function(reverse) {
+			this.transform.valueOf().reverse = reverse
+			return this
+		}
+	})
+
+	var ContextualizedTransform = {
+		getValue: function(sync) {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			var readyState = null
@@ -1470,7 +1596,7 @@
 			var args = []
 			if (this.version) {
 				// get the version in there
-				transformContext.hash(this.version)
+				transformContext.setVersion(this.version)
 			}
 			if (contextualizedVariable && this.cachedVersion >= transformContext.version && contextualizedVariable.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
 				transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
@@ -1533,72 +1659,8 @@
 				return result
 			})
 		},
-		forDependencies: function(callback) {
-			// depend on the args
-			Variable.prototype.forDependencies.call(this, callback)
-			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
-				if (argument && argument.notifies) {
-					callback(argument)
-				}
-			}
-		},
 
-		updated: function(updateEvent, by, context, isDownstream) {
-			this.readyState = 'invalidated'
-			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
-				// search for the output in the sources
-				var argument, argumentName
-				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
-					if (argument === by) {
-						// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
-						updateEvent = new RefreshEvent()
-						continue
-					}
-				}
-			}
-			return Variable.prototype.updated.call(this, updateEvent, by, context, isDownstream)
-		},
-
-		getUpdates: function(since) {
-			// this always issues updates, nothing incremental can flow through it
-			if (!since || since.version < getVersion()) {
-				return [new RefreshEvent()]
-			}
-		},
-
-		getArguments: function() {
-			var args = []
-			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
-				args.push(argument)
-			}
-			return args
-		},
-		put: function(value, context) {
-			var call = this
-			return when(this.valueOf(context), function(originalValue) {
-				if (originalValue === value && typeof value != 'object') {
-					return noChange
-				}
-				var transform = call.transform.valueOf(context)
-				if (transform.reverse) {
-					(transform.reverse).call(call, value, call.getArguments(), context)
-					call.updated(null, null, context)
-				} else if (originalValue && originalValue.put) {
-					return originalValue.put(value)
-				} else {
-					var error = new Error('Can not put value into a one-way transform, that lacks a reversal')
-					error.deniedPut = true
-					throw error
-				}
-			})
-		},
-		setReverse: function(reverse) {
-			this.transform.valueOf().reverse = reverse
-			return this
-		}
-	})
+	}
 
 	var Item = lang.compose(Variable, function Item(value, content) {
 		this.value = value
@@ -1732,7 +1794,7 @@
 		this.generator = generator
 	}, {
 		transform: {
-			valueOf: function(context) {
+			valueOf: function() {
 				var resuming
 				return next
 				function next() {
@@ -1816,13 +1878,20 @@
 									i: i,
 									iterator: generatorIterator
 								}
+								var deferredContext = context
 								// and return the promise so that the next caller can wait on this
 								return lastValue.then(function(value) {
 									resuming.value = value
+									if (deferredContext) {
+										return deferredContext.executeWithin(next.bind(variable))
+									}
 									return next.call(variable)
 								}, function(error) {
 									resuming.value = error
 									resuming.isThrowing = true
+									if (deferredContext) {
+										return deferredContext.executeWithin(next.bind(variable))
+									}
 									return next.call(variable)
 								})
 							}
@@ -1970,21 +2039,21 @@
 //		context.distinctSubject = mergeSubject(context.distinctSubject, instance.subject)
 //		return instance
 	}
-	Variable.valueOf = function(context) {
+	Variable.valueOf = function() {
 		// contextualized valueOf
-		return instanceForContext(this, context).valueOf(context)
+		return instanceForContext(this, context).valueOf()
 	}
-	Variable.then = function(callback, errback, context) {
+	Variable.then = function(callback, errback) {
 		// contextualized valueOf
-		return instanceForContext(this, context).then(callback, errback, context)
+		return instanceForContext(this, context).then(callback, errback)
 	}
-	Variable.getValue = function(sync, context) {
+	Variable.getValue = function(sync) {
 		// contextualized getValue
 		return instanceForContext(this, context)
 	}
-	Variable.put = function(value, context) {
+	Variable.put = function(value) {
 		// contextualized setValue
-		return instanceForContext(this, context).put(value, context)
+		return instanceForContext(this, context).put(value)
 	}
 	Variable.for = function(subject) {
 		if (subject != null) {
@@ -2026,8 +2095,8 @@
 	Variable.getCollectionOf = function () {
 		return this.collectionOf
 	}
-	Variable.updated = function(updateEvent, by, context) {
-		return instanceForContext(this, context).updated(updateEvent, by, context)
+	Variable.updated = function(updateEvent, by) {
+		return instanceForContext(this, context).updated(updateEvent, by)
 	}
 	var proxyHandler = {
 		get: function(target, name) {
@@ -2187,8 +2256,8 @@
 	var VPromise = lang.compose(Variable, function VPromise(value) {
 		return makeSubVar(this, value, VPromise)
 	}, {
-		valueOf: function(context) {
-			return this.then(null, null, context)
+		valueOf: function() {
+			return this.then()
 		},
 	})
 	var primitives = {
@@ -2230,7 +2299,6 @@
 		GeneratorVariable: GeneratorVariable,
 		Item: Item,
 		NotifyingContext: NotifyingContext,
-		Context: Context,
 		all: all,
 		objectUpdated: objectUpdated,
 		reactive: reactive,
@@ -2332,9 +2400,9 @@
 	}
 
 	defineArrayMethod('filter', function Filtered() {}, {
-		updated: function(event, by, context, isDownstream) {
+		updated: function(event, by, isDownstream) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
-				return Transform.prototype.updated.call(this, event, by, context)
+				return Transform.prototype.updated.call(this, event, by)
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
 			if (event.type === 'delete') {
@@ -2347,7 +2415,7 @@
 					contextualizedVariable.push(event.value)
 				}
 			} else if (event.type === 'update') {
-				var object = event.parent.valueOf(context)
+				var object = event.parent.valueOf()
 				var index = contextualizedVariable.cachedValue.indexOf(object)
 				var matches = [object].filter(this.arguments[0]).length > 0
 				if (index > -1) {
@@ -2366,7 +2434,7 @@
 				}
 				return
 			} else {
-				return Transform.prototype.updated.call(this, event, by, context, isDownstream)
+				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		}
 	}, VArray)
@@ -2390,9 +2458,9 @@
 			}
 			return IterativeMethod.prototype.transform.call(this, array)
 		},
-		updated: function(event, by, context, isDownstream) {
+		updated: function(event, by, isDownstream) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
-				return Variable.prototype.updated.call(this, event, by, context)
+				return Variable.prototype.updated.call(this, event, by)
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
 			if (event.type === 'delete') {
@@ -2404,7 +2472,7 @@
 				if (this.getCollectionOf()) {
 					return // if it has typed items, we don't need to propagate update events, since they will be handled by the variable item.
 				}
-				var object = event.parent.valueOf(context)
+				var object = event.parent.valueOf()
 				var array = contextualizedVariable.cachedValue
 				var index = event.key
 				var value = event.value
@@ -2418,10 +2486,10 @@
 				if (index > -1) {
 					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], this.source.property(index)))
 				} else {
-					return Transform.prototype.updated.call(this, event, by, context, isDownstream)
+					return Transform.prototype.updated.call(this, event, by, isDownstream)
 				}
 			} else {
-				return Transform.prototype.updated.call(this, event, by, context, isDownstream)
+				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		}
 	}, VArray)
