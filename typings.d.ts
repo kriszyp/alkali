@@ -95,6 +95,7 @@ declare namespace alkali {
   }
 
   export function reactive(target: {}, key: string): void
+  export function react<T>(generator: IterableIterator<T>): Variable<T>
   export function react<T>(reactiveFunction: () => T): Variable<T>
   export function react<T>(value: T): Reacts<T>
   export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>
@@ -158,7 +159,7 @@ declare namespace alkali {
   type Vnumber = number | Variable<number>
   type Vstyle = Vstring | Vnumber | Vboolean
 
-  interface ElementProperties {
+  export interface ElementProperties {
     content?: ElementChild
     class?: Vstring
     for?: Vstring
