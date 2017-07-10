@@ -8,6 +8,7 @@
 	main.Copy = Copy
 	main.Element = Element
 	lang.copy(main, VariableExports)
+	Object.defineProperty(main, 'currentContext', Object.getOwnPropertyDescriptor(VariableExports, 'currentContext'))
 	main.react = react
 	main.spawn = lang.spawn
 	main.Renderer = Renderer.ElementRenderer

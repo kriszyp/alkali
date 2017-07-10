@@ -89,7 +89,8 @@
 				}
 			}
 		},
-		hash: function(){
+		executeWithin: Context.prototype.executeWithin,
+		setVersion: function(){
 			// this doesn't need its own version/hash
 		},
 		newContext: function() {
@@ -205,21 +206,23 @@
 		}
 		var resolved
 		var renderer = this
-		var deferredRender = this.variable.then(function(value) {
-			resolved = true
-			console.log("resolved value for renderer to", value, deferredRender && !deferredRender.isCanceled)
-			if (!deferredRender || !deferredRender.isCanceled) {
-				if (deferredRender && deferredRender === renderer.deferredRender) {
-					renderer.deferredRender = null
+		var deferredRender = this.executeWithin(function() {
+			return renderer.variable.then(function(value) {
+				resolved = true
+				console.log("resolved value for renderer to", value, deferredRender && !deferredRender.isCanceled)
+				if (!deferredRender || !deferredRender.isCanceled) {
+					if (deferredRender && deferredRender === renderer.deferredRender) {
+						renderer.deferredRender = null
+					}
+					var contextualized = renderer.contextualized || renderer.variable
+					contextualized.notifies(renderer)
+					if(value !== undefined || renderer.started){
+						renderer.started = true
+						renderer.renderUpdate(value, element)
+					}
 				}
-				var contextualized = renderer.contextualized || renderer.variable
-				contextualized.notifies(renderer)
-				if(value !== undefined || renderer.started){
-					renderer.started = true
-					renderer.renderUpdate(value, element)
-				}
-			}
-		}, null, this)
+			})
+		})
 		if(!resolved){
 			console.log('waiting for value for rendrer')
 			// start listening for changes immediately

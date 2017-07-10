@@ -33,9 +33,6 @@
 		}
 		return callback(value)
 	}
-	function isStrictlyThenable(o) {
-		return o && o.then && !o.notifies
-	}
 	function whenStrict(value, callback) {
 		if (value && value.then && !value.notifies) {
 			return value.then(callback)
@@ -390,10 +387,13 @@
 		valueOf: function() {
 			return this.gotValue(true, this.getValue(true))
 		},
-		then: function(onResolve, onError) {
-			var result = this.gotValue(this.getValue())
-			if (onResolve || onError) {
-				return when(result, onResolve, onError)
+		then: function(onFulfilled, onRejected) {
+			var result = this.gotValue(false, this.getValue())
+			if (!result || !result.then) {
+				result = new lang.SyncPromise(result) // ensure it is promise-like
+			}
+			if (onFulfilled || onRejected) { // call then if we have any callbacks
+				return result.then(onFulfilled, onRejected)
 			}
 			return result
 		},
@@ -418,7 +418,7 @@
 					// parent needs value context, might want to do separate context,
 					// but would need to treat special so it retrieves the version
 					// only and not the versionWithChildren
-					object = parent.getValue(sync, context, valueContext)
+					object = parent.getValue(sync)
 				} else {
 					object = parent.value
 				}
@@ -447,7 +447,16 @@
 				//}
 				return value
 			}
-			return sync ? this.value : (this.promise || this.value)
+			if (this.promise) {
+				if (sync) {
+					if (context) {
+						context.notResolvedYet = true
+					}
+				} else { // async mode, we are fine with waiting
+					return this.promise
+				}
+			}
+			return this.value
 		},
 		gotValue: function(sync, value) {
 			var previousNotifyingValue = this.returnedVariable
@@ -478,10 +487,10 @@
 			}
 			if (!sync && value && value.then) {
 				var deferredContext = context
-				return when(value, function(value) {
+				return value.then(function(value) {
 					if (value && value.subscribe) {
 						if (deferredContext) {
-							deferredContext.executeWithin(function() {
+							return deferredContext.executeWithin(function() {
 								return Variable.prototype.gotValue.call(variable, sync, value)
 							})
 						} else {
@@ -489,7 +498,7 @@
 						}
 					}
 					return value
-				}, null, context)
+				})
 			}
 			return value
 		},
@@ -804,7 +813,11 @@
 				// Assuming ES7 Observable API. It is actually a streaming API, this pretty much violates all principles of reactivity, but we will support it
 				updated = function() {
 					updateQueued = false
-					listener.next(variable.valueOf())
+					variable.then(function(value) {
+						listener.next(value)
+					}, function(error) {
+						listener.error(value)
+					})
 				}
 			} else {
 				throw new Error('Subscribing to an invalid listener, the listener must be a function, or have an update or next method')
@@ -891,7 +904,7 @@
 		},
 		set: function(key, value) {
 			// TODO: create an optimized route when the property doesn't exist yet
-			this.property(key)._changeValue(null, RequestSet, value)
+			this.property(key)._changeValue(RequestSet, value)
 		},
 		undefine: function(key) {
 			this.set(key, undefined)
@@ -1001,13 +1014,6 @@
 		as: function(Class) {
 			// easiest way to cast to a variable class
 			return new Class(this)
-		},
-		asPromised: function(defaultValue) {
-			const output = new Variable(defaultValue)
-			this.subscribe(function(e) {
-				Promise.resolve(e.value()).then(function(value) { output.put(value) })
-			})
-			return new Transform(output)
 		},
 		get schema() {
 			// default schema is the constructor
@@ -1231,7 +1237,7 @@
 								return property
 							},
 							set: function(value) {
-								this[key]._changeValue(null, RequestSet, value)
+								this[key]._changeValue(RequestSet, value)
 							},
 							enumerable: true
 						}
@@ -1409,7 +1415,7 @@
 			} else if (this.listeners && this.cachedVersion > -1) {
 				// it is live, so we can shortcut and just return the cached value
 				if (context) {
-					context.setVersion(contextualizedVariable.cachedVersion)
+					context.setVersion(this.cachedVersion)
 				}
 				return this.cachedValue
 			}
@@ -1421,77 +1427,102 @@
 					}*/
 			}
 			readyState = this.readyState
-			var transformContext = context ? context.newContext() : new Context()
+			let parentContext = context
+			let transformContext = context = context ? context.newContext() : new Context()
 			var args = []
-			var variable = this
-			transformContext.executeWithin(function() {
-
-				if (variable.version) {
+			try {
+				if (this.version) {
 					// get the version in there
-					transformContext.setVersion(variable.version)
+					transformContext.setVersion(this.version)
 				}
-				if (contextualizedVariable && this.cachedVersion >= transformContext.version && contextualizedVariable.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
-					transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
+				if (this && this.cachedVersion >= this.version && this.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
+					transformContext.ifModifiedSince = this.cachedVersion
 				}
+		 		var transform = this.transform && this.transform.valueOf()
+
 				var argument, argumentName
 				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 					if (transformContext) {
 						transformContext.nextProperty = argumentName
 					}
 					args[i] = argument && (
-						sync ? argument.valueOf(transformContext) :
-							argument.then(null, null, transformContext))
+						sync ? argument.valueOf() :
+							argument.then())
 				}
-		 		var variable = this
+				var variable = this
 	 			return whenAll(args, function(resolved) {
-					transformContext.executeWithin(function() {
-		 				if (transformContext.ifModifiedSince !== undefined) {
-		 					transformContext.ifModifiedSince = undefined
-		 				}
-						var version = transformContext.version
-						if (variable && variable.cachedVersion === version) {
-							// get it out of the cache
-							variable.readyState = 'up-to-date' // mark it as up-to-date now
-							if (context && context.ifModifiedSince >= version && !contextualizedVariable.returnedVariable) {
-								return NOT_MODIFIED
-							}
+	 				if (transformContext.ifModifiedSince !== undefined) {
+	 					transformContext.ifModifiedSince = undefined
+	 				}
+					var version = transformContext.version
+					var notResolvedYet = transformContext.notResolvedYet
+					if (notResolvedYet && parentContext) {
+						parentContext.notResolvedYet = true 
+					}
+					var finishedResolving = !notResolvedYet
+					if (finishedResolving && variable.cachedVersion === version) {
+						// get it out of the cache
+						variable.readyState = 'up-to-date' // mark it as up-to-date now
+						if (parentContext) {
+							parentContext.setVersion(version)
+						}
+						if (parentContext && parentContext.ifModifiedSince >= version && !variable.returnedVariable) {
+							return NOT_MODIFIED
+						}
+						return variable.cachedValue
+					}
+					if (resolved[0] == NOT_MODIFIED) {
+						throw new Error('A not-modified signal was passed to a transform, which usually means a version number was decreased (they must monotically increase), computed version' + version +
+							' this variable version: ' + variable.version + ' cached version: ' +
+							variable.cachedVersion + ' ifModifiedSince: ' +
+							transformContext.ifModifiedSince +
+							' source version: ' + variable.source.version +
+							' source cached version: ' + variable.source.cachedVersion)
+					}
 
+					var result = (transform && (finishedResolving || resolved[0] !== undefined)) ? transform.apply(variable, resolved) : resolved[0]
+					if (parentContext) {
+						parentContext.setVersion(version)
+					}
+					if (result && result.then && !result.notifies) {
+						if (finishedResolving) {
+							result.then(onResolve, function() {
+								// clear out the cache on an error
+								if (parentContext) {
+									parentContext.setVersion(transformContext.version)
+								}
+								variable.cachedValue = null
+								variable.cachedVersion = 0
+							})
+						}
+						if (sync) { // should we return the stale data if we are in sync mode?
+							if (parentContext) {
+								parentContext.notResolvedYet = true
+							}
 							return variable.cachedValue
 						}
-						if (resolved[0] == NOT_MODIFIED) {
-							throw new Error('A not-modified signal was passed to a transform, which usually means a version number was decreased (they must monotically increase), computed version' + version +
-								' this variable version: ' + contextualizedVariable.version + ' cached version: ' +
-								contextualizedVariable.cachedVersion + ' ifModifiedSince: ' +
-								transformContext.ifModifiedSince +
-								' source version: ' + contextualizedVariable.source.version +
-								' source cached version: ' + contextualizedVariable.source.cachedVersion)
+					} else {
+						if (finishedResolving) {
+							onResolve(result)
 						}
-						var result = transform ? transform.apply(variable, resolved) : resolved[0]
-						// an empty ready state means it is up-to-date as well
+					}
+					function onResolve(result) {
+						var version  = transformContext.version
+						if (parentContext) {
+							parentContext.setVersion(version)
+						}
 						if (readyState == variable.readyState || readyState === null) {
 							if (variable.readyState)
 								variable.readyState = 'up-to-date' // mark it as up-to-date now
-							// cache it
-							if (result && result.then && !result.notifies) {
-								result.then(function() {
-									// if it was a generator then the version could have been computed asynchronously as well
-									variable.cachedVersion = transformContext.version
-								}, function() {
-									// clear out the cache on an error
-									variable.cachedValue = null
-									variable.cachedVersion = 0
-								})
-								if (sync) // should we return the stale data if we are in sync mode?
-									return variable.cachedValue
-							} else {
-								variable.cachedVersion = transformContext.version
-								variable.cachedValue = result
-							}
+							variable.cachedVersion = version
+							variable.cachedValue = result
 						}
-						return result
-					})
+					}
+					return result
 				})
-	 		})
+	 		} finally {
+	 			context = parentContext
+	 		}
 		},
 		forDependencies: function(callback) {
 			// depend on the args
@@ -1517,7 +1548,7 @@
 					}
 				}
 			}
-			return Variable.prototype.updated.call(this, updateEvent, by, context, isDownstream)
+			return Variable.prototype.updated.call(this, updateEvent, by, isDownstream)
 		},
 
 		getUpdates: function(since) {
@@ -1674,7 +1705,11 @@
 		valueOf: function() {
 			// TODO: Lookup Context type for all of these using registry or something
 			var subject = this.subject
-			return this.generic.valueOf(subject.getContextualized ? subject : new Context(subject))
+			var context = subject.getContextualized ? subject : new Context(subject)
+			var generic = this.generic
+			return context.executeWithin(function() {
+				return generic.valueOf()
+			})
 		},
 
 		forDependencies: function(callback) {
@@ -1798,7 +1833,7 @@
 				var resuming
 				return next
 				function next() {
-					var lastValue
+					var nextValue
 					var i
 					var generatorIterator
 					var isThrowing
@@ -1806,7 +1841,7 @@
 						// resuming from a promise
 						generatorIterator = resuming.iterator
 						i = resuming.i
-						lastValue = resuming.value
+						nextValue = resuming.value
 						isThrowing = resuming.isThrowing
 					} else {
 						if (context) {
@@ -1818,7 +1853,7 @@
 					}
 
 					do {
-						var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](lastValue)
+						var stepReturn = generatorIterator[isThrowing ? 'throw' : 'next'](nextValue)
 						if (stepReturn.done) {
 							var oldSources = this.sources || []
 							var newLength = i
@@ -1843,22 +1878,22 @@
 							this.sources = newSources
 							return stepReturn.value
 						}
-						var nextVariable = stepReturn.value
+						nextValue = stepReturn.value
 						// compare with the arguments from the last
 						// execution to see if they are the same
 						try {
 							var argumentName = i > 0 ? 'source' + i : 'source'
-							if (this[argumentName] !== nextVariable || this[argumentName] === undefined) {
+							if (this[argumentName] !== nextValue || this[argumentName] === undefined) {
 								// subscribe if it is a variable
-								if (nextVariable && nextVariable.notifies) {
+								if (nextValue && nextValue.notifies) {
 									if (this.listeners) {
-										nextVariable.notifies(this)
+										nextValue.notifies(this)
 									}
-									this[argumentName] = nextVariable
-								} else if (typeof nextVariable === 'function' && isGenerator(nextVariable)) {
+									this[argumentName] = nextValue
+								} else if (typeof nextValue === 'function' && isGenerator(nextValue)) {
 									resuming = {
 										i: i,
-										iterator: nextVariable()
+										iterator: nextValue()
 									}
 									next.call(this)
 									i = resuming.i
@@ -1870,17 +1905,22 @@
 							if (context) {
 								context.nextProperty = argumentName
 							}
-							lastValue = nextVariable && nextVariable.valueOf(context)
-							if (lastValue && lastValue.then) {
-								// if it is a promise, we will wait on it
+							if (nextValue && nextValue.then) {
+								// if it is a promise or variable, we will wait on it
 								var variable = this
 								resuming = {
 									i: i,
 									iterator: generatorIterator
 								}
 								var deferredContext = context
+								var isSync
 								// and return the promise so that the next caller can wait on this
-								return lastValue.then(function(value) {
+								var promise = nextValue.then(function(value) {
+									if (isSync !== false) {
+										isSync = true
+										nextValue = value
+										return
+									}
 									resuming.value = value
 									if (deferredContext) {
 										return deferredContext.executeWithin(next.bind(variable))
@@ -1894,11 +1934,15 @@
 									}
 									return next.call(variable)
 								})
+								if (!isSync) {
+									isSync = false
+									return promise
+								}
 							}
 							isThrowing = false
 						} catch (error) {
 							isThrowing = true
-							lastValue = error
+							nextValue = error
 						}
 					} while(true)
 				}
@@ -2304,6 +2348,11 @@
 		reactive: reactive,
 		NOT_MODIFIED: NOT_MODIFIED
 	}
+	Object.defineProperty(exports, 'currentContext', {
+		get: function() {
+			return context
+		}
+	})
 	var typeScriptConversions = new Map()
 	typeScriptConversions.set(Array, VArray)
 	typeScriptConversions.set(String, VString)
@@ -2342,7 +2391,7 @@
   }
   reactive.set = function(target, key, value) {
     var property = target[key]
-    property.parent ? property._changeValue(null, RequestSet, value) : property.put(value)
+    property.parent ? property._changeValue(RequestSet, value) : property.put(value)
   }
 
 

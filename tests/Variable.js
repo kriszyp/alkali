@@ -12,10 +12,11 @@ define([
 	var VNumber = VariableExports.VNumber
 	var Transform = VariableExports.Transform
 	function valueOfAndNotify(variable, callback) {
-		var context = new VariableExports.NotifyingContext(typeof callback === 'object' ? callback : {
+		var value = variable.valueOf()
+		variable.notifies(typeof callback === 'object' ? callback : {
 			updated: callback
 		})
-		return variable.valueOf(context)
+		return value
 	}
 	registerSuite({
 		name: 'Variable',

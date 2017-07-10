@@ -1,6 +1,6 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define([], factory) } else if (typeof module === 'object' && module.exports) {        
-  module.exports = factory() // Node
+	define([], factory) } else if (typeof module === 'object' && module.exports) {				
+	module.exports = factory() // Node
 }}(this, function () {
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
@@ -19,6 +19,36 @@
 	}
 	function has(feature) {
 		return hasFeatures[feature]
+	}
+
+	function SyncPromise(value) {
+		this.value = value
+	}
+	SyncPromise.prototype = {
+		then: function(onFulfilled, onRejected) {
+			if (!onFulfilled) {
+				return new SyncPromise(this.value)
+			}
+			try {
+				var result = onFulfilled(this.value)
+				return (result && result.then) ? result : new SyncPromise(result)
+			} catch(error) {
+				return new SyncErrorPromise(error)
+			}
+		},
+		catch: function(handler) {
+			return this.then(null, handler)
+		}
+	}
+	function SyncErrorPromise(error) {
+		this.value = error
+	}
+	SyncErrorPromise.prototype = new SyncPromise()
+	SyncErrorPromise.prototype.then = function(onFulfilled, onRejected) {
+		if (!onRejected) {
+			return new SyncErrorPromise(this.value)
+		}
+		return SyncPromise.prototype.then.call(this, onRejected)
 	}
 	// This is an polyfill for Object.observe with just enough functionality
 	// for what Variables need
@@ -208,6 +238,7 @@
 				}
 				return requestAnimationFrame
 			})(),
+		SyncPromise: SyncPromise,
 		Promise: has('promise') ? Promise : (function() {
 			function Promise(execute) {
 				var isResolved, resolution, errorResolution
@@ -354,7 +385,11 @@
 								}
 							}
 						}
-						return lastPromiseResult
+						if (remaining > 0) {
+							return lastPromiseResult
+						} else {
+							return new SyncPromise(result)
+						}
 					},
 					inputs: inputs
 				}
