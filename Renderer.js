@@ -207,21 +207,22 @@
 		var resolved
 		var renderer = this
 		var deferredRender = this.executeWithin(function() {
-			return renderer.variable.then(function(value) {
-				resolved = true
-				console.log("resolved value for renderer to", value, deferredRender && !deferredRender.isCanceled)
-				if (!deferredRender || !deferredRender.isCanceled) {
-					if (deferredRender && deferredRender === renderer.deferredRender) {
-						renderer.deferredRender = null
-					}
-					var contextualized = renderer.contextualized || renderer.variable
-					contextualized.notifies(renderer)
-					if(value !== undefined || renderer.started){
-						renderer.started = true
-						renderer.renderUpdate(value, element)
-					}
+			return renderer.variable.then()
+		})
+		deferredRender.then(function(value) {
+			resolved = true
+			console.log("resolved value for renderer to", value, deferredRender && !deferredRender.isCanceled)
+			if (!deferredRender.isCanceled) {
+				if (deferredRender === renderer.deferredRender) {
+					renderer.deferredRender = null
 				}
-			})
+				var contextualized = renderer.contextualized || renderer.variable
+				contextualized.notifies(renderer)
+				if(value !== undefined || renderer.started){
+					renderer.started = true
+					renderer.renderUpdate(value, element)
+				}
+			}
 		})
 		if(!resolved){
 			console.log('waiting for value for rendrer')

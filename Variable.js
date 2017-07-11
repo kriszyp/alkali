@@ -174,18 +174,7 @@
 		contextualized.notifies(this.listener)
 	}
 
-	function whenAll(inputs, callback){
-		var promiseInvolved
-		for (var i = 0, l = inputs.length; i < l; i++) {
-			if (inputs[i] && inputs[i].then) {
-				promiseInvolved = true
-			}
-		}
-		if (promiseInvolved) {
-			return lang.whenAll(inputs, callback)
-		}
-		return callback(inputs)
-	}
+	var whenAll = lang.whenAll
 
 	function registerListener(value, listener) {
 		var listeners = propertyListenersMap.get(value)
@@ -718,11 +707,11 @@
 				Variable._logStackTrace(this)
 			}
 
-			var contextualInstance = context && context.getContextualized(this)
+			/*var contextualInstance = context && context.getContextualized(this)
 			if (contextualInstance) {
 				contextualInstance.updated(updateEvent, this)
 			}
-			/*
+
 			// at some point we could do an update list so that we could incrementally update
 			// lists in non-live situations
 			if (this.lastUpdate) {
@@ -1445,9 +1434,7 @@
 					if (transformContext) {
 						transformContext.nextProperty = argumentName
 					}
-					args[i] = argument && (
-						sync ? argument.valueOf() :
-							argument.then())
+					args[i] = (argument && sync) ? argument.valueOf() : argument // for async, `then` will be called in whenAll
 				}
 				var variable = this
 	 			return whenAll(args, function(resolved) {
@@ -1460,7 +1447,7 @@
 						parentContext.notResolvedYet = true 
 					}
 					var finishedResolving = !notResolvedYet
-					if (finishedResolving && variable.cachedVersion === version) {
+					if (finishedResolving && variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
 						// get it out of the cache
 						variable.readyState = 'up-to-date' // mark it as up-to-date now
 						if (parentContext) {
@@ -1470,14 +1457,6 @@
 							return NOT_MODIFIED
 						}
 						return variable.cachedValue
-					}
-					if (resolved[0] == NOT_MODIFIED) {
-						throw new Error('A not-modified signal was passed to a transform, which usually means a version number was decreased (they must monotically increase), computed version' + version +
-							' this variable version: ' + variable.version + ' cached version: ' +
-							variable.cachedVersion + ' ifModifiedSince: ' +
-							transformContext.ifModifiedSince +
-							' source version: ' + variable.source.version +
-							' source cached version: ' + variable.source.cachedVersion)
 					}
 
 					var result = (transform && (finishedResolving || resolved[0] !== undefined)) ? transform.apply(variable, resolved) : resolved[0]
@@ -1507,7 +1486,7 @@
 						}
 					}
 					function onResolve(result) {
-						var version  = transformContext.version
+						var version	= transformContext.version
 						if (parentContext) {
 							parentContext.setVersion(version)
 						}
@@ -2359,40 +2338,40 @@
 	typeScriptConversions.set(Number, VNumber)
 	typeScriptConversions.set(Boolean, VBoolean)
 	function reactive(target, key) { // for typescript decorators
-    var Type = Reflect.getMetadata('design:type', target, key)
-    console.log('Type', Type)
-    if (!Type.notifies) {
-    	Type = typeScriptConversions.get(Type) || Variable
-    }
-    Object.defineProperty(target, key, {
-      get: function() {
-      	return reactive.get(this, key, Type)
-      },
-      set: function(value) {
-      	reactive.set(this, key, value)
-      },
-      enumerable: true
-    })
-  }
+		var Type = Reflect.getMetadata('design:type', target, key)
+		console.log('Type', Type)
+		if (!Type.notifies) {
+			Type = typeScriptConversions.get(Type) || Variable
+		}
+		Object.defineProperty(target, key, {
+			get: function() {
+				return reactive.get(this, key, Type)
+			},
+			set: function(value) {
+				reactive.set(this, key, value)
+			},
+			enumerable: true
+		})
+	}
 	reactive.get = function(target, key, Type) { // for babel decorators
-    var property = (target._properties || (target._properties = {}))[key]
-    if (!property) {
-      target._properties[key] = property = new (getType(Type))()
-      if (target.getValue) {
-        property.key = key
-        property.parent = target
+		var property = (target._properties || (target._properties = {}))[key]
+		if (!property) {
+			target._properties[key] = property = new (getType(Type))()
+			if (target.getValue) {
+				property.key = key
+				property.parent = target
 				if (property.listeners) {
 					// if it already has listeners, need to reinit it with the parent
 					property.init()
 				}
-      }
-    }
-    return property
-  }
-  reactive.set = function(target, key, value) {
-    var property = target[key]
-    property.parent ? property._changeValue(RequestSet, value) : property.put(value)
-  }
+			}
+		}
+		return property
+	}
+	reactive.set = function(target, key, value) {
+		var property = target[key]
+		property.parent ? property._changeValue(RequestSet, value) : property.put(value)
+	}
 
 
 	var IterativeMethod = lang.compose(Transform, function(source, method, args) {

@@ -338,65 +338,41 @@
 		},
 		whenAll: function(inputs, callback) {
 			var promiseInvolved
+			var readyInputs = []
+			var remaining = 1
+			var result
+			var lastPromiseResult
 			for(var i = 0, l = inputs.length; i < l; i++) {
-				if(inputs[i] && inputs[i].then) {
-					promiseInvolved = true
-				}
-			}
-			if(promiseInvolved) {
-				// we have asynch inputs, do lazy loading
-				var callbackResult
-				var resolved
-				return {
-					then: function(onResolve, onError) {
-						var remaining = 1
-						var result
-						var readyInputs = []
-						var lastPromiseResult
-						for(var i = 0; i < inputs.length; i++) {
-							var input = inputs[i]
-							remaining++
-							if(input && input.then) {
-								(function(i, previousPromiseResult) {
-									lastPromiseResult = input.then(function(value) {
-										readyInputs[i] = value
-										onEach()
-										if(!remaining) {
-											return result
-										}else{
-											return previousPromiseResult
-										}
-									}, onError)
-								})(i, lastPromiseResult)
-							}else{
-								readyInputs[i] = input
-								onEach()
-							}
-						}
-						onEach()
-						function onEach() {
-							remaining--
+				var input = inputs[i]
+				if(input && input.then) {
+					remaining++
+					(function(i, previousPromiseResult) {
+						lastPromiseResult = input.then(function(value) {
+							readyInputs[i] = value
+							onEach()
 							if(!remaining) {
-								if (resolved) {
-									result = onResolve(callbackResult)	
-								} else {
-									resolved = true
-									result = onResolve(callbackResult = callback(readyInputs))
-								}
+								return result
+							}else{
+								return previousPromiseResult
 							}
-						}
-						if (remaining > 0) {
-							return lastPromiseResult
-						} else {
-							return new SyncPromise(result)
-						}
-					},
-					inputs: inputs
+						})
+					})(i, lastPromiseResult)
+				} else {
+					readyInputs[i] = input
 				}
 			}
-			// just sync inputs
-			return callback(inputs)
-
+			onEach()
+			if (remaining > 0) {
+				return lastPromiseResult
+			} else {
+				return result
+			}
+			function onEach() {
+				remaining--
+				if (!remaining) {
+					 result = callback(readyInputs)
+				}
+			}
 		},
 		compose: function(Base, constructor, properties) {
 			var prototype = constructor.prototype = Object.create(Base.prototype)
