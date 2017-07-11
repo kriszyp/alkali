@@ -386,9 +386,9 @@
 			}
 			return result
 		},
-		getValue: function(sync) {
+		getValue: function(sync, forChild) {
 			if (context) {
-				context.setVersion(this.version)
+				context.setVersion(forChild ? this.version : Math.max(this.version || 0, this.versionWithChildren || 0))
 			}
 			if (this.parent) {
 				if (context) {
@@ -407,7 +407,7 @@
 					// parent needs value context, might want to do separate context,
 					// but would need to treat special so it retrieves the version
 					// only and not the versionWithChildren
-					object = parent.getValue(sync)
+					object = parent.getValue(sync, true)
 				} else {
 					object = parent.value
 				}
