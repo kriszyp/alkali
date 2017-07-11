@@ -4,33 +4,33 @@ declare namespace alkali {
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
   }
 
-  export class Variable<T> {
-    constructor(value?: T)
+  export class Variable<T = {}> implements Promise<T> {
+    constructor(value?: T | Promise<T>)
     valueOf(): T
-    property(key: KeyType): Variable<any>
+    then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
+    property<K extends keyof T>(key: KeyType): Variable<T[K]>
     property<U>(key: KeyType, PropertyClass: { new(): U }): U
-    put(value: T | Variable<T>)
-    get(key: KeyType): any
-    set(key: KeyType, value: any)
+    put(value: T | Variable<T> | Promise<T>)
+    get<K extends keyof T>(key: KeyType): T[K]
+    set<K extends keyof T>(key: KeyType, value: T[K] | Variable<T[K]> | Promise<T[K]>)
     undefine(key: KeyType)
     proxy(variable: Variable<T>)
     for(subject: any): Variable<T>
-    to<U>(transform: (T) => Variable<U> | U): Variable<U>
+    to<U>(transform: (T) => Variable<U> | Promise<U> | U): Variable<U>
     updated()
-    subscribe(listener: (event) => {
-      value: () => T
-    })
+    subscribe(listener: (event: { value:() => T }) => any)
+    subscribe(observable: { next: (T) => any})
     as<U>(Type: { new(): U }): U
 
     static with<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
     static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
 
-    schema: Variable<{}>
-    validation: Variable<{}>
+    schema: Variable
+    validation: Variable
 
-    collection: VariableClass<{}>
+    collection: VariableClass
   }
-  export interface VariableClass<T> {
+  export interface VariableClass<T = {}> {
     new(): Variable<any> & T
     new(value?: any): Variable<any> & T
     <U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
@@ -38,8 +38,9 @@ declare namespace alkali {
     assign<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     hasOwn(Target: () => any)
 
-    put(value: T | Variable<T>)
+    put(value: T | Variable<T> | Promise<T>)
     valueOf(): T
+    then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
     for(subject: any): Variable<any>
     to<U>(transform: (T) => U | Variable<U>): VariableClass<U>
     property(key: KeyType): VariableClass<any>
@@ -72,7 +73,7 @@ declare namespace alkali {
       <U>(collectionOf: { new (): U }): { new(v?: any[]): VArray<U> }
       new<U>(collectionOf: { new (): U }): VArray<U>
     }
-    collectionOf: VariableClass<{}>
+    collectionOf: VariableClass
   }
   export class VMap<K, V> extends Variable<Map<K, V>> {
   }
@@ -95,7 +96,6 @@ declare namespace alkali {
   }
 
   export function reactive(target: {}, key: string): void
-  export function react<T>(generator: IterableIterator<T>): Variable<T>
   export function react<T>(reactiveFunction: () => T): Variable<T>
   export function react<T>(value: T): Reacts<T>
   export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>
@@ -159,7 +159,7 @@ declare namespace alkali {
   type Vnumber = number | Variable<number>
   type Vstyle = Vstring | Vnumber | Vboolean
 
-  export interface ElementProperties {
+  interface ElementProperties {
     content?: ElementChild
     class?: Vstring
     for?: Vstring
@@ -516,9 +516,9 @@ declare namespace alkali {
     [name: string]: any
   }
 
-  type ElementChild = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<ElementChild2> | Node | number
-  type ElementChild2 = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<ElementChild3> | Node | number
-  type ElementChild3 = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<any> | Node | number
+  type ElementChild = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<ElementChild2> | Node | number | boolean
+  type ElementChild2 = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<ElementChild3> | Node | number | boolean
+  type ElementChild3 = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<any> | Node | number | boolean
 
   export interface ElementClass<Element> {
     new (selector?: string): Element
