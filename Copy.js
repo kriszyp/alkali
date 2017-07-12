@@ -72,7 +72,8 @@
 		},
 		revert: function() {
 			var original = this.copiedFrom.valueOf()
-			this.put(deepCopy(original, this.derivativeMap.get(original), this.derivativeMap))
+			this.derivativeMap = new lang.WeakMap(null, 'derivative') // clear out the mapping, so we can start fresh
+			this.put(deepCopy(original, undefined, this.derivativeMap))
 			this.isDirty.put(false)
 		},
 		updated: function() {
