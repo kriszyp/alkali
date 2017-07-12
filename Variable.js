@@ -1401,7 +1401,7 @@
 				readyState = this.readyState = nextVersion.toString()
 			} else if (isFinite(this.readyState)) {
 				// will un-invalidate this later (contextualizedVariable.readyState = 'up-to-date')
-			} else if (this.listeners && this.cachedVersion > -1) {
+			} else if ((this.listeners || this.staysUpdated) && this.cachedVersion > -1) {
 				// it is live, so we can shortcut and just return the cached value
 				if (context) {
 					context.setVersion(this.cachedVersion)
