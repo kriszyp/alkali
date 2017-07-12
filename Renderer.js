@@ -211,7 +211,6 @@
 		})
 		deferredRender.then(function(value) {
 			resolved = true
-			console.log("resolved value for renderer to", value, deferredRender && !deferredRender.isCanceled)
 			if (!deferredRender.isCanceled) {
 				if (deferredRender === renderer.deferredRender) {
 					renderer.deferredRender = null
@@ -225,7 +224,6 @@
 			}
 		})
 		if(!resolved){
-			console.log('waiting for value for rendrer')
 			// start listening for changes immediately
 			var contextualized = this.contextualized || this.variable
 			contextualized.notifies(renderer)
