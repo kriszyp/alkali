@@ -404,6 +404,23 @@
 				target[i] = source[i]
 			}
 			return target
+		},
+		deepCopy: function(source) {
+			if (source && typeof source == 'object') {
+				if (source instanceof Array) {
+					var target = [] // always create a new array for array targets
+					for(var i = 0, l = source.length; i < l; i++) {
+						target[i] = lang.deepCopy(source[i])
+					}
+				} else {
+					var target = {}
+					for (var i in source) {
+						target[i] = lang.deepCopy(source[i])
+					}
+				}
+				return target
+			}
+			return source
 		}
 	}
 	function isGenerator(func) {

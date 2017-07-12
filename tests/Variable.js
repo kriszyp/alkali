@@ -1210,6 +1210,93 @@ define([
 					assert.equal(t.valueOf(), '<a>')
 				})
 			})
+		},
+
+		'initialized variable updates source': function() {
+			var sourceVariable = new Variable({foo: 1})
+			var containingVariable = new Variable(sourceVariable)
+			sourceVariable.set('foo', 2) // this will propagate down to containingVariable
+			containingVariable.set('foo', 3) // this will update the sourceVariable
+			assert.equal(containingVariable.get('foo'), 3)
+			assert.equal(sourceVariable.get('foo'), 3)
+		},
+
+		'initialized property updates source': function() {
+			var source = new Variable('a')
+			// transform as initial value
+			var transform = function(v) {
+				var d = {}
+				d[v] = true
+				return d
+			}
+			var reverseCalled = 0
+			transform.reverse = function(output, inputs) {
+				// do nothing
+				reverseCalled++
+			}
+			var defaults = source.to(transform)
+			var selection = new Variable(defaults)
+			var pa = selection.property('a')
+			var pb = selection.property('b')
+			assert.deepEqual(defaults.valueOf(), { a: true })
+			assert.deepEqual(selection.valueOf(), { a : true })
+			assert.equal(pa.valueOf(), true)
+			assert.equal(pb.valueOf(), undefined)
+			// reverse function not called
+			assert.equal(reverseCalled, 0)
+
+			pa.put(false)
+			// upstream value has been updated
+			assert.deepEqual(defaults.valueOf(), { a: false })
+			assert.deepEqual(selection.valueOf(), { a : false })
+			assert.equal(pa.valueOf(), false)
+			assert.equal(pb.valueOf(), undefined)
+			assert.equal(reverseCalled, 0)
+
+			// updating the upstream source should not (no longer) affect downstream variable initialized with reference to source-derived transform
+			source.put('b')
+			assert.deepEqual(defaults.valueOf(), { b: true })
+			// updates to source still propagate downstream
+			assert.deepEqual(selection.valueOf(), { b : true })
+			assert.equal(pa.valueOf(), undefined)
+			assert.equal(pb.valueOf(), true)
+			assert.equal(reverseCalled, 0)
+		},
+
+		'Variable default returned when variable value is undefined': function() {
+			var v = new Variable()
+			v.default = 'a'
+			assert.equal(v.valueOf(), 'a')
+			v.put('b')
+			assert.equal(v.valueOf(), 'b')
+			/* Isn't this an explicit assignment of the variable?
+			v.put(undefined)
+			assert.equal(v.valueOf(), 'a')*/
+		},
+
+		'Variable default is not resolved': function() {
+			var d = new Variable('default')
+			var v = new Variable()
+			v.default = d
+			assert.strictEqual(v.valueOf(), 'default')
+		},
+
+		'Property resolves to default value': function() {
+			var v = new Variable()
+			v.default = { v: 'default' }
+			var vp = v.property('v')
+			assert.deepEqual(v.valueOf(), { v: 'default' })
+			assert.deepEqual(vp.valueOf(), 'default')
+		},
+		
+		'Assignment does not change defaults': function() {
+			var v = new Variable()
+			var defaultObject = v.default = { v: 'default' }
+			var vp = v.property('v')
+			assert.equal(vp.valueOf(), 'default')
+			vp.put('new value')
+			assert.equal(vp.valueOf(), 'new value')
+			assert.equal(defaultObject.v, 'default')
 		}
 	})
 })

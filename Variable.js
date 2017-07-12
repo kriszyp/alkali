@@ -296,14 +296,12 @@
 	function Variable(value) {
 		if (this instanceof Variable) {
 			// new call, may eventually use new.target
-			if (value === undefined) {
-				if (this.default !== undefined) {
-					this.value = this.default
+			if (value !== undefined) {
+				if (value && value.then && !value.notifies) {
+					assignPromise(this, value)
+				} else {
+					this.value = value
 				}
-			} else if (value && value.then && !value.notifies) {
-				assignPromise(this, value)
-			} else {
-				this.value = value
 			}
 		} else {
 			return Variable.with(value)
@@ -386,7 +384,7 @@
 			}
 			return result
 		},
-		getValue: function(sync, forChild) {
+		getValue: function(sync, forModification, forChild) {
 			if (context) {
 				context.setVersion(forChild ? this.version : Math.max(this.version || 0, this.versionWithChildren || 0))
 			}
@@ -407,7 +405,7 @@
 					// parent needs value context, might want to do separate context,
 					// but would need to treat special so it retrieves the version
 					// only and not the versionWithChildren
-					object = parent.getValue(sync, true)
+					object = parent.getValue(sync, forModification, true)
 				} else {
 					object = parent.value
 				}
@@ -445,7 +443,9 @@
 					return this.promise
 				}
 			}
-			return this.value
+			return this.hasOwnProperty('value') ?
+				this.value :
+				forModification ? (this.value = lang.deepCopy(this.default && this.default.valueOf())) : this.default
 		},
 		gotValue: function(sync, value) {
 			var previousNotifyingValue = this.returnedVariable
@@ -470,9 +470,6 @@
 				if (sync) {
 					value = value.valueOf()
 				}
-			}
-			if (value === undefined) {
-				value = variable.default
 			}
 			if (!sync && value && value.then) {
 				var deferredContext = context
@@ -538,7 +535,7 @@
 				return this.put(newValue, context)
 			}
 			var variable = this
-			var object = parent.getValue ? parent.getValue(true) : parent.value
+			var object = parent.getValue ? parent.getValue(true, true, true) : parent.value
 			if (object == null) {
 				// nothing there yet, create an object to hold the new property
 				parent.put(object = typeof key == 'number' ? [] : {})
@@ -1359,7 +1356,9 @@
 	}
 
 	var VMap = Variable.VMap = lang.compose(Variable, function(value){
-		this.value = typeof value === 'undefined' ? this.default : value
+		if (typeof value !== 'undefined') {
+			this.value = value
+		}
 	}, {
 		fixed: true,
 		// TODO: Move all the get and set functionality for maps out of Variable
