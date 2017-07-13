@@ -454,7 +454,7 @@
 					// if it is a promise, we will wait on it
 					// and return the promise so that the next caller can wait on this
 					var resolved
-					var isSync
+					var isSync = null
 					var result = nextValue.then(function(value) {
 						nextValue = value
 						if (isSync === false) {

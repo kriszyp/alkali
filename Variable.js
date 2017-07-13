@@ -1395,9 +1395,8 @@
 	}, {
 		getValue: function(sync) {
 			// first check to see if we have the variable already computed
-			var readyState = null
 			if (this.readyState == 'invalidated') {
-				readyState = this.readyState = nextVersion.toString()
+				this.readyState = nextVersion.toString()
 			} else if (isFinite(this.readyState)) {
 				// will un-invalidate this later (contextualizedVariable.readyState = 'up-to-date')
 			} else if ((this.listeners || this.staysUpdated) && this.cachedVersion > -1) {
@@ -1405,7 +1404,14 @@
 				if (context) {
 					context.setVersion(this.cachedVersion)
 				}
-				return this.cachedValue
+				if (sync) {
+					if (this.promise && context) {
+						context.notResolvedYet = true
+					}
+					return this.cachedValue
+				} else {
+					return this.promise || this.cachedValue
+				}
 			}
 			if (!this.hasOwnProperty('source1') && context) {
 				// TODO: Not sure if this is a helpful optimization or not
@@ -1414,7 +1420,7 @@
 						contextualizedVariable = this
 					}*/
 			}
-			readyState = this.readyState
+			var readyState = this.readyState
 			let parentContext = context
 			let transformContext = context = context ? context.newContext() : new Context()
 			var args = []
@@ -1442,61 +1448,80 @@
 	 				}
 					var version = transformContext.version
 					var notResolvedYet = transformContext.notResolvedYet
-					if (notResolvedYet && parentContext) {
-						parentContext.notResolvedYet = true 
-					}
-					var finishedResolving = !notResolvedYet
-					if (finishedResolving && variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
-						// get it out of the cache
-						variable.readyState = 'up-to-date' // mark it as up-to-date now
-						if (parentContext) {
-							parentContext.setVersion(version)
-						}
-						if (parentContext && parentContext.ifModifiedSince >= version && !variable.returnedVariable) {
-							return NOT_MODIFIED
-						}
-						return variable.cachedValue
-					}
-
-					var result = (transform && (finishedResolving || resolved[0] !== undefined)) ? transform.apply(variable, resolved) : resolved[0]
-					if (parentContext) {
-						parentContext.setVersion(version)
-					}
-					if (result && result.then && !result.notifies) {
-						if (finishedResolving) {
-							result.then(onResolve, function() {
-								// clear out the cache on an error
-								if (parentContext) {
-									parentContext.setVersion(transformContext.version)
-								}
-								variable.cachedValue = null
-								variable.cachedVersion = 0
-							})
-						}
-						if (sync) { // should we return the stale data if we are in sync mode?
-							if (parentContext) {
-								parentContext.notResolvedYet = true
-							}
-							return variable.cachedValue
+					if (notResolvedYet) {
+						if (parentContext)
+							parentContext.notResolvedYet = true 
+						if (resolved[0] === undefined && resolved.length === 1) {
+							variable.readyState = 'invalidated'
+							return variable.cachedValue // always sync here
 						}
 					} else {
-						if (finishedResolving) {
-							onResolve(result)
+						if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
+							// get it out of the cache
+							if (parentContext) {
+								parentContext.setVersion(version)
+							}
+							if (parentContext && parentContext.ifModifiedSince >= version && !variable.returnedVariable) {
+								return NOT_MODIFIED
+							}
+							if (sync) {
+								if (variable.promise && parentContext) {
+									parentContext.notResolvedYet = true
+								}
+								return variable.cachedValue
+							} else {
+								return variable.promise || variable.cachedValue
+							}
+						}
+						var finishedResolvingArgs = true
+					}
+
+					var result = transform ? transform.apply(variable, resolved) : resolved[0]
+					var isPromise = result && result.then && !result.notifies
+					version = transformContext.version
+
+					if (finishedResolvingArgs) {
+						if (isPromise) {
+							variable.promise = result
+							variable.cachedVersion = version
+							result.then(function(resolved) {
+								if (result === variable.promise) { // make sure we are still the latest promise
+									variable.promise = null
+									onResolve(resolved, transformContext.version)
+								}
+							}, function(error) {
+								if (result === variable.promise) { // make sure we are still the latest promise
+									// clear out the cache on an error
+									variable.promise = null
+									variable.lastError = error
+									onResolve(null, 0)
+								}
+							})
+						} else {
+							onResolve(result, version)
 						}
 					}
-					function onResolve(result) {
-						var version	= transformContext.version
+					if (sync && isPromise) {
 						if (parentContext) {
-							parentContext.setVersion(version)
+							parentContext.notResolvedYet = true 
 						}
-						if (readyState == variable.readyState || readyState === null) {
-							if (variable.readyState)
-								variable.readyState = 'up-to-date' // mark it as up-to-date now
-							variable.cachedVersion = version
-							variable.cachedValue = result
-						}
+						// return what we have, stale or otherwise
+						return variable.cachedValue
 					}
 					return result
+
+					function onResolve(result, version) {
+						if (variable.readyState === readyState) {
+							if (parentContext) {
+								parentContext.setVersion(version)
+							}
+							variable.readyState = 'up-to-date' // mark it as up-to-date now
+							variable.cachedVersion = version
+							variable.cachedValue = result
+						}/* else {
+							console.log('ready state different than when the variable trasnform started ', variable, variable.readyState, readyState)
+						}*/
+					}
 				})
 	 		} finally {
 	 			context = parentContext
@@ -1515,6 +1540,9 @@
 
 		updated: function(updateEvent, by, isDownstream) {
 			this.readyState = 'invalidated'
+			if (this.promise) {
+				this.promise = null
+			}
 			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
 				// search for the output in the sources
 				var argument, argumentName
@@ -1820,6 +1848,9 @@
 						generatorIterator = resuming.iterator
 						i = resuming.i
 						nextValue = resuming.value
+						if (nextValue && nextValue.then) {
+							throw new Error('Generator resumed with promise or variable', nextValue)
+						}
 						isThrowing = resuming.isThrowing
 					} else {
 						if (context) {
@@ -1891,7 +1922,7 @@
 									iterator: generatorIterator
 								}
 								var deferredContext = context
-								var isSync
+								var isSync = null
 								// and return the promise so that the next caller can wait on this
 								var promise = nextValue.then(function(value) {
 									if (isSync !== false) {

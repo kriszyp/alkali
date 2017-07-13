@@ -108,8 +108,8 @@
 			return this.contextualized || this.variable
 		},
 		specify: function(Variable) {
-			// a new context to get thsi
-			return this.newContext().specify(Variable)
+			// a new context to get this
+			return this.contextualized = this.newContext().specify(Variable)
 		},
 		merge: function(){
 			// noop
