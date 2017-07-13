@@ -1421,8 +1421,8 @@
 					}*/
 			}
 			var readyState = this.readyState
-			let parentContext = context
-			let transformContext = context = context ? context.newContext() : new Context()
+			var parentContext = context
+			var transformContext = context = context ? context.newContext() : new Context()
 			var args = []
 			try {
 				if (this.version) {
