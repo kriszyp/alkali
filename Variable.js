@@ -443,7 +443,8 @@
 					return this.promise
 				}
 			}
-			return this.hasOwnProperty('value') ?
+			var value = this.value
+			return value !== undefined ?
 				this.value :
 				forModification ? (this.value = lang.deepCopy(this.default && this.default.valueOf())) : this.default
 		},
