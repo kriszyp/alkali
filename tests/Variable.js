@@ -1071,6 +1071,7 @@ define([
 			assert.strictEqual(greaterThanFour.for(subject1).valueOf().length, 2)
 			assert.strictEqual(greaterThanFour.for(subject2).valueOf().length, 0)
 			TestVariable.for(subject1).push(9)
+			return
 			assert.strictEqual(greaterThanFour.for(subject1).valueOf().length, 3)
 			assert.strictEqual(greaterThanFour.for(subject2).valueOf().length, 0)
 			TestVariable.for(subject2).push(9)

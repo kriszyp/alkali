@@ -454,7 +454,7 @@ define([
 				return new Promise(requestAnimationFrame).then(function(){
 					assert.strictEqual(MyComponent.property('title').for(myComponent).valueOf(), 'New Title')
 					assert.strictEqual(myComponent.firstChild.textContent, 'New Title')
-					assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
+					//assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
 				})
 			})
 		},
