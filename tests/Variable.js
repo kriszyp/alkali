@@ -1216,13 +1216,17 @@ define([
 		promisedProperty: function() {
 			var u = new Variable()
 			// PASSES: p = u.to(function() { return Promise.resolve({ field: 'value' })})
+			// ASSERT FAILS: 'default' != 'value'
+			//   p = u.to(function(upstream) { return Promise.resolve({ field: upstream || 'default' })})
+			// ASSERT FAILS: undefined != 'value'
+			//   p = u.to(function(upstream) { return upstream && Promise.resolve({ field: upstream || 'default' })})
 			var p = u.to(function(upstream) {
 				console.log('Upstream value', upstream)
-				return upstream && Promise.resolve({ field: 'value'})
+				return upstream && Promise.resolve({ field: upstream })
 			})
 			var promisedProperty = p.property('field')
 			assert.equal(promisedProperty.valueOf(), undefined)
-			u.put('valid')
+			u.put('value')
 			return new Promise(function(r) { setTimeout(r, 100) }).then(function() {
 				assert.equal(promisedProperty.valueOf(), 'value')
 			})
