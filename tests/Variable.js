@@ -1213,6 +1213,21 @@ define([
 			})
 		},
 
+		promisedProperty: function() {
+			var u = new Variable()
+			// PASSES: p = u.to(function() { return Promise.resolve({ field: 'value' })})
+			var p = u.to(function(upstream) {
+				console.log('Upstream value', upstream)
+				return upstream && Promise.resolve({ field: 'value'})
+			})
+			var promisedProperty = p.property('field')
+			assert.equal(promisedProperty.valueOf(), undefined)
+			u.put('valid')
+			return new Promise(function(r) { setTimeout(r, 100) }).then(function() {
+				assert.equal(promisedProperty.valueOf(), 'value')
+			})
+		},
+
 		'initialized variable updates source': function() {
 			var sourceVariable = new Variable({foo: 1})
 			var containingVariable = new Variable(sourceVariable)
