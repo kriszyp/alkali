@@ -8,6 +8,7 @@ define([
 	var Variable = VariableExports.Variable
 	var Div = Element.Div
 	var Label = Element.Label
+	var Button = Element.Button
 	var Span = Element.Span
 	var Checkbox = Element.Checkbox
 	var Radio = Element.Radio
@@ -642,6 +643,15 @@ define([
 		},
 
 		attributeProperties: function() {
+			var b = new Variable(true)
+			var button = new Button({
+				disabled: b,
+				name: 'MyButton'
+			})
+			document.body.appendChild(button)
+			assert.strictEqual(button.getAttribute('disabled'), '')
+			assert.strictEqual(button.name, 'MyButton')
+
 			var v = new Variable('one')
 			var label = new Label({
 				role: 'button',
@@ -651,7 +661,9 @@ define([
 			assert.strictEqual(label.getAttribute('role'), 'button')
 			assert.strictEqual(label.htmlFor, 'one')
 			v.put('two')
+			b.put(false)
 			return new Promise(requestAnimationFrame).then(function() {
+				assert.isFalse(button.hasAttribute('disabled'))
 				assert.strictEqual(label.htmlFor, 'two')
 			})
 		},

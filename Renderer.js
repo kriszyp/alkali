@@ -249,7 +249,17 @@
 	AttributeRenderer.prototype = Object.create(ElementRenderer.prototype)
 	AttributeRenderer.prototype.type = 'AttributeRenderer'
 	AttributeRenderer.prototype.renderUpdate = function (newValue, element) {
-		element.setAttribute(this.name, newValue)
+		if (typeof newValue == 'boolean' || newValue == null) {
+			// for booleans or null/undefined, treat the attribute boolean-like, setting and removing
+			if (newValue) {
+				element.setAttribute(this.name, '') // "set" the attribute to enabled
+			} else {
+				element.removeAttribute(this.name) // disable the attribute, removing it
+			}
+		} else {
+			// otherwise, assign value as string
+			element.setAttribute(this.name, newValue)
+		}
 	}
 	Renderer.AttributeRenderer = AttributeRenderer
 

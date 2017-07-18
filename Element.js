@@ -1,6 +1,6 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
-  module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable')) // Node
+	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {				
+	module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable')) // Node
 }}(this, function (lang, Renderer, VariableExports) {
 	var Variable = VariableExports.Variable
 	var knownElementProperties = [
@@ -322,34 +322,34 @@
 		}),
 		a: ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'],
 		area: ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'],
-		button: ['formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'],
+		button: ['disabled', 'formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'],
 		dialog: ['open'],
 		embed: ['src', 'type', 'name'],
 		form: ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'],
 		frame: ['name', 'scrolling', 'src', 'frameBorder'],
 		frameset: ['cols', 'rows'],
-    iframe: ['src', 'srcdoc', 'name', 'referrerPolicy', 'align', 'scrolling', 'frameBorder', 'longDesc'],
-    img: ['src', 'alt', 'crossorigin', 'ismap', 'longdesc', 'sizes', 'srcset', 'usemap', 'referrerpolicy'],
-    option: ['label', 'value', 'text', 'index'],
-    optgroup: ['label'],
-    output: ['name', 'type', 'defaultValue', 'value', 'validationMessage'],
-    label: ['htmlFor'],
-    td: ['colSpan', 'rowSpan'],
-    th: ['colSpan', 'rowSpan'],
-    script: ['src', 'type', 'charset', 'text', 'event', 'htmlFor', 'integrity'],
-    style: ['media', 'type'],
-    track: ['kind', 'src', 'srclang', 'label'],
-    link: ['href', 'rel', 'media', 'hreflang', 'type', 'charset', 'rev', 'target', 'integrity', 'as'],
-    meta: ['name', 'httpEquiv', 'content', 'scheme'],
-    meter: ['value', 'min', 'max', 'low', 'high', 'optimum'],
-    progress: ['value', 'max', 'position'],
-    del: ['cite', 'dateTime'],
-    ins: ['cite', 'dateTime'],
-    source: ['src', 'type', 'srcset', 'sizes', 'media'],
-    video: ['videoWidth', 'videoHeight', 'poster', 'webkitDecodedFrameCount', 'webkitDroppedFrameCount'],
-    keygen: ['challenge', 'keytype', 'name', 'type', 'validationMessage'],
-    object: ['data', 'type', 'name', 'useMap', 'validationMessage', 'archive', 'code', 'hspace', 'standby', 'vspace', 'codeBase', 'codeType'],
-    param: ['name', 'value', 'type', 'valueType']
+		iframe: ['src', 'srcdoc', 'name', 'referrerPolicy', 'align', 'scrolling', 'frameBorder', 'longDesc'],
+		img: ['src', 'alt', 'crossorigin', 'ismap', 'longdesc', 'sizes', 'srcset', 'usemap', 'referrerpolicy'],
+		option: ['label', 'value', 'text', 'index'],
+		optgroup: ['label'],
+		output: ['name', 'type', 'defaultValue', 'value', 'validationMessage'],
+		label: ['htmlFor'],
+		td: ['colSpan', 'rowSpan'],
+		th: ['colSpan', 'rowSpan'],
+		script: ['src', 'type', 'charset', 'text', 'event', 'htmlFor', 'integrity'],
+		style: ['media', 'type'],
+		track: ['kind', 'src', 'srclang', 'label'],
+		link: ['href', 'rel', 'media', 'hreflang', 'type', 'charset', 'rev', 'target', 'integrity', 'as'],
+		meta: ['name', 'httpEquiv', 'content', 'scheme'],
+		meter: ['value', 'min', 'max', 'low', 'high', 'optimum'],
+		progress: ['value', 'max', 'position'],
+		del: ['cite', 'dateTime'],
+		ins: ['cite', 'dateTime'],
+		source: ['src', 'type', 'srcset', 'sizes', 'media'],
+		video: ['videoWidth', 'videoHeight', 'poster', 'webkitDecodedFrameCount', 'webkitDroppedFrameCount'],
+		keygen: ['challenge', 'keytype', 'name', 'type', 'validationMessage'],
+		object: ['data', 'type', 'name', 'useMap', 'validationMessage', 'archive', 'code', 'hspace', 'standby', 'vspace', 'codeBase', 'codeType'],
+		param: ['name', 'value', 'type', 'valueType']
 	}
 
 	function applyAttribute(element, value, key) {
