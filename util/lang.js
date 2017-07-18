@@ -430,6 +430,12 @@
 			return (constructor.displayName || constructor.name) === 'GeneratorFunction'
 		}
 	}
+	function isGeneratorIterator(iterator) {
+		if (iterator && iterator.next) {
+			var constructor = iterator.constructor.constructor
+			return (constructor.displayName || constructor.name) === 'GeneratorFunction'
+		}
+	}
 	lang.isGenerator = isGenerator
 
 	function spawn(generator) {
@@ -445,10 +451,9 @@
 					return stepReturn.value
 				}
 				nextValue = stepReturn.value
-				// compare with the arguments from the last
-				// execution to see if they are the same
-				if (typeof nextValue === 'function' && isGenerator(nextVariable)) {
-					nextValue = run(nextValue())
+				// if the return value is a (generator) iterator, execute it
+				if (nextValue && nextValue.next && isGeneratorIterator(nextValue)) {
+					nextValue = spawn(nextValue)
 				}
 				if (nextValue && nextValue.then) {
 					// if it is a promise, we will wait on it
