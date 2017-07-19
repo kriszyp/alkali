@@ -22,6 +22,8 @@ declare namespace alkali {
     subscribe(observable: { next: (T) => any})
     as<U>(Type: { new(): U }): U
 
+    static all(inputs: Array<any>): Variable<Array<any>>
+    static all(...inputs: Array<any>): Variable<Array<any>>
     static with<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
     static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
 
