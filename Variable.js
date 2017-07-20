@@ -308,8 +308,8 @@
 		}
 	}
 
-	Variable._logStackTrace = function(v) {
-		var stack = (new Error().stack || '').split(/[\r\n]+/)
+	Variable._logStackTrace = function(v, err) {
+		var stack = ((err || new Error()).stack || '').split(/[\r\n]+/)
 		if (stack[0] && /^Error\s*/.test(stack[0])) stack.shift()
 		if (stack[0] && /_logStackTrace/.test(stack[0])) stack.shift()
 		var coalesce = (this._debugOpts && this._debugOpts.coalesce) || []
@@ -1477,7 +1477,17 @@
 						var finishedResolvingArgs = true
 					}
 
-					var result = transform ? transform.apply(variable, resolved) : resolved[0]
+					var result
+					if (transform) {
+						try {
+							result = transform.apply(variable, resolved)
+						} catch (err) {
+							Variable._logStackTrace(variable, err)
+							throw err
+						}
+					} else {
+						result  = resolved[0]
+					}
 					var isPromise = result && result.then && !result.notifies
 					version = transformContext.version
 
