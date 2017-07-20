@@ -30,9 +30,9 @@ declare namespace alkali {
 
     collection: VariableClass
   }
-  export interface VariableClass<T = {}> {
-    new(): Variable<any> & T
-    new(value?: any): Variable<any> & T
+  export interface VariableClass<T = {}, T2 = {}> {
+    new(): Variable<T2> & T
+    new(value?: T2): Variable<T2> & T
     <U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     with<U, V extends this>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U & V>
     assign<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
@@ -41,9 +41,9 @@ declare namespace alkali {
     put(value: T | Variable<T> | Promise<T>)
     valueOf(): T
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
-    for(subject: any): Variable<any>
+    for(subject: any): Variable<T2>
     to<U>(transform: (T) => U | Variable<U>): VariableClass<U>
-    property(key: KeyType): VariableClass<any>
+    property<K extends keyof T2>(key: KeyType): VariableClass<T2[K]>
   }
 
   export type Reacts<T> = T & Variable<T>
@@ -53,7 +53,7 @@ declare namespace alkali {
     new (properties: U): Variable<U>
   }
 
-  export class VArray<T> extends Variable<Array<T>> {
+  export class VArray<T = {}> extends Variable<Array<T>> {
     map<U>(transform: (T) => U): VArray<U>
     filter(filterFunction: (T) => any): VArray<T>
     forEach(each: (T) => {})
@@ -75,17 +75,19 @@ declare namespace alkali {
     }
     collectionOf: VariableClass
   }
-  export class VMap<K, V> extends Variable<Map<K, V>> {
+  export class VMap<K = {}, V= {}> extends Variable<Map<K, V>> {
   }
-  export class VSet<T> extends Variable<Set<T>> {    
+  export class VSet<T = {}> extends Variable<Set<T>> {    
   }
   export class VPromise<T> extends Variable<Promise<T>> {
     //to<U>(transform: (T) => VPromise<U> | Variable<U> | Promise<U> | U): VPromise<U>
   }
-  export class VString extends Variable<string> {
-  }
-  export class VNumber extends Variable<number> {
-  }
+  export var VString: VariableClass<string, string>
+  export type vstring = string & Variable<string>
+
+  export var VNumber: VariableClass<number, number>
+  export type vnumber = number & Variable<number>
+
   export class VBoolean extends Variable<boolean> {
   }
   export class Item extends Variable<any> {
@@ -103,11 +105,11 @@ declare namespace alkali {
 
   // operators
   export function not(variable: Variable<any> | any): VBoolean
-  export function add(a: Variable<number> | number, b: Variable<number> | number): VNumber
-  export function subtract(a: Variable<number> | number, b: Variable<number> | number): VNumber
-  export function multiply(a: Variable<number> | number, b: Variable<number> | number): VNumber
-  export function divide(a: Variable<number> | number, b: Variable<number> | number): VNumber
-  export function remainder(a: Variable<number> | number): VNumber
+  export function add(a: Variable<number> | number, b: Variable<number> | number): vnumber
+  export function subtract(a: Variable<number> | number, b: Variable<number> | number): vnumber
+  export function multiply(a: Variable<number> | number, b: Variable<number> | number): vnumber
+  export function divide(a: Variable<number> | number, b: Variable<number> | number): vnumber
+  export function remainder(a: Variable<number> | number): vnumber
   export function greater(a: Variable<number> | number, b: Variable<number> | number): VBoolean
   export function greaterOrEqual(a: Variable<number> | number, b: Variable<number> | number): VBoolean
   export function less(a: Variable<number> | number, b: Variable<number> | number): VBoolean
@@ -115,7 +117,7 @@ declare namespace alkali {
   export function equal(a: Variable<any> | any, b: Variable<any> | any): VBoolean
   export function and(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
   export function or(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
-  export function round(a: Variable<number> | number): VNumber
+  export function round(a: Variable<number> | number): vnumber
 
   interface RendererProperties<T> {
     variable: Variable<T>
