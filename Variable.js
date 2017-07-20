@@ -1483,7 +1483,10 @@
 							result = transform.apply(variable, resolved)
 						} catch (err) {
 							Variable._logStackTrace(variable, err)
-							throw err
+							if (Variable._onUnhandledError) {
+								err = Variable._onUnhandledError(err, variable, transform)
+							}
+							if (err) throw err
 						}
 					} else {
 						result  = resolved[0]
