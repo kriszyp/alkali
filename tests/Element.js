@@ -557,7 +557,20 @@ define([
 					})
 				})
 			})
-		},
+		},/*
+		dynamicClass: function() {
+			var MyButton = Div({
+				num: Variable
+			})
+			MyButton.children = [
+				Div({
+					'class': MyButton.num.to(function(num) {
+						return '.test-' + num
+					})
+				})]
+			var b = new MyButton({num: 2})
+			assert.strictEqual(b.className, 'test-2')
+		},*/
 		renderProperty: function() {
 			var MyComponent = extend(Div, {
 				renderFoo: function(value) {
