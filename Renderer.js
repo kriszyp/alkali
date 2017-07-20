@@ -222,6 +222,8 @@
 					renderer.renderUpdate(value, element)
 				}
 			}
+		}, function(error) {
+			console.error('Error rendering', renderer, error)
 		})
 		if(!resolved){
 			// start listening for changes immediately
