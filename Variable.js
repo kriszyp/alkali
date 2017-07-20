@@ -1483,16 +1483,16 @@
 
 					if (finishedResolvingArgs) {
 						if (isPromise) {
-							variable.promise = result
+							var promise = variable.promise = result
 							variable.cachedVersion = version
 							result = result.then(function(resolved) {
-								if (result === variable.promise) { // make sure we are still the latest promise
+								if (promise === variable.promise) { // make sure we are still the latest promise
 									variable.promise = null
 									onResolve(resolved, transformContext.version)
 								}
 								return resolved
 							}, function(error) {
-								if (result === variable.promise) { // make sure we are still the latest promise
+								if (promise === variable.promise) { // make sure we are still the latest promise
 									// clear out the cache on an error
 									variable.promise = null
 									variable.lastError = error
