@@ -1837,6 +1837,7 @@
 	}, {
 		transform: {
 			valueOf: function() {
+				var generatorContext = context
 				var resuming
 				return next
 				function next() {
@@ -1854,9 +1855,9 @@
 						}
 						isThrowing = resuming.isThrowing
 					} else {
-						if (context) {
+						if (generatorContext) {
 							// must restart the context, if the input values had previously been checked and hashed against this context, must restart them.
-							context.restart()
+							generatorContext.restart()
 						}
 						i = 0
 						generatorIterator = this.generator()
@@ -1912,8 +1913,8 @@
 								}
 							}
 							i++
-							if (context) {
-								context.nextProperty = argumentName
+							if (generatorContext) {
+								generatorContext.nextProperty = argumentName
 							}
 							if (nextValue && nextValue.then) {
 								// if it is a promise or variable, we will wait on it
@@ -1922,7 +1923,6 @@
 									i: i,
 									iterator: generatorIterator
 								}
-								var deferredContext = context
 								var isSync = null
 								// and return the promise so that the next caller can wait on this
 								var promise = nextValue.then(function(value) {
@@ -1932,15 +1932,15 @@
 										return
 									}
 									resuming.value = value
-									if (deferredContext) {
-										return deferredContext.executeWithin(next.bind(variable))
+									if (generatorContext) {
+										return generatorContext.executeWithin(next.bind(variable))
 									}
 									return next.call(variable)
 								}, function(error) {
 									resuming.value = error
 									resuming.isThrowing = true
-									if (deferredContext) {
-										return deferredContext.executeWithin(next.bind(variable))
+									if (generatorContext) {
+										return generatorContext.executeWithin(next.bind(variable))
 									}
 									return next.call(variable)
 								})
