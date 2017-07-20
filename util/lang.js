@@ -42,9 +42,13 @@
 	}
 	function SyncErrorPromise(error) {
 		this.value = error
+		this.unhandledTimeout = setTimeout(function() {
+			console.error('Uncaught (in promise)', error)
+		})
 	}
 	SyncErrorPromise.prototype = new SyncPromise()
 	SyncErrorPromise.prototype.then = function(onFulfilled, onRejected) {
+		clearTimeout(this.unhandledTimeout)
 		if (!onRejected) {
 			return new SyncErrorPromise(this.value)
 		}
