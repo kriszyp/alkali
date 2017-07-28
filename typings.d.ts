@@ -5,8 +5,19 @@ declare namespace alkali {
   }
 
   export class Variable<T = {}> implements Promise<T> {
+    /*
+    * Create a new Variable that holds a varying value.
+    * @param Initial value for variable
+    */
     constructor(value?: T | Promise<T>)
+    /*
+    * Gets the current value of the variable.
+    * Note that this always returns synchronously, and if the variable has been provided a promise that has not resolved yet, will return last value
+    */
     valueOf(): T
+    /*
+    * Listen for the value of the variable, waiting if necessary, for any dependent promises to resolve. If the variable has a synchronously available value, the callback will be called immediately/synchronously
+    */ 
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
     property<K extends keyof T>(key: KeyType): Variable<T[K]>
     property<U>(key: KeyType, PropertyClass: { new(): U }): U
@@ -121,6 +132,20 @@ declare namespace alkali {
   export function or(a: Variable<any> | any, b: Variable<any> | any): Variable<any>
   export function round(a: Variable<number> | number): vnumber
 
+  /*
+  * The context used to compute a variable    
+  */
+  export class Context {
+      /* A value that represents the entity requesting a value from a variable, allowing a variable
+      * to adjust its computation based on who/what is requesting it */
+      subject: any
+      /* The maximum version number of the sources used to compute the variable (usually accessed after a variable is computed to compare with future computations for differences). */
+      version: number
+  }
+  /*
+  * The current context being used to compute a variable. This primarily accessible from within a `valueOf` call.
+  */
+  export var currentContext: Context
   interface RendererProperties<T> {
     variable: Variable<T>
     element: HTMLElement
