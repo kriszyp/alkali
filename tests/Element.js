@@ -455,7 +455,7 @@ define([
 				return new Promise(requestAnimationFrame).then(function(){
 					assert.strictEqual(MyComponent.property('title').for(myComponent).valueOf(), 'New Title')
 					assert.strictEqual(myComponent.firstChild.textContent, 'New Title')
-					//assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
+					assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
 				})
 			})
 		},
@@ -557,7 +557,7 @@ define([
 					})
 				})
 			})
-		},/*
+		},
 		dynamicClass: function() {
 			var MyButton = Div({
 				num: Variable
@@ -565,12 +565,12 @@ define([
 			MyButton.children = [
 				Div({
 					'class': MyButton.num.to(function(num) {
-						return '.test-' + num
+						return 'test-' + num
 					})
 				})]
 			var b = new MyButton({num: 2})
-			assert.strictEqual(b.className, 'test-2')
-		},*/
+			assert.strictEqual(b.firstChild.className, 'test-2')
+		},
 		renderProperty: function() {
 			var MyComponent = extend(Div, {
 				renderFoo: function(value) {

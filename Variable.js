@@ -92,11 +92,6 @@
 			//}
 			return contextualized
 		},
-		integrate: function(context, contextualized) {
-			this.addInput(contextualized)
-			this.setVersion(context.version)
-			this.setVersion(Math.max(contextualized.version || 0, contextualized.versionWithChildren || 0))
-		},
 		setVersion: function(version) {
 /*			// FNV1a hash algorithm 32-bit
 			return this.version = (this.version ^ (version || 0)) * 16777619 >>> 0*/
@@ -154,9 +149,6 @@
 			if (instance && instance.context && instance.context.matches(this)) {
 				return instance
 			}
-		},
-		addInput: function(sourceVariable) {
-			this.sources.push(this.nextProperty, sourceVariable)
 		},
 		matches: function(context) {
 			// does another context match the resolution of this one?
@@ -629,15 +621,28 @@
 		},
 		init: function() {
 			var variable = this
+			var contextualizes, sources = [] // TODO: optimize this
 			this.forDependencies(function(dependency) {
-				dependency.notifies(variable)
+				var contextualized = dependency.notifies(variable)
+				if (contextualized !== dependency) {
+					contextualizes = true
+				}
+				sources.push(contextualized)
 			})
+			if (contextualizes) {
+				var contextualized = new ContextualizedVariable()
+				//context.instanceMap.set(this, contextualized)
+				contextualized.sources = sources
+				contextualized.init()
+				return contextualized
+			}
 
 			if (this.listeningToObject === null) {
 				// we were previously listening to an object, but it needs to be restored
 				// calling valueOf will cause the listening object to be restored
 				this.valueOf()
 			}
+			return this
 		},
 		cleanup: function() {
 			this.listeners = false
@@ -772,11 +777,13 @@
 			}
 			var listeners = this.listeners
 			if (!listeners || !this.hasOwnProperty('listeners')) {
-				this.listeners = listeners = [target]
-				this.init()
+				var variable = this.init()
+				variable.listeners = listeners = [target]
+				return variable
 			} else if (listeners.indexOf(target) === -1) {
 				listeners.push(target)
 			}
+			return this
 		},
 		subscribe: function(listener) {
 			// ES7 Observable (and baconjs) compatible API
@@ -988,7 +995,7 @@
 			if (transformFunction.prototype instanceof Variable) {
 				return new transformFunction(this)
 			}
-			return new Transform(this, transformFunction)
+			return new (this._Transform || Transform)(this, transformFunction)
 		},
 		map: function (transformFunction) {
 			return this.to(function(value) {
@@ -1437,9 +1444,6 @@
 
 				var argument, argumentName
 				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
-					if (transformContext) {
-						transformContext.nextProperty = argumentName
-					}
 					args[i] = (argument && sync) ? argument.valueOf() : argument // for async, `then` will be called in whenAll
 				}
 				var variable = this
@@ -1600,107 +1604,19 @@
 		}
 	})
 
-	var ContextualizedTransform = {
+	var ContextualTransform = lang.compose(Transform, function ContextualTransform() {
+		Transform.apply(this, arguments)
+	}, {
 		getValue: function(sync) {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = context ? context.getContextualized(this) : this
-			var readyState = null
-			if (contextualizedVariable) {
-				if (contextualizedVariable.readyState == 'invalidated')
-					readyState = contextualizedVariable.readyState = nextVersion.toString()
-				else if (isFinite(contextualizedVariable.readyState)) {
-					// will un-invalidate this later (contextualizedVariable.readyState = 'up-to-date')
-				} else if (contextualizedVariable.listeners && contextualizedVariable.cachedVersion > -1) {
-					// it is live, so we can shortcut and just return the cached value
-					if (transformContext) {
-						transformContext.version = contextualizedVariable.cachedVersion
-						transformContext.contextualize(contextualizedVariable, context)
-					}
-					return contextualizedVariable.cachedValue
-				}
-				if (!this.hasOwnProperty('source1') && context) {
-					// TODO: Not sure if this is a helpful optimization or not
-					// if we have a single source, we can use ifModifiedSince
-						/*if (!contextualizedVariable && this.context && this.context.matches(context)) {
-							contextualizedVariable = this
-						}*/
-				}
-				readyState = contextualizedVariable.readyState
+			if (contextualizedVariable && contextualizedVariable !== this) {
+				return contextualizedVariable.getValue(sync)
 			}
-			if (!transformContext) {
-				transformContext = context ? context.newContext() : new Context()
-			}
-			// get the version in there
-	 		transformContext.nextProperty = 'transform'
-	 		var transform = this.transform && this.transform.valueOf(transformContext)
-			var args = []
-			if (this.version) {
-				// get the version in there
-				transformContext.setVersion(this.version)
-			}
-			if (contextualizedVariable && this.cachedVersion >= transformContext.version && contextualizedVariable.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
-				transformContext.ifModifiedSince = contextualizedVariable.cachedVersion
-			}
-			var argument, argumentName
-			for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
-				if (transformContext) {
-					transformContext.nextProperty = argumentName
-				}
-				args[i] = argument && (
-					sync ? argument.valueOf(transformContext) :
-						argument.then(null, null, transformContext))
-			}
-	 		var variable = this
- 			return whenAll(args, function(resolved) {
- 				if (transformContext.ifModifiedSince !== undefined) {
- 					transformContext.ifModifiedSince = undefined
- 				}
-				var contextualizedVariable = transformContext.contextualize(variable, context)
-				var version = transformContext.version
-				if (contextualizedVariable && contextualizedVariable.cachedVersion === version) {
-					// get it out of the cache
-					contextualizedVariable.readyState = 'up-to-date' // mark it as up-to-date now
-					if (context && context.ifModifiedSince >= version && !contextualizedVariable.returnedVariable) {
-						return NOT_MODIFIED
-					}
-
-					return contextualizedVariable.cachedValue
-				}
-				if (resolved[0] == NOT_MODIFIED) {
-					throw new Error('A not-modified signal was passed to a transform, which usually means a version number was decreased (they must monotically increase), computed version' + version +
-						' this variable version: ' + contextualizedVariable.version + ' cached version: ' +
-						contextualizedVariable.cachedVersion + ' ifModifiedSince: ' +
-						transformContext.ifModifiedSince +
-						' source version: ' + contextualizedVariable.source.version +
-						' source cached version: ' + contextualizedVariable.source.cachedVersion)
-				}
-				var result = transform ? transform.apply(variable, resolved) : resolved[0]
-				// an empty ready state means it is up-to-date as well
-				if (readyState == contextualizedVariable.readyState || readyState === null) {
-					if (contextualizedVariable.readyState)
-						contextualizedVariable.readyState = 'up-to-date' // mark it as up-to-date now
-					// cache it
-					if (result && result.then && !result.notifies) {
-						result.then(function() {
-							// if it was a generator then the version could have been computed asynchronously as well
-							contextualizedVariable.cachedVersion = transformContext.version
-						}, function() {
-							// clear out the cache on an error
-							contextualizedVariable.cachedValue = null
-							contextualizedVariable.cachedVersion = 0
-						})
-						if (sync) // should we return the stale data if we are in sync mode?
-							return contextualizedVariable.cachedValue
-					} else {
-						contextualizedVariable.cachedVersion = transformContext.version
-						contextualizedVariable.cachedValue = result
-					}
-				}
-				return result
-			})
+			return Transform.prototype.getValue.call(this, sync)
 		},
-
-	}
+		_needsContextualization: true
+	})
 
 	var Item = lang.compose(Variable, function Item(value, content) {
 		this.value = value
@@ -2090,7 +2006,12 @@
 		if (!context) {
 			return Class.defaultInstance
 		}
-		return context.specify(Class)
+		var instance = context.specify(Class)
+		if (!context.instanceMap) {
+			context.instanceMap = new Map()
+		}
+		context.instanceMap.set(Class, instance)
+		return instance
 //		var instance = context.subject.constructor.getForClass && context.subject.constructor.getForClass(context.subject, Class) || Class.defaultInstance
 //		context.distinctSubject = mergeSubject(context.distinctSubject, instance.subject)
 //		return instance
@@ -2143,7 +2064,9 @@
 		}
 	}
 	Variable.notifies = function(target) {
-		this.defaultInstance.notifies(target)
+		var instance = instanceForContext(this, context)
+		instance.notifies(target)
+		return instance
 	}
 	Variable.stopNotifies = function(target) {
 		this.defaultInstance.stopNotifies(target)
@@ -2154,6 +2077,7 @@
 	Variable.updated = function(updateEvent, by) {
 		return instanceForContext(this, context).updated(updateEvent, by)
 	}
+	Variable._Transform = ContextualTransform
 	var proxyHandler = {
 		get: function(target, name) {
 			var value = target[name]

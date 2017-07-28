@@ -104,12 +104,15 @@
 				this.contextualized = contextualized
 			}
 		},
-		getContextualized: function() {
-			return this.contextualized || this.variable
+		getContextualized: function(Variable) {
+			return Context.prototype.getContextualized.call(this, Variable)
+			//return this.contextualized || this.variable
 		},
 		specify: function(Variable) {
+			return this.contextualized = Context.prototype.specify.call(this, Variable)
 			// a new context to get this
-			return this.contextualized = this.newContext().specify(Variable)
+			this.contextualized = this.newContext().specify(Variable)
+
 		},
 		merge: function(){
 			// noop
@@ -144,6 +147,11 @@
 			contextualized.stopNotifies(this)
 		}
 	}
+	Object.defineProperty(Renderer.prototype, 'subject', {
+		get: function() {
+			return this.element
+		}
+	})
 
 	function ElementRenderer(options) {
 		Renderer.call(this, options)
@@ -215,8 +223,12 @@
 				if (deferredRender === renderer.deferredRender) {
 					renderer.deferredRender = null
 				}
-				var contextualized = renderer.contextualized || renderer.variable
-				contextualized.notifies(renderer)
+				if (renderer.contextualized && renderer.contextualized !== renderer.variable) {
+					renderer.contextualized.stopNotifies(renderer)
+				}
+				renderer.executeWithin(function() {
+					renderer.variable.notifies(renderer)
+				})
 				if(value !== undefined || renderer.started){
 					renderer.started = true
 					renderer.renderUpdate(value, element)
@@ -227,8 +239,9 @@
 		})
 		if(!resolved){
 			// start listening for changes immediately
-			var contextualized = this.contextualized || this.variable
-			contextualized.notifies(renderer)
+			this.executeWithin(function() {
+				renderer.contextualized = renderer.variable.notifies(renderer)
+			})
 			this.deferredRender = deferredRender
 			if (this.renderLoading) {
 				// if we have loading renderer call it
