@@ -110,7 +110,7 @@ declare namespace alkali {
   export class Transform extends Variable<any> {
   }
 
-  export function reactive(target: {}, key: string): void
+  export function reactive(target: {}, key?: string): void
   export function react<T>(reactiveFunction: () => T): Variable<T>
   export function react<T>(value: T): Reacts<T>
   export function all<T>(inputs: Array<Variable<T>>): Variable<Array<T>>
