@@ -1831,9 +1831,6 @@
 								}
 							}
 							i++
-							if (generatorContext) {
-								generatorContext.nextProperty = argumentName
-							}
 							if (nextValue && nextValue.then) {
 								// if it is a promise or variable, we will wait on it
 								var variable = this
