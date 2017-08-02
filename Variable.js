@@ -1413,7 +1413,7 @@
 				this.readyState = nextVersion.toString()
 			} else if (isFinite(this.readyState)) {
 				// will un-invalidate this later (contextualizedVariable.readyState = 'up-to-date')
-			} else if ((this.listeners || this.staysUpdated) && this.cachedVersion > -1 && this.readyState === 'up-to-date') {
+			} else if ((this.listeners && this.readyState === 'up-to-date' || this.staysUpdated) && this.cachedVersion > -1) {
 				// it is live, so we can shortcut and just return the cached value
 				if (context) {
 					context.setVersion(this.cachedVersion)
@@ -1528,7 +1528,7 @@
 							if (parentContext) {
 								parentContext.setVersion(version)
 							}
-							variable.readyState = (variable.listeners || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
+							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
 							variable.cachedVersion = version
 							variable.cachedValue = result
 						}/* else {
@@ -1571,7 +1571,7 @@
 		},
 
 		cleanup: function() {
-			if (this.readyState === 'up-to-date') {
+			if (this.readyState === 'up-to-date' && !this.staysUpdated) {
 				this.readyState = '' // once there are no listeners, we can't guarantee we are up-to-date
 			}
 			Variable.prototype.cleanup.call(this)
