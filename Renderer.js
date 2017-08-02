@@ -68,7 +68,8 @@
 	}
 	Renderer.prototype = {
 		constructor: Renderer,
-		version: 2166136261,
+		version: 0,
+		notifies: true,
 		updateRendering: function () {
 			throw new Error ('updateRendering must be implemented by sub class of Renderer')
 		},
@@ -94,7 +95,7 @@
 			// this doesn't need its own version/hash
 		},
 		newContext: function() {
-			return new Context(this.element)
+			return new Context(this.element, true)
 		},
 		integrate: function(context, contextualized) {
 			this.addInput(contextualized)
@@ -111,7 +112,7 @@
 		specify: function(Variable) {
 			return this.contextualized = Context.prototype.specify.call(this, Variable)
 			// a new context to get this
-			this.contextualized = this.newContext().specify(Variable)
+			this.contextualized = this.newContext(null, true).specify(Variable)
 
 		},
 		merge: function(){

@@ -11,8 +11,12 @@ define([
 	var VDate = VariableExports.VDate
 	var VNumber = VariableExports.VNumber
 	var Transform = VariableExports.Transform
+	var Context = VariableExports.Context
 	function valueOfAndNotify(variable, callback) {
-		var value = variable.valueOf()
+		var value
+		new Context(null, true).executeWithin(function() {
+			value = variable.valueOf()
+		})
 		variable.notifies(typeof callback === 'object' ? callback : {
 			updated: callback
 		})
@@ -69,6 +73,23 @@ define([
 			variable.put(2)
 			assert.equal(result.valueOf(), 8)
 			assert.isTrue(recomputed)
+		},
+		'simple caching value, resubscribe': function () {
+			var recomputed = false
+			var value = 1
+			var variable = new Variable(1)
+			var result = variable.to(function(value){
+				return value * 2
+			})
+			assert.equal(result.valueOf(), 2)
+			recomputed = false
+			variable.put(2)
+			result.notifies({
+				updated: function() {
+					recomputed = true
+				}
+			})
+			assert.equal(result.valueOf(), 4)
 		},
 		'on/off': function () {
 			var invalidated = false

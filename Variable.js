@@ -40,14 +40,17 @@
 		return callback(value)
 	}
 
-	function Context(subject){
+	function Context(subject, notifies){
 		this.subject = subject
+		if (notifies) {
+			this.notifies = notifies
+		}
 		this.sources = []
 	}
 	Context.prototype = {
 		constructor: Context,
 		newContext: function(variable) {
-			return new Context(this.subject)
+			return new Context(this.subject, this.notifies)
 		},
 		executeWithin: function(executor) {
 			var previousContext = context
@@ -772,6 +775,7 @@
 		},
 
 		notifies: function(target) {
+			// TODO: Eventually we want this to be trigerred from context, but context gets shared with returned variables, so will need to handle that
 			if (!target) {
 				throw new Error('No listener provided for notification')
 			}
@@ -796,7 +800,9 @@
 				var variable = this
 				var event = {
 					value: function() {
-						return variable.valueOf()
+						return new Context(null, true).executeWithin(function() {
+							return variable.valueOf()
+						})
 					}
 				}
 				updated = function() {
@@ -1407,7 +1413,7 @@
 				this.readyState = nextVersion.toString()
 			} else if (isFinite(this.readyState)) {
 				// will un-invalidate this later (contextualizedVariable.readyState = 'up-to-date')
-			} else if ((this.listeners || this.staysUpdated) && this.cachedVersion > -1) {
+			} else if ((this.listeners || this.staysUpdated) && this.cachedVersion > -1 && this.readyState === 'up-to-date') {
 				// it is live, so we can shortcut and just return the cached value
 				if (context) {
 					context.setVersion(this.cachedVersion)
@@ -1522,7 +1528,7 @@
 							if (parentContext) {
 								parentContext.setVersion(version)
 							}
-							variable.readyState = 'up-to-date' // mark it as up-to-date now
+							variable.readyState = (variable.listeners || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
 							variable.cachedVersion = version
 							variable.cachedValue = result
 						}/* else {
@@ -1562,6 +1568,13 @@
 				}
 			}
 			return Variable.prototype.updated.call(this, updateEvent, by, isDownstream)
+		},
+
+		cleanup: function() {
+			if (this.readyState === 'up-to-date') {
+				this.readyState = '' // once there are no listeners, we can't guarantee we are up-to-date
+			}
+			Variable.prototype.cleanup.call(this)
 		},
 
 		getUpdates: function(since) {
