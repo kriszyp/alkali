@@ -383,7 +383,7 @@
 			if (context) {
 				context.setVersion(forChild ? this.version : Math.max(this.version || 0, this.versionWithChildren || 0))
 			}
-			if (this.parent) {
+			if (this.key != null) {
 				if (context) {
 					if (context.ifModifiedSince != null) {
 						// just too complicated to handle NOT_MODIFED objects for now
@@ -1417,6 +1417,9 @@
 				// it is live, so we can shortcut and just return the cached value
 				if (context) {
 					context.setVersion(this.cachedVersion)
+					if (context.ifModifiedSince >= this.cachedVersion && !this.returnedVariable) {
+						return NOT_MODIFIED
+					}
 				}
 				if (sync) {
 					if (this.promise && context) {
