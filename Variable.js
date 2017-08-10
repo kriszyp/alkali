@@ -13,7 +13,12 @@
 	// update types
 	var RequestChange = 3
 	var RequestSet = 4
-	var NOT_MODIFIED = {}
+	var NOT_MODIFIED = {
+		name: 'Not modified',
+		toString: function () {
+			return 'Marker for not-modified response'
+		},
+	}
 
 	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap')
 	var isStructureChecked = new WeakMap()
