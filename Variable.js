@@ -388,7 +388,9 @@
 			if (context) {
 				context.setVersion(forChild ? this.version : Math.max(this.version || 0, this.versionWithChildren || 0))
 			}
-			if (this.key != null) {
+			var key = this.key
+			var parent
+			if (key != null && (parent = this.parent) != null) {
 				if (context) {
 					if (context.ifModifiedSince != null) {
 						// just too complicated to handle NOT_MODIFED objects for now
@@ -397,9 +399,7 @@
 						context.ifModifiedSince = undefined 
 					}
 				}
-				var key = this.key
 				var property = this
-				var parent = this.parent
 				var object
 				if (parent.getValue) {
 					// parent needs value context, might want to do separate context,
