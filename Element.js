@@ -269,7 +269,7 @@
 			// and maybe, at some point, find an optimization to eliminate the bind()
 			new PropertyRenderer({
 				name: key,
-				variable: new VariableExports.GeneratorVariable(value.bind(element, properties)),
+				variable: typeof value === 'function' ? new VariableExports.GeneratorVariable(value.bind(element, properties)) : value, // if it was defined on the constructor, it should already be bound
 				element: element
 			})
 		},

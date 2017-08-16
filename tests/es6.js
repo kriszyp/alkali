@@ -13,7 +13,9 @@ define([
 		return value
 	}
 	var Variable = VariableExports.Variable
+	var VSet = VariableExports.VSet
 	var Div = Element.Div
+	var Button = Element.Button
 	var defineTag = Element.defineTag
 	registerSuite({
 		name: 'es6',
@@ -126,16 +128,27 @@ define([
 					this.textContent = (yield a) + (yield b)
 				}
 			}
+			function *render2() {
+				this.textContent = 5 + (yield b)
+			}
 			var div = new GeneratorDiv()
+			var Div2 = Div({
+				render: render2
+			})
+			var div2
 			document.body.appendChild(div)
+			document.body.appendChild(div2 = new Div2())
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(div.textContent, '3')
+				assert.strictEqual(div2.textContent, '7')
 				a.put(2)
 				return new Promise(requestAnimationFrame).then(function(){
 					assert.strictEqual(div.textContent, '4')
+					assert.strictEqual(div2.textContent, '7')
 					b.put(3)
 					return new Promise(requestAnimationFrame).then(function(){
 						assert.strictEqual(div.textContent, '5')
+						assert.strictEqual(div2.textContent, '8')
 					})
 				})
 			})
