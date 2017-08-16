@@ -558,6 +558,31 @@ define([
 				})
 			})
 		},
+		classesAsObjectVariable: function() {
+			var obj = new Variable({
+				b: true
+			})
+			var DivWithClass = Div('.first')
+			var div = new DivWithClass('.second.third', {
+				classes: obj
+			})
+			document.body.appendChild(div)
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div.className, 'first second third b')
+				obj.set('a', true)
+				return new Promise(requestAnimationFrame).then(function() {
+					assert.strictEqual(div.className, 'first second third b a')
+					obj.put({ a: true })
+					return new Promise(requestAnimationFrame).then(function() {
+						assert.strictEqual(div.className, 'first second third a')
+						obj.put({ b: false })
+						return new Promise(requestAnimationFrame).then(function() {
+							assert.strictEqual(div.className, 'first second third')
+						})
+					})
+				})
+			})
+		},
 		dynamicClass: function() {
 			var MyButton = Div({
 				num: Variable

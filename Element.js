@@ -50,6 +50,34 @@
 			}
 		}
 	})
+	var ClassNamesRenderer = lang.compose(ClassNameRenderer, function ClassNamesRenderer() {
+		Renderer.apply(this, arguments)
+	}, {
+		renderUpdate: function(newValue, element) {
+			var currentClassName = element.className
+			var newClassNames = []
+			// assign class names based on object properties
+			for (var className in newValue) {
+				ClassNameRenderer.prototype.renderUpdate.call({
+					className: className
+				}, newValue[className], element)
+				newClassNames.push(className)
+			}
+			var lastClassNames = this.classNames
+			if (lastClassNames) {
+				// if previous state existed, remove old class names of any properties that don't exist anymore
+				for (var i = 0, l = lastClassNames.length; i < l; i++) {
+					var className = lastClassNames[i]
+					if (!(className in newValue)) {
+						ClassNameRenderer.prototype.renderUpdate.call({
+							className: className
+						}, undefined, element)
+					}
+				}
+			}
+			this.classNames = newClassNames // store the class names if we need to remove any on next state change
+		}
+	})
 
 	// TODO: check for renderContent with text updater
 	var TextRenderer = Renderer.TextRenderer
@@ -233,6 +261,14 @@
 		tagName: noop,
 		_generators: noop,
 		classes: function(element, classes) {
+			if (classes.notifies && classes.put) {
+				// it is a variable
+				new ClassNamesRenderer({
+					element: element,
+					variable: classes
+				})
+				return
+			}
 			if (!(classes.length > -1)) {
 				// index the classes, if necessary
 				var i = 0
