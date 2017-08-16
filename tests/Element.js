@@ -635,6 +635,25 @@ define([
 				assert.strictEqual(div.getAttribute('aria-describedby'), 'two')
 			})
 		},
+		attributesWithObject: function() {
+			var v = new Variable({
+				role: 'button',
+				'aria-describedby': 'one'
+			})
+			var div = new Div({
+				attributes: v
+			})
+			document.body.appendChild(div)
+			assert.strictEqual(div.getAttribute('role'), 'button')
+			assert.strictEqual(div.getAttribute('aria-describedby'), 'one')
+			v.put({
+				'aria-describedby': 'two'
+			})
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div.getAttribute('aria-describedby'), 'two')
+				assert.isFalse(div.hasAttribute('role'))
+			})
+		},
 		dataset: function() {
 			var v = new Variable('one')
 			var div = new Div({
@@ -649,6 +668,27 @@ define([
 			assert.strictEqual(div.getAttribute('data-bar'), 'one')
 			v.put('two')
 			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(div.getAttribute('data-bar'), 'two')
+			})
+		},
+		datasetWithObject: function() {
+			var v = new Variable({
+				foo: 'foo-value',
+				bar: 'one'
+			})
+			var div = new Div({
+				dataset: v
+			})
+			document.body.appendChild(div)
+			assert.strictEqual(div.getAttribute('data-foo'), 'foo-value')
+			assert.strictEqual(div.dataset.foo, 'foo-value')
+			assert.strictEqual(div.getAttribute('data-bar'), 'one')
+			v.put({
+				bar: 'two'
+			})
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.isFalse(div.hasAttribute('data-foo'))
+				assert.strictEqual(div.dataset.foo, undefined)
 				assert.strictEqual(div.getAttribute('data-bar'), 'two')
 			})
 		},

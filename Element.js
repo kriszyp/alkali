@@ -28,12 +28,12 @@
 	})
 
 	var ClassNameRenderer = lang.compose(Renderer.ElementRenderer, function ClassNameRenderer(options) {
-		this.className = options.className
+		this.name = options.name
 		Renderer.apply(this, arguments)
 	}, {
 		renderUpdate: function(newValue, element) {
 			var currentClassName = element.className
-			var changingClassName = this.className
+			var changingClassName = this.name
 			// remove the className (needed for addition or removal)
 			// see http://jsperf.com/remove-class-name-algorithm/2 for some tests on this
 			var removed = currentClassName && (' ' + currentClassName + ' ').replace(' ' + changingClassName + ' ', ' ')
@@ -50,32 +50,32 @@
 			}
 		}
 	})
-	var ClassNamesRenderer = lang.compose(ClassNameRenderer, function ClassNamesRenderer() {
+	var PropertiesRenderer = lang.compose(Renderer.ElementRenderer, function PropertiesRenderer(options) {
+		this.PropertyRenderer = options.PropertyRenderer
 		Renderer.apply(this, arguments)
 	}, {
 		renderUpdate: function(newValue, element) {
-			var currentClassName = element.className
-			var newClassNames = []
-			// assign class names based on object properties
-			for (var className in newValue) {
-				ClassNameRenderer.prototype.renderUpdate.call({
-					className: className
-				}, newValue[className], element)
-				newClassNames.push(className)
+			var newProperties = []
+			// assign properties based on object properties
+			for (var name in newValue) {
+				this.PropertyRenderer.prototype.renderUpdate.call({
+					name: name
+				}, newValue[name], element)
+				newProperties.push(name)
 			}
-			var lastClassNames = this.classNames
-			if (lastClassNames) {
-				// if previous state existed, remove old class names of any properties that don't exist anymore
-				for (var i = 0, l = lastClassNames.length; i < l; i++) {
-					var className = lastClassNames[i]
-					if (!(className in newValue)) {
-						ClassNameRenderer.prototype.renderUpdate.call({
-							className: className
+			var lastProperties = this.lastProperties
+			if (lastProperties) {
+				// if previous state existed, remove old names of any properties that don't exist anymore
+				for (var i = 0, l = lastProperties.length; i < l; i++) {
+					var name = lastProperties[i]
+					if (!(name in newValue)) {
+						this.PropertyRenderer.prototype.renderUpdate.call({
+							name: name
 						}, undefined, element)
 					}
 				}
 			}
-			this.classNames = newClassNames // store the class names if we need to remove any on next state change
+			this.lastProperties = newProperties // store the class names if we need to remove any on next state change
 		}
 	})
 
@@ -263,7 +263,8 @@
 		classes: function(element, classes) {
 			if (classes.notifies && classes.put) {
 				// it is a variable
-				new ClassNamesRenderer({
+				new PropertiesRenderer({
+					PropertyRenderer: ClassNameRenderer,
 					element: element,
 					variable: classes
 				})
@@ -288,7 +289,7 @@
 					// if it is a variable, we react to it
 					new ClassNameRenderer({
 						element: element,
-						className: className,
+						name: className,
 						variable: flag
 					})
 				} else if (flag || flag === undefined) {
@@ -310,10 +311,17 @@
 			})
 		},
 		dataset: applySubProperties(function(newValue, element, key) {
-			element.dataset[key || this.name] = newValue
+			key = key || this.name
+			if (newValue == null) {
+				delete element.dataset[key]	
+			} else {
+				element.dataset[key] = newValue
+			}
 		}),
 		attributes: applySubProperties(function(newValue, element, key) {
-			element.setAttribute(key || this.name, newValue)
+			AttributeRenderer.prototype.renderUpdate.call({
+				name: key || this.name
+			}, newValue, element)
 		}),
 		style: function(element, value, key) {
 			if (typeof value === 'string') {
@@ -411,6 +419,14 @@
 			renderUpdate: renderer
 		})
 		return function(element, value, key) {
+			if (value.notifies && value.put) {
+				new PropertiesRenderer({
+					PropertyRenderer: SubPropertyRenderer,
+					variable: value,
+					element: element
+				})
+				return
+			}
 			for (var subKey in value) {
 				var subValue = value[subKey]
 				if (subValue && subValue.notifies) {
