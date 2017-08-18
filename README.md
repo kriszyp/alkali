@@ -892,14 +892,15 @@ The computations (and invalidations) can be all be executed with an optional con
 
 ## Variable Proxying
 
-Alkali variables can be assigned (with `put`) a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. A new copied object will be created if necessary to contain the changes of a downstream variable. For example:
+Alkali variables can be assigned (with `put`) a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. The exception is that changing downstream an object shared with an upstream object. For example:
 ```javascript
 let sourceVariable = new Variable({foo: 1})
 let containingVariable = new Variable(sourceVariable)
-sourceVariable.set('foo', 2) // this will propagate down to containingVariable
-containingVariable.set('foo', 3) // this will not affect the sourceVariable
-containingVariable.get('foo') -> 3
-sourceVariable.get('foo') -> 2
+sourceVariable.put({foo: 2}) // this will propagate down to containingVariable
+containingVariable.set({foo: 3}) // this will affect the sourceVariable
+containingVariable.put({'foo', 4}) // this will not affect the sourceVariable
+containingVariable.get('foo') -> 4
+sourceVariable.get('foo') -> 3
 ```
 However, there may be situations where you want to explicitly define a variable as a proxy, such that changes propagate to the source, as well as to the proxying variable. This can be done by using the `is` method to assign the variable:
 ```javascript
