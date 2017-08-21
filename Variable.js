@@ -1480,7 +1480,9 @@
 							if (parentContext) {
 								parentContext.setVersion(version)
 							}
-							if (parentContext && parentContext.ifModifiedSince >= version && !variable.returnedVariable) {
+							if (parentContext && parentContext.ifModifiedSince >= version &&
+									parentContext.ifModifiedSince >= variable.cachedVersion &&
+									!variable.returnedVariable) {
 								return NOT_MODIFIED
 							}
 							if (sync) {
