@@ -1475,7 +1475,8 @@
 							return variable.cachedValue // always sync here
 						}
 					} else {
-						if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
+						if ((variable.cachedVersion >= version && variable.readyState === readyState) ||
+								resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
 							// get it out of the cache
 							if (parentContext) {
 								parentContext.setVersion(version)
