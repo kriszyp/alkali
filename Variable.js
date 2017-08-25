@@ -313,9 +313,9 @@
 		if (stack[0] && /^Error\s*/.test(stack[0])) stack.shift()
 		if (stack[0] && /_logStackTrace/.test(stack[0])) stack.shift()
 		var coalesce = (this._debugOpts && this._debugOpts.coalesce) || []
-		var line
 		if (this._debugOpts && this._debugOpts.shortStackTrace) {
 			// find the first non-coalesced line
+			var line
 			stack.some(function(line) {
 				if (!coalesce.some(function(re) {
 					return re.re.test(line)
@@ -329,13 +329,14 @@
 				var s = []
 				var re
 				for (var i = 0; i < stack.length; i++) {
-					line = stack[i]
+					var line = stack[i]
 					if (re) {
 						if (re.test(line)) continue
 						re = null
 					}
-					coalesce.some(function(cfg) {
-						return cfg.re.test(line) && (re = cfg)
+					re
+					coalesce.some(function(re) {
+						return re = re.re.test(line)
 					})
 					line = line.replace(/^\s+/,'')
 					if (re) {
@@ -1474,8 +1475,7 @@
 							return variable.cachedValue // always sync here
 						}
 					} else {
-						if ((variable.cachedVersion >= version && variable.readyState === readyState) ||
-								resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
+						if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
 							// get it out of the cache
 							if (parentContext) {
 								parentContext.setVersion(version)
