@@ -313,9 +313,9 @@
 		if (stack[0] && /^Error\s*/.test(stack[0])) stack.shift()
 		if (stack[0] && /_logStackTrace/.test(stack[0])) stack.shift()
 		var coalesce = (this._debugOpts && this._debugOpts.coalesce) || []
+		var line
 		if (this._debugOpts && this._debugOpts.shortStackTrace) {
 			// find the first non-coalesced line
-			var line
 			stack.some(function(line) {
 				if (!coalesce.some(function(re) {
 					return re.re.test(line)
@@ -329,14 +329,13 @@
 				var s = []
 				var re
 				for (var i = 0; i < stack.length; i++) {
-					var line = stack[i]
+					line = stack[i]
 					if (re) {
 						if (re.test(line)) continue
 						re = null
 					}
-					re
-					coalesce.some(function(re) {
-						return re = re.re.test(line)
+					coalesce.some(function(cfg) {
+						return cfg.re.test(line) && (re = cfg)
 					})
 					line = line.replace(/^\s+/,'')
 					if (re) {
