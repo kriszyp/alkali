@@ -215,28 +215,33 @@
 		}
 		var resolved
 		var renderer = this
-		var deferredRender = this.executeWithin(function() {
-			return renderer.variable.then()
-		})
-		deferredRender.then(function(value) {
-			resolved = true
-			if (!deferredRender.isCanceled) {
-				if (deferredRender === renderer.deferredRender) {
-					renderer.deferredRender = null
+		var deferredRender
+		this.executeWithin(function() {
+			deferredRender = renderer.variable.then(function(value) {
+				resolved = true
+				if (deferredRender) {
+					if (deferredRender === renderer.deferredRender) {
+						renderer.deferredRender = null
+					}
+					if (deferredRender.isCanceled) {
+						return
+					}
 				}
-				if (renderer.contextualized && renderer.contextualized !== renderer.variable) {
-					renderer.contextualized.stopNotifies(renderer)
+				if (!renderer.invalidated) {
+					if (renderer.contextualized && renderer.contextualized !== renderer.variable) {
+						renderer.contextualized.stopNotifies(renderer)
+					}
+					renderer.executeWithin(function() {
+						renderer.contextualized = renderer.variable.notifies(renderer)
+					})
+					if(value !== undefined || renderer.started){
+						renderer.started = true
+						renderer.renderUpdate(value, element)
+					}
 				}
-				renderer.executeWithin(function() {
-					renderer.variable.notifies(renderer)
-				})
-				if(value !== undefined || renderer.started){
-					renderer.started = true
-					renderer.renderUpdate(value, element)
-				}
-			}
-		}, function(error) {
-			console.error('Error rendering', renderer, error)
+			}, function(error) {
+				console.error('Error rendering', renderer, error)
+			})
 		})
 		if(!resolved){
 			// start listening for changes immediately
