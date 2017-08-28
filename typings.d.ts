@@ -126,6 +126,7 @@ declare namespace alkali {
   }
 
   export class VArray<T = {}> extends Variable<Array<T>> {
+    constructor(value?: Array<T> | Promise<Array<T>> | Variable<Array<T>>)
     /**
     * Return a VArray with the map applied
     */
@@ -141,11 +142,11 @@ declare namespace alkali {
     /**
     * Return a Variable with the reduce applied
     */
-    reduce<U>(reducer: (T, U) => U): Variable<U>
+    reduce<U>(reducer: (T, U) => U, initialValue?: any): Variable<U>
     /**
     * Return a Variable with the reduceRight applied
     */
-    reduceRight<U>(reducer: (T, U) => U): Variable<U>
+    reduceRight<U>(reducer: (T, U) => U, initialValue?: any): Variable<U>
     /**
     * Return a Variable with the some method applied
     */
