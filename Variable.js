@@ -475,13 +475,18 @@
 			if (!sync && value && value.then) {
 				var deferredContext = context
 				return value.then(function(value) {
-					if (value && value.subscribe) {
-						if (deferredContext) {
-							return deferredContext.executeWithin(function() {
-								return Variable.prototype.gotValue.call(variable, sync, value)
-							})
-						} else {
-							return Variable.prototype.gotValue.call(variable, sync, value)							
+					if (value) {
+						if (value.__variable) {
+							value = value.__variable
+						}
+						if (value.subscribe) {
+							if (deferredContext) {
+								return deferredContext.executeWithin(function() {
+									return Variable.prototype.gotValue.call(variable, sync, value)
+								})
+							} else {
+								return Variable.prototype.gotValue.call(variable, sync, value)							
+							}
 						}
 					}
 					return value
@@ -1446,6 +1451,7 @@
 			var parentContext = context
 			var transformContext = context = context ? context.newContext() : new Context()
 			var args = []
+			var isAsyncInputs
 			try {
 				if (this.version) {
 					// get the version in there
@@ -1491,7 +1497,7 @@
 								}
 								return variable.cachedValue
 							} else {
-								return variable.promise || variable.cachedValue
+								return variable.promise || promiseSafeResult(variable.cachedValue)
 							}
 						}
 						var finishedResolvingArgs = true
@@ -1531,8 +1537,16 @@
 						// return what we have, stale or otherwise
 						return variable.cachedValue
 					}
-					return result
+					return promiseSafeResult(result)
 
+					function promiseSafeResult(result) {
+						if (isAsyncInputs && result && result.notifies) {
+							return {
+								__variable: result
+							}
+						}
+						return result
+					}
 					function onResolve(result, version) {
 						if (variable.readyState === readyState) {
 							if (parentContext) {
@@ -1548,6 +1562,7 @@
 				})
 	 		} finally {
 	 			context = parentContext
+	 			isAsyncInputs = true
 	 		}
 		},
 		forDependencies: function(callback) {
