@@ -87,6 +87,7 @@ declare namespace alkali {
     * @param inputs input variables
     */
     static all<T, U>(inputs: Array<Variable<T>>, transform?: (...v: Array<T>) => U): Variable<U>
+    static all<U>(inputs: Array<Variable<any>>, transform?: (...v: Array<any>) => U): Variable<U>
     /**
     * Compose a new variable based on the provided input variables. The returned variable will hold an array
     * with elements corresponding to the values of the input variables, and will update in response to changes
@@ -94,6 +95,8 @@ declare namespace alkali {
     * @param inputs input variables
     */
     static all<T>(...inputs: Array<Variable<T>>): Variable<Array<T>>
+    static all(...inputs: Array<Variable<any>>): Variable<Array<any>>
+
     static with<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
     static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
 
@@ -194,7 +197,8 @@ declare namespace alkali {
   }
   export class Copy extends Variable<any> {
   }
-  export class Transform extends Variable<any> {
+  export class Transform<T = any> extends Variable<T> {
+    constructor(source: any, transform: (...v) => T, sources: any[])
   }
 
   /**
