@@ -34,23 +34,22 @@
 		this.derivativeMap = new lang.WeakMap(null, 'derivative')
 		this.isDirty = new Variable(false)
 	}, {
-		getValue: function(sync, context) {
+		getValue: function(sync, forModification, forChild) {
 			if(this.state) {
 				this.state = null
 			}
-			var value = this.copiedFrom.valueOf(context)
+			var value = this.copiedFrom.valueOf()
 			if(value && typeof value == 'object') {
 				var derivative = this.derivativeMap.get(value)
 				if (derivative == null) {
 					this.derivativeMap.set(value, derivative = deepCopy(value, undefined, this.derivativeMap))
-					this.setValue(derivative, context)
+					this.setValue(derivative)
 				}
-				return derivative
 			}
 			if(this.value === undefined) {
 				return value
 			}
-			return this.value
+			return Variable.prototype.getValue.call(this, sync, forModification, forChild)
 		},
 		getCopyOf: function(value) {
 			var derivative = this.derivativeMap.get(value)
