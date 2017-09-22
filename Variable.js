@@ -1003,9 +1003,9 @@
 				throw new Error('No function provided to transform')
 			}
 			if (reverse) {
-				transformFunction.reverse = function(value, args, context) {
+				transformFunction.reverse = function(value, args) {
 					// for direct to, we can just use the first argument
-					reverse.call(this, value, args[0], context)
+					reverse.call(this, value, args[0])
 				}
 			}
 			if (transformFunction.prototype instanceof Variable) {
@@ -1522,7 +1522,7 @@
 									// clear out the cache on an error
 									variable.promise = null
 									variable.lastError = error
-									onResolve(null, 0)
+									onResolve(null, -1)
 								}
 								throw error // rethrow so it isn't silenced
 							})
