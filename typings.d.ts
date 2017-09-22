@@ -59,7 +59,7 @@ declare namespace alkali {
     * execute on every change, only as needed by consumers.
     * @param transform The transform function to use to compute the value of the returned variable
     */
-    to<U>(transform: (T) => Variable<U> | Promise<U> | U): Variable<U>
+    to<U>(transform: (T) => Variable<U> | Promise<U> | U, reverseTransform?: (U) => any): Variable<U>
     /**
     * Indicate that the variable's value has changed (primarily used if the value has been mutated outside the alkali API, and alkali needs to be notified of the change)
     */
@@ -201,6 +201,7 @@ declare namespace alkali {
   * Decorator function to be used for marking properties, classes, methods as reactive
   */
   export function reactive(target: {}, key?: string): void
+  export function direct(target: {}, key?: string): void
   export function react<T>(reactiveFunction: () => T): Variable<T>
   export function react<T>(value: T): Reacts<T>
   /**
