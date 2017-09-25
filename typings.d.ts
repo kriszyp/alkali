@@ -249,6 +249,8 @@ declare namespace alkali {
       /* The maximum version number of the sources used to compute the variable (usually accessed after a variable is computed to compare with future computations for differences). */
       version: number
   }
+  /* A response from a variable, given a context with an `ifModifiedSince` that indicates it has not changed*/
+  export var NOT_MODIFIED: {}
   /*
   * The current context being used to compute a variable. This primarily accessible from within a `valueOf` call.
   */
