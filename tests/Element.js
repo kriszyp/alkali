@@ -1,10 +1,11 @@
 define([
 	'../Element',
 	'../Variable',
+	'../operators',
 	'intern!object',
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Element, VariableExports, registerSuite, assert, Promise) {
+], function (Element, VariableExports, operators, registerSuite, assert, Promise) {
 	var Variable = VariableExports.Variable
 	var Div = Element.Div
 	var Label = Element.Label
@@ -860,6 +861,52 @@ define([
 						setTimeout(resolve, 250)
 					}).then(function() {
 						assert.equal(div.innerHTML, '68')
+					})
+				})
+			})
+		},
+		promiseInOperator: function() {
+			var source = new Variable()
+			var promised = source.to(function(s) {
+				return s && new Promise(function(r) {
+					setTimeout(function() { console.log(new Error('RESOLVING PROMISE')); r('promised'); }, 500)
+				})
+			})
+			//source._debug = 'source'
+			//promised._debug = 'promised'
+			const notLoading =
+				operators.or(operators.not(source), promised)
+				// Variable.all([source, promised]).to(function(arr) {
+				// 	var s = arr[0]
+				// 	var p = arr[1]
+				// 	var v = !s || p
+				// })
+			.to(function(v) {
+				console.log('notLoading value:', v)
+				console.log('returning', !!v)
+				return !!v
+			})
+			notLoading._debug = 'notLoading var'
+
+			const loadingSpinner = new Div({ classes: {
+			  hidden: notLoading
+			}})
+			document.body.appendChild(loadingSpinner)
+
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.strictEqual(loadingSpinner.className, 'hidden', 'expected to be hidden as source has no value')
+				//var upstream = new Variable()
+				//upstream._debug = 'upstream'
+				//source.put(upstream)
+				return new Promise(requestAnimationFrame).then(function() {
+					assert.strictEqual(loadingSpinner.className, 'hidden', 'expected to be hidden as source still has no value')
+					source.put('upstream')
+					return new Promise(requestAnimationFrame).then(function() {
+						console.log('CHECKING CLASSNAME; notloading value should be false', notLoading.valueOf(), source.valueOf(), promised.valueOf())
+						assert.notEqual(loadingSpinner.className, 'hidden', 'expected to be SHOWN as source has value, but promise has not resolved')
+						return new Promise(function(r) { setTimeout(function() { r() }, 500) }).then(requestAnimationFrame).then(function() {
+							assert.strictEqual(loadingSpinner.className, 'hidden', 'expected to be hidden promised has resolved')
+						})
 					})
 				})
 			})
