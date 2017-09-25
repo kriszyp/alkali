@@ -2182,7 +2182,9 @@
 					return new Type(new Transform(this, function(value) {
 							return value == null ? undefined : value[method].apply(value, args)
 					}))
-				}
+				},
+				writable: true,
+				configurable: true
 			}
 		}
 		return VFunction
@@ -2203,7 +2205,9 @@
 						return returnValue
 					})
 				})
-			}
+			},
+			writable: true,
+			configurable: true			
 		}		
 	}
 
@@ -2275,26 +2279,6 @@
 			return this.then()
 		},
 	})
-	var primitives = {
-		'string': VString,
-		'number': VNumber,
-		'boolean': VBoolean
-	}
-	function getType(Type) {
-		if (typeof Type === 'string') {
-			return primitives[Type]
-		} else if (typeof Type === 'object') {
-			if (Type instanceof Array) {
-				return VArray.of(getType(Type[0]))
-			}
-			var typedObject = {}
-			for (var key in Type) {
-				typedObject[key] = getType(Type[key])
-			}
-			return Variable.with(typedObject)
-		}
-		return Type
-	}
 	var exports = {
 		__esModule: true,
 		Variable: Variable,
@@ -2311,12 +2295,11 @@
 		deny: deny,
 		noChange: noChange,
 		Context: Context,
-		GeneratorVariable: GeneratorVariable,
 		Item: Item,
 		NotifyingContext: NotifyingContext,
 		all: all,
+		react: react,
 		objectUpdated: objectUpdated,
-		reactive: reactive,
 		NOT_MODIFIED: NOT_MODIFIED
 	}
 	Object.defineProperty(exports, 'currentContext', {
@@ -2324,47 +2307,6 @@
 			return context
 		}
 	})
-	var typeScriptConversions = new Map()
-	typeScriptConversions.set(Array, VArray)
-	typeScriptConversions.set(String, VString)
-	typeScriptConversions.set(Number, VNumber)
-	typeScriptConversions.set(Boolean, VBoolean)
-	function reactive(target, key) { // for typescript decorators
-		var Type = Reflect.getMetadata('design:type', target, key)
-		console.log('Type', Type)
-		if (!Type.notifies) {
-			Type = typeScriptConversions.get(Type) || Variable
-		}
-		Object.defineProperty(target, key, {
-			get: function() {
-				return reactive.get(this, key, Type)
-			},
-			set: function(value) {
-				reactive.set(this, key, value)
-			},
-			enumerable: true
-		})
-	}
-	reactive.get = function(target, key, Type) { // for babel decorators
-		var property = (target._properties || (target._properties = {}))[key]
-		if (!property) {
-			target._properties[key] = property = new (getType(Type))()
-			if (target.getValue) {
-				property.key = key
-				property.parent = target
-				if (property.listeners) {
-					// if it already has listeners, need to reinit it with the parent
-					property.init()
-				}
-			}
-		}
-		return property
-	}
-	reactive.set = function(target, key, value) {
-		var property = target[key]
-		property.parent ? property._changeValue(RequestSet, value) : property.put(value)
-	}
-
 
 	var IterativeMethod = lang.compose(Transform, function(source, method, args) {
 		this.source = source
@@ -2586,6 +2528,16 @@
 			},
 			enumerable: true
 		}
+	}
+
+	function react(generator, options) {
+		if (typeof generator !== 'function') {
+			throw new Error('react() must be called with a generator.')
+		}
+		if (options && options.reverse) {
+			generator.reverse = options.reverse
+		}
+		return new GeneratorVariable(generator)
 	}
 
 	Variable.all = all
