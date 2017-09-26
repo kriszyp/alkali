@@ -875,7 +875,7 @@ define([
 			//source._debug = 'source'
 			//promised._debug = 'promised'
 			const notLoading =
-				operators.or(operators.not(source), promised)
+				operators.or(operators.not(source), promised).whileResolving(false)
 				// Variable.all([source, promised]).to(function(arr) {
 				// 	var s = arr[0]
 				// 	var p = arr[1]
@@ -904,7 +904,7 @@ define([
 					return new Promise(requestAnimationFrame).then(function() {
 						console.log('CHECKING CLASSNAME; notloading value should be false', notLoading.valueOf(), source.valueOf(), promised.valueOf())
 						assert.notEqual(loadingSpinner.className, 'hidden', 'expected to be SHOWN as source has value, but promise has not resolved')
-						return new Promise(function(r) { setTimeout(function() { r() }, 500) }).then(requestAnimationFrame).then(function() {
+						return new Promise(function(r) { setTimeout(function() { requestAnimationFrame(function() { r() }) }, 500) }).then(function() {
 							assert.strictEqual(loadingSpinner.className, 'hidden', 'expected to be hidden promised has resolved')
 						})
 					})

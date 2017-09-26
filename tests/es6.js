@@ -1,10 +1,9 @@
 define([
 	'../Element',
 	'../Variable',
-	'../react',
 	'intern!object',
 	'intern/chai!assert'
-], function (Element, VariableExports, react, registerSuite, assert) {
+], function (Element, VariableExports, registerSuite, assert) {
 	function valueOfAndNotify(variable, callback) {
 		var value = variable.valueOf()
 		variable.notifies(typeof callback === 'object' ? callback : {
@@ -14,6 +13,7 @@ define([
 	}
 	var Variable = VariableExports.Variable
 	var VSet = VariableExports.VSet
+	var react = VariableExports.react
 	var Div = Element.Div
 	var Button = Element.Button
 	var defineTag = Element.defineTag

@@ -79,6 +79,14 @@ declare namespace alkali {
     * @param Type
     */
     as<U>(Type: { new(): U }): U
+    /**
+    * Returns a new variable that is sourced from `this` variable and when the source
+    * returns asynchronously (an upstream promise), this will immediately return 
+    * the `valueUntilResolved` until the `this` variable is resolved (and which point
+    * it will update and return that source value)
+    * @param valueUntilResolved The value to return while waiting for the source value to resolve
+    */
+    whileResolving<U>(valueUntilResolved: U): Variable<T | U>
 
     /**
     * Compose a new variable based on the provided input variables. The returned variable will hold an array

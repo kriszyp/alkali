@@ -1025,6 +1025,9 @@
 			// easiest way to cast to a variable class
 			return new Class(this)
 		},
+		whileResolving: function(valueUntilResolved) {
+			return new WhileResolving(this, valueUntilResolved)
+		},
 		get schema() {
 			// default schema is the constructor
 			if (this.returnedVariable) {
@@ -1475,11 +1478,7 @@
 					var notResolvedYet = transformContext.notResolvedYet
 					if (notResolvedYet) {
 						if (parentContext)
-							parentContext.notResolvedYet = true 
-						if (resolved[0] === undefined && resolved.length === 1) {
-							variable.readyState = 'invalidated'
-							return variable.cachedValue // always sync here
-						}
+							parentContext.notResolvedYet = true
 					} else {
 						if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
 							// get it out of the cache
@@ -1561,6 +1560,9 @@
 					}
 				})
 	 		} finally {
+				if (parentContext) {
+					parentContext.setVersion(transformContext.version)
+				}
 	 			context = parentContext
 	 			isAsyncInputs = true
 	 		}
@@ -1639,6 +1641,63 @@
 		setReverse: function(reverse) {
 			this.transform.valueOf().reverse = reverse
 			return this
+		}
+	})
+
+	var RESOLUTION_UPDATE = {}
+	WhileResolving = lang.compose(Variable, function WhileResolving(variable, defaultValue) {
+		this.parent = variable
+		this.default = defaultValue
+	}, {
+		fixed: true,
+		getValue: function(sync) {
+			if (this.hasResolution) {
+				if (context) {
+					context.setVersion(this.version)
+				}
+				return this.resolvedValue
+			}
+			var variable = this
+			var result, isError
+			var version = this.version
+			this.parent.then(function(value) {
+				if (async) {
+					if (version === variable.version) {
+						variable.resolvedValue = value
+						variable.hasResolution = true
+						variable.updated(RESOLUTION_UPDATE)
+					}
+				} else {
+					async = false
+					result = value
+				}
+			}, function (error) {
+				if (async) {
+					console.error('Variable resolution failed', error)
+				} else {
+					result = error
+					isError = true
+				}
+			})
+			if (async === false) {
+				if (isError) {
+					throw result
+				}
+				return result
+			}
+			var async = true
+			return this.default
+		},
+		updated: function(event) {
+			if (event === RESOLUTION_UPDATE) {
+				return Variable.prototype.updated.call(this)
+			}
+			if (event && event.visited.has(this)) {
+				return event
+			}
+			this.resolvedValue = undefined
+			this.hasResolution = false
+			return Variable.prototype.updated.apply(this, arguments)
 		}
 	})
 
@@ -2291,6 +2350,7 @@
 		VDate: VDate,
 		VSet: VSet,
 		VMap: VMap,
+		GeneratorVariable: GeneratorVariable,
 		Transform: Transform,
 		deny: deny,
 		noChange: noChange,

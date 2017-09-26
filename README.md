@@ -955,6 +955,12 @@ This allows you to execute a function that is the value of a variable, with argu
 
 This will cause the variable to act as a direct proxy for the source variable, and changes to this variable will be directed to the source variable, and vice versa.
 
+### `whileResolving(valueUntilResolved)`
+Returns a new variable that is sourced from `this` variable and when the source
+returns asynchronously (an upstream promise), this will immediately return 
+the `valueUntilResolved` until the `this` variable is resolved (and which point
+it will update and return that source value)
+
 ### `Variable.proxy(source)`
 
 This will utilize ES2015 Proxy's to create a proxy object that will intercept all property access and modification, make them act like `property` and `set` methods.

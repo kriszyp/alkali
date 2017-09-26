@@ -562,6 +562,24 @@ define([
 				assert.equal(value, 'hi')
 			})
 		},
+		variablePromiseWhileResolving: function() {
+			var p = Promise.resolve('hi')
+			var v = new Variable(p)
+			var alwaysAvailable = v.whileResolving('loading')
+			var currentValue
+			alwaysAvailable.then(function(value) {
+				currentValue = value
+			})
+			assert.equal(currentValue, 'loading')
+			var notified
+			assert.equal(valueOfAndNotify(alwaysAvailable, function() {
+				notified = true
+			}), 'loading')
+			return new Promise(setTimeout).then(function() {
+				assert.isTrue(notified)
+				assert.equal(alwaysAvailable.valueOf(), 'hi')
+			})
+		},
 		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)
 			var signal = new Variable()
@@ -1207,10 +1225,10 @@ define([
 			s.put(new Promise(function (r) {
 				setTimeout(function() { r('a') }, 100)
 			}))
-			assert.equal(t.valueOf(), undefined)
+			assert.equal(t.valueOf(), '<undefined>')
 			return new Promise(setTimeout).then(function () {
 				// still initial/undefined value
-				assert.equal(t.valueOf(), undefined)
+				assert.equal(t.valueOf(), '<undefined>')
 				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
 					// should contain resolved value now
 					assert.equal(t.valueOf(), '<a>')
