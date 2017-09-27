@@ -26,12 +26,9 @@ define([
           setTimeout(function() { r('promised') }, 100)
         })
       })
-      s._debug = 'source'
-      d._debug = 'promised'
-      const notLoading = operators.or(operators.not(s), d)
+      var notLoading = operators.or(operators.not(s), d)
       assert.isTrue(notLoading.valueOf())
       var upstream = new Variable()
-      upstream._debug = 'upstream'
       s.put(upstream)
       assert.isTrue(!!notLoading.valueOf())
       upstream.put('source')

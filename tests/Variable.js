@@ -575,7 +575,9 @@ define([
 			assert.equal(valueOfAndNotify(alwaysAvailable, function() {
 				notified = true
 			}), 'loading')
-			return new Promise(setTimeout).then(function() {
+			return new Promise(function(resolve) {
+				setTimeout(resolve, 50)
+			}).then(function() {
 				assert.isTrue(notified)
 				assert.equal(alwaysAvailable.valueOf(), 'hi')
 			})

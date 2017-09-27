@@ -874,7 +874,7 @@ define([
 			})
 			//source._debug = 'source'
 			//promised._debug = 'promised'
-			const notLoading =
+			var notLoading =
 				operators.or(operators.not(source), promised).whileResolving(false)
 				// Variable.all([source, promised]).to(function(arr) {
 				// 	var s = arr[0]
@@ -886,9 +886,8 @@ define([
 				console.log('returning', !!v)
 				return !!v
 			})
-			notLoading._debug = 'notLoading var'
 
-			const loadingSpinner = new Div({ classes: {
+			var loadingSpinner = new Div({ classes: {
 			  hidden: notLoading
 			}})
 			document.body.appendChild(loadingSpinner)
@@ -902,7 +901,6 @@ define([
 					assert.strictEqual(loadingSpinner.className, 'hidden', 'expected to be hidden as source still has no value')
 					source.put('upstream')
 					return new Promise(requestAnimationFrame).then(function() {
-						console.log('CHECKING CLASSNAME; notloading value should be false', notLoading.valueOf(), source.valueOf(), promised.valueOf())
 						assert.notEqual(loadingSpinner.className, 'hidden', 'expected to be SHOWN as source has value, but promise has not resolved')
 						return new Promise(function(r) { setTimeout(function() { requestAnimationFrame(function() { r() }) }, 500) }).then(function() {
 							assert.strictEqual(loadingSpinner.className, 'hidden', 'expected to be hidden promised has resolved')
