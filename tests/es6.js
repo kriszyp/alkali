@@ -16,7 +16,8 @@ define([
 	var react = VariableExports.react
 	var Div = Element.Div
 	var Button = Element.Button
-	var defineTag = Element.defineTag
+	var defineElement = Element.defineElement
+	var element = Element.element
 	registerSuite({
 		name: 'es6',
 		react: function () {
@@ -278,15 +279,27 @@ define([
 			//assert.isTrue(MyDiv instanceof Element.ElementClass)
 		},
 		registerTag: function() {
-			class CustomElement extends Element {
+			class CustomElementTemp extends Div {
+				constructor() {
+					super(...arguments)
+					this.bar = 4
+				}
 				foo() {
 					return 3
 				}
 			}
-			defineTag('custom-tag', CustomElement)
-			var custom = new CustomElement()
+			var CustomElement = defineElement('custom-tag', CustomElementTemp)
+
+			var custom = new CustomElement()//.create()
 			assert.equal(custom.tagName.toUpperCase(), 'CUSTOM-TAG')
 			assert.equal(custom.foo(), 3)
+			assert.equal(custom.bar, 4)
+			var custom = new CustomElement('.some-class', { content: 'hi' })
+			assert.equal(custom.tagName.toUpperCase(), 'CUSTOM-TAG')
+			assert.equal(custom.foo(), 3)
+			assert.equal(custom.bar, 4)
+			assert.equal(custom.className, 'some-class')
+			assert.equal(custom.innerHTML, 'hi')
 		},
 
 		getterGeneratorOnVariable() {

@@ -1,7 +1,7 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {				
-	module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable')) // Node
-}}(this, function (lang, Renderer, VariableExports) {
+	define(['./util/lang', './Renderer', './Variable', './reactive'], factory) } else if (typeof module === 'object' && module.exports) {				
+	module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable'), require('./reactive')) // Node
+}}(this, function (lang, Renderer, VariableExports, reactive) {
 	var Variable = VariableExports.Variable
 	var knownElementProperties = [
 		'textContent', // Node
@@ -27,6 +27,12 @@
 		}
 	})
 
+	var construct = typeof Reflect !== 'undefined' ? Reflect.construct :
+		function(Constructor, args, Class) {
+			return Constructor.apply(Object.create(Class.prototype), args)
+		}
+
+	var constructOrCall = lang.constructOrCall
 	var ClassNameRenderer = lang.compose(Renderer.ElementRenderer, function ClassNameRenderer(options) {
 		this.name = options.name
 		Renderer.apply(this, arguments)
@@ -105,6 +111,7 @@
 		// In safari, setting the constructor can actually assign it at the prototype level, instead of at the instance
 		testElement.__proto__.constructor = originalConstructor // restore the original constructor
 		buggyConstructorSetter = true
+		lang.buggyConstructorSetter = buggyConstructorSetter
 	}
 
 
@@ -170,10 +177,10 @@
 			var child = children[i]
 			var childNode
 			if (child != null) { // we just skip nulls and undefined, helps make it easier to write conditional element logic
-				if (child.create) {
+				if (typeof child === 'function') {
 					// an element constructor
 					currentParent = parent
-					childNode = child.create()
+					childNode = new child()
 					fragment.appendChild(childNode)
 					if (child.isContentNode) {
 						container.contentNode = childNode
@@ -756,24 +763,14 @@
 		}
 	}
 
-	function makeElementConstructor() {
-		function Element(selector, properties) {
-			if (this instanceof Element){
-				// create DOM element
-				// Need to detect if we have registered the element and `this` is actually already the correct instance
-				return create.apply(Element.prototype === getPrototypeOf(this) ? Element :// this means it is from this constructor
-					this.constructor, // this means it was constructed from a subclass
-					arguments)
-			} else {
-				// extend to create new class
-				return withProperties.apply(Element, arguments)
-			}
-		}
-		return Element
+	function makeElementConstructor(BaseClass) {
+		var isNativeElement = !BaseClass.with // TODO: Create a separate constructor for this
+		var isNativeClass = Object.getOwnPropertyDescriptor(BaseClass, 'prototype').writable === false
+		return constructOrCall(BaseClass, isNativeElement && create, withProperties, isNativeClass)
 	}
 
 	function withProperties(selector, properties) {
-		var Element = makeElementConstructor()
+		var Element = makeElementConstructor(this)
 		if (this.with) {
 			// TODO: Might consider only doing this for derivatives of derivatives, since we don't need to inherit from base constructors
 			// or only doing this in the case of element having custom properties (could mark it with a flag)
@@ -853,7 +850,9 @@
 				applyOnCreate = getApplySet(this)
 			}
 		}*/
-		var element = doc.createElement(this.tagName)
+		var element = this._ElementClass ?
+			construct(HTMLElement, arguments, this._ElementClass) : // does HTMLElement differ from any other constructors?
+			doc.createElement(this.tagName)
 		if (selector && selector.parent) {
 			parent = selector.parent
 		}
@@ -977,19 +976,23 @@
 			layoutChildren(parent, slice.call(arguments, 1), parent, true) // called as a function
 	}
 
-	function defineTag(tagName, Element) {
+	function defineElement(tagSelector, Element) {
 		var extendElement = Element.tagName
+		var selector = tagSelector.match(/[\.\#].+/)
+		var tagName = selector ? tagSelector.slice(0, tagSelector.length - (selector = selector[0]).length) : tagSelector
 		Element.tagName = tagName
 		if (typeof customElements === 'object') {
-			customElements.define(tagName, lang.extendClass(HTMLElement), { extends: extendElement })
+			Element._ElementClass = Element
+			customElements.define(tagName, Element, { extends: extendElement })
 		} else {
 			console.warn('This browser does not support customElements, ensure that the constructor is used to create new elements')
 		}
+		return selector ? Element.with(selector) : Element.with()
 	}
 
 	var Element = withProperties.call(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
 
-	Element.defineTag = defineTag
+	Element.defineElement = defineElement
 	Element.assign = function(target, properties) {
 		if (typeof target === 'function') {
 			// assign properties to an existing constructor/class
@@ -1216,12 +1219,13 @@
 	Element.options = {
 		moveLiveElementsEnabled: true,
 	}
-	Element.content = function(element){
+	Element.content = function(Element){
 		// container marker
-		return {
-			isContentNode: true,
-			create: element.create.bind(element)
+		function Content() {
+			return new Element()
 		}
+		Content.isContentNode = true
+		return Content
 	}
 
 	Element.ElementClass = function() {}
@@ -1558,7 +1562,26 @@
 		}
 	})
 
-
+	var element = Element.element = function(tagSelectorOrClass) {
+		if (typeof MaybeClass == 'function') {
+			return withProperties.call(MaybeClass)
+		}
+		var args = arguments
+		return function(Class) {
+			if (typeof MaybeClass == 'string') {
+				defineElement(MaybeClass, Class)
+			}
+			return withProperties.apply(Class, args)
+		}
+	}
+	lang.copy(element, reactive)
+	element.cls = function(structure) {
+		var makeReactive = reactive.cls(structure)
+		return function(Class) {
+			makeReactive(Class)
+			return withProperties.apply(Class)
+		}
+	}
 
 	return Element
 }))

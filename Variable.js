@@ -2271,7 +2271,7 @@
 	}
 
 	function VString(value) {
-		return makeSubVar(this, typeof value === 'object' ? value : String(value), VString)
+		return makeSubVar(this, (typeof value === 'object' || value == null) ? value : String(value), VString)
 	}
 
 	function VNumber(value) {

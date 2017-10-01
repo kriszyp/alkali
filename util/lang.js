@@ -425,6 +425,33 @@
 				return target
 			}
 			return source
+		},
+		constructOrCall: typeof Reflect !== 'undefined' ?
+			// do this with an eval to avoid syntax errors in browsers that do not support new.target
+			eval('(function(BaseClass, constructHandler, callHandler, constructClass){ return function Element() { return this instanceof Element ? constructHandler ? constructHandler.apply(new.target || this.constructor, arguments) : constructClass ? Reflect.construct(BaseClass, arguments, new.target || this.constructor) : lang.functionConstruct(BaseClass, arguments, new.target || this.constructor, this) : callHandler.apply(Element, arguments) } })') :
+			function(BaseClass, constructHandler, callHandler) {
+				return function Element() {
+					if (this instanceof Element) {
+						if (constructHandler) {
+							return constructHandler.apply(this.constructor, arguments)
+						}
+						return lang.functionConstruct(BaseClass, arguments, this.constructor, this)
+					} else {
+						return callHandler.apply(Element, arguments)
+					}
+				}
+			},
+		functionConstruct: function(BaseClass, args, SubClass, instance) {
+			if (!instance.hasOwnProperty('constructor') && SubClass.prototype === Object.getPrototypeOf(instance)) {
+				instance = Object.create(SubClass.prototype)
+				if (lang.buggyConstructorSetter) {
+					// in safari, directly setting the constructor messes up the native prototype
+					Object.defineProperty(instance, 'constructor', { value: SubClass })
+				} else {
+					instance.constructor = SubClass
+				}
+			}
+			return BaseClass.apply(instance, args)
 		}
 	}
 	function isGenerator(func) {

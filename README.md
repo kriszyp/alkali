@@ -927,17 +927,25 @@ Alkali includes a variable Copy constructor, that allows you to maintain a copy 
 		workingCopy.save(); // now save the changes back to the original object
 	})
 
-## Creating Custom Tag Named Elements
+## Creating Web Components/Custom Tag Named Elements
 
-Custom elements can be registered with their own custom tag name as well. This can be done by extending an Element class, and calling `defineTag` with that class. This will set the tag name of the created elements. It will also attempt to call `customElements.define` to register the element with the browser, if it is available in the browser. For example:
+Custom elements (web components) can be registered with their own custom tag name as well. This can be done by extending an Element class, and calling `defineElement` with that class. This will set the tag name of the created elements, attempt to call `customElements.define` to register the element with the browser, if it is available in the browser, and return a class/constructor for the element. For example:
 ```javascript
-import { Element, defineTag } from 'alkali'
+import { Element, defineElement } from 'alkali'
+
+export default defineElement('custom-element',
 class MyCustomElement extends Element { // on newer browsers we could extend other elements
 	...
 }
-defineTag('custom-element', MyCustomElement)
 ```
-Note that this functionality currently will only work predictably on all browsers by extending the generic `Element` class, as other base elements with specific functionality, like inputs and tables, will not properly inherit their functionality in olders browsers (that do not support `customElements.define`). Using `defineTag` is recommended for classes that will be frequently used and can extend generic element functionality, or in newer browser environments.
+Note that this functionality currently will only work predictably on all browsers by extending the generic `Element` class, as other base elements with specific functionality, like inputs and tables, will not properly inherit their functionality in olders browsers (that do not support `customElements.define`). Using `defineElement` is recommended for classes that will be frequently used and can extend generic element functionality, or in newer browser environments.
+
+Again, the returned element constructor can be called directly to construct new constructors, instantiated.
+
+The provided name can include selectors as well as to define a class name or ids to assign on construction:
+```
+defineElement('custom-element.add-this-class-too')
+```
 
 ## Additional Variable Methods
 
