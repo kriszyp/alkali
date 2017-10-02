@@ -765,6 +765,10 @@
 
 	function makeElementConstructor(BaseClass) {
 		var isNativeElement = !BaseClass.with // TODO: Create a separate constructor for this
+		// this is an optimization to allow consecutive alkali constructors to bypass each other
+		while (BaseClass.prototype.constructor !== BaseClass && !BaseClass.hasOwnProperty('with')) {
+			BaseClass = getPrototypeOf(BaseClass)
+		}
 		var isNativeClass = Object.getOwnPropertyDescriptor(BaseClass, 'prototype').writable === false
 		return constructOrCall(BaseClass, isNativeElement && create, withProperties, isNativeClass)
 	}
@@ -984,8 +988,8 @@
 		if (typeof customElements === 'object') {
 			Element._ElementClass = Element
 			customElements.define(tagName, Element, { extends: extendElement })
-		} else {
-			console.warn('This browser does not support customElements, ensure that the constructor is used to create new elements')
+		} else if (extendElement && extendElement != 'div' && extendElement != 'span') {
+			console.warn('This browser does not support customized built-in elements, make sure to only extend Element, Div, or Span')
 		}
 		return selector ? Element.with(selector) : Element.with()
 	}

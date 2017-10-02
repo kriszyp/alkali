@@ -216,10 +216,16 @@
 	}
 	Hidden.prototype.toJSON = toJSONHidden
 
-	var extendClass
+	var extendClass, constructOrCall
 	try {
+		// do this with an eval to avoid syntax errors in browsers that do not support class and new.target
 		extendClass = eval('(function(Base){ return class extends Base {}})')
-	} catch(e) {}
+		var possibleConstructOrCall = eval('"use strict";(function(BaseClass, constructHandler, callHandler, constructClass){ return function Element() { return this instanceof Element ? constructHandler ? constructHandler.apply(new.target || this.constructor, arguments) : constructClass ? Reflect.construct(BaseClass, arguments, new.target || this.constructor) : lang.functionConstruct(BaseClass, arguments, new.target || this.constructor, this) : callHandler.apply(Element, arguments) } })')
+		// actually using new.target bombs in Edge, so it is basically unusable
+		new (possibleConstructOrCall(function() {}, function() {}))()
+		constructOrCall = possibleConstructOrCall
+	} catch(e) {
+	}
 
 	var lang = {
 		requestAnimationFrame: has('requestAnimationFrame') ? requestAnimationFrame :
@@ -426,21 +432,28 @@
 			}
 			return source
 		},
-		constructOrCall: typeof Reflect !== 'undefined' ?
-			// do this with an eval to avoid syntax errors in browsers that do not support new.target
-			eval('(function(BaseClass, constructHandler, callHandler, constructClass){ return function Element() { return this instanceof Element ? constructHandler ? constructHandler.apply(new.target || this.constructor, arguments) : constructClass ? Reflect.construct(BaseClass, arguments, new.target || this.constructor) : lang.functionConstruct(BaseClass, arguments, new.target || this.constructor, this) : callHandler.apply(Element, arguments) } })') :
-			function(BaseClass, constructHandler, callHandler) {
-				return function Element() {
-					if (this instanceof Element) {
+		constructOrCall: constructOrCall || function(BaseClass, constructHandler, callHandler) {
+			return function Element() {
+				if (this instanceof Element) {
+					if (!this.hasOwnProperty('constructor') && Element.prototype === getPrototypeOf(this)) {
 						if (constructHandler) {
-							return constructHandler.apply(this.constructor, arguments)
+							return constructHandler.apply(Element, arguments)
 						}
-						return lang.functionConstruct(BaseClass, arguments, this.constructor, this)
-					} else {
-						return callHandler.apply(Element, arguments)
+						if (lang.buggyConstructorSetter) {
+							// in safari, directly setting the constructor messes up the native prototype
+							Object.defineProperty(this, 'constructor', { value: Element })
+						} else {
+							this.constructor = Element
+						}
+					} else if (constructHandler) {
+						return constructHandler.apply(this.constructor, arguments)
 					}
+					return BaseClass.apply(this, arguments)
+				} else {
+					return callHandler.apply(Element, arguments)
 				}
-			},
+			}
+		},
 		functionConstruct: function(BaseClass, args, SubClass, instance) {
 			if (!instance.hasOwnProperty('constructor') && SubClass.prototype === Object.getPrototypeOf(instance)) {
 				instance = Object.create(SubClass.prototype)
