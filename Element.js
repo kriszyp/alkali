@@ -1,7 +1,7 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang', './Renderer', './Variable', './reactive'], factory) } else if (typeof module === 'object' && module.exports) {				
-	module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable'), require('./reactive')) // Node
-}}(this, function (lang, Renderer, VariableExports, reactive) {
+	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {				
+	module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable')) // Node
+}}(this, function (lang, Renderer, VariableExports) {
 	var Variable = VariableExports.Variable
 	var knownElementProperties = [
 		'textContent', // Node
@@ -1565,27 +1565,6 @@
 			return true
 		}
 	})
-
-	var element = Element.element = function(tagSelectorOrClass) {
-		if (typeof MaybeClass == 'function') {
-			return withProperties.call(MaybeClass)
-		}
-		var args = arguments
-		return function(Class) {
-			if (typeof MaybeClass == 'string') {
-				defineElement(MaybeClass, Class)
-			}
-			return withProperties.apply(Class, args)
-		}
-	}
-	lang.copy(element, reactive)
-	element.cls = function(structure) {
-		var makeReactive = reactive.cls(structure)
-		return function(Class) {
-			makeReactive(Class)
-			return withProperties.apply(Class)
-		}
-	}
 
 	return Element
 }))
