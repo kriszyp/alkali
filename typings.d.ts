@@ -318,6 +318,10 @@ declare namespace alkali {
     [P in keyof T]?: T[P]
   } & BaseElementProperties
 
+  type OptionalElementProperties<T> = {
+    [P in keyof T]?: T[P]
+  } | BaseElementProperties
+
   interface BaseElementProperties {
     content?: ElementChild
     class?: Vstring
@@ -682,21 +686,21 @@ declare namespace alkali {
   export interface ElementClass<Element> {
     new (selector?: string): Element
     new (content: ElementChild): Element
-    new (properties: ElementProperties<Element>, content?: ElementChild): Element
+    new (properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     new (selector: string, content: ElementChild): Element
-    new (selector: string, properties: ElementProperties<Element>, content?: ElementChild): Element
+    new (selector: string, properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     (selector?: string): ElementClass<Element>
     (content: ElementChild): ElementClass<Element>
-    (properties: ElementProperties<Element>, content?: ElementChild): ElementClass<Element>
-    (selector: string, content: ElementChild, properties?: ElementProperties<Element>): ElementClass<Element>
-    (selector: string, properties: ElementProperties<Element>, content?: ElementChild): ElementClass<Element>
+    (properties: OptionalElementProperties<Element>, content?: ElementChild): ElementClass<Element>
+    (selector: string, content: ElementChild, properties?: OptionalElementProperties<Element>): ElementClass<Element>
+    (selector: string, properties: OptionalElementProperties<Element>, content?: ElementChild): ElementClass<Element>
     create(selector?: string): Element
     create(content: ElementChild): Element
-    create(properties: ElementProperties<Element>, content?: ElementChild): Element
+    create(properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     create(selector: string, content: ElementChild): Element
-    create(selector: string, properties: ElementProperties<Element>, content?: ElementChild): Element
+    create(selector: string, properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     with(content: ElementChild): ElementClass<Element>
-    with(properties: ElementProperties<Element>, content?: ElementChild): ElementClass<Element>
+    with(properties: OptionalElementProperties<Element>, content?: ElementChild): ElementClass<Element>
     property(key): VariableClass<any>
     children: Array<ElementChild>
   }
