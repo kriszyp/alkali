@@ -305,7 +305,14 @@ declare namespace alkali {
   type Vnumber = number | Variable<number>
   type Vstyle = Vstring | Vnumber | Vboolean
 
+  /**
+  * Registers an element with the given tag name, returning a callable, newable constructor for the element
+  **/
   export function defineElement<T extends Element>(tagSelect: string, Element: { new(...params: {}[]): T}): ElementClass<T>
+  /**
+  * Returns a callable, newable constructor for the element
+  **/
+  export function defineElement<T extends Element>(Element: { new(...params: {}[]): T}): ElementClass<T>
 
   export type ElementProperties<T> = {
     [P in keyof T]?: T[P]

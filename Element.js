@@ -981,20 +981,32 @@
 	}
 
 	function defineElement(tagSelector, Element) {
+		if (!Element) {
+			// allow optional first param
+			return tagSelector.with()
+		}
 		var extendElement = Element.tagName
 		var selector = tagSelector.match(/[\.\#].+/)
 		var tagName = selector ? tagSelector.slice(0, tagSelector.length - (selector = selector[0]).length) : tagSelector
 		Element.tagName = tagName
 		if (typeof customElements === 'object') {
-			Element._ElementClass = Element
-			customElements.define(tagName, Element, { extends: extendElement })
+			try {
+				if (Element._ElementClass = customElements.get(tagName)) {
+					console.warn('Element', tagName, 'already registered')
+				} else {
+					customElements.define(tagName, Element, { extends: extendElement })
+					Element._ElementClass = Element
+				}
+			} catch(error) {
+				console.warn(error)
+			}
 		} else if (extendElement && extendElement != 'div' && extendElement != 'span') {
 			console.warn('This browser does not support customized built-in elements, make sure to only extend Element, Div, or Span')
 		}
 		return selector ? Element.with(selector) : Element.with()
 	}
 
-	var Element = withProperties.call(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
+	var Element = setupElement(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
 
 	Element.defineElement = defineElement
 	Element.assign = function(target, properties) {
@@ -1137,10 +1149,13 @@
 		tagName = tagName.toLowerCase()
 		return tags[tagName] ||
 			(tags[tagName] =
-				setupElement(withProperties.call(doc.createElement(tagName).constructor), tagName))
+				setupElement(doc.createElement(tagName).constructor, tagName))
 	}
 
-	function setupElement(Element, tagName) {
+	function setupElement(HTMLConstructor, tagName, type) {
+		var Element = type ?
+			withProperties.call(HTMLConstructor, { type: type }) :
+			withProperties.call(HTMLConstructor)
 		var props = elementPropertyHandlers[tagName]
 		if (props && !props.assigned) {
 			var handlers = Element.prototype._propertyHandlers = Object.create(propertyHandlers)
@@ -1157,6 +1172,8 @@
 			props.assigned = true
 		}
 		Element.tagName = tagName
+		// once https://bugs.chromium.org/p/chromium/issues/detail?id=648828&desc=4 is implemented we can do:
+		// Element._HTMLConstructor = HTMLConstructor
 		return Element
 	}
 	function generate(elements) {
@@ -1175,9 +1192,7 @@
 			Object.defineProperty(Element, inputType, {
 				get: function() {
 					// TODO: make all inputs extend from input generated from generate
-					return ElementClass || (ElementClass = setupElement(withProperties.call(HTMLInputElement, {
-						type: inputType.toLowerCase()
-					}), 'input'))
+					return ElementClass || (ElementClass = setupElement(HTMLInputElement, 'input', inputType.toLowerCase()))
 				}
 			})
 			// alias all the inputs with an Input suffix
