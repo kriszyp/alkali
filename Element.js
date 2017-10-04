@@ -589,10 +589,12 @@
 			for (var i = 0, l = inputEvents.length; i < l; i++) {
 				element.addEventListener(inputEvents[i], function (event) {
 					var value = element[key]
-					var result = variable.put(conversion ? conversion(value, element) : value, new Context(element))
-					if (result === VariableExports.deny) {
-						throw new Error('Variable change denied')
-					}
+					new Context(element).executeWithin(function() {
+						var result = variable.put(conversion ? conversion(value, element) : value)
+						if (result === VariableExports.deny) {
+							throw new Error('Variable change denied')
+						}
+					})
 				})
 			}
 		})

@@ -4,6 +4,10 @@ declare namespace alkali {
     then<U>(callback?: (T) => U | Promise<U>, errback?: (T) => U | Promise<U>): Promise<U>
   }
 
+  class UpdateEvent {
+
+  }
+
   export class Variable<T = {}> implements Promise<T> {
     /**
     * Create a new Variable, with reactive capabilities, that holds a varying value. 
@@ -29,7 +33,7 @@ declare namespace alkali {
     * Assigns a new value to this variables (which marks it as updated and any listeners will be notified)
     * @param value The new value to assign to the variable. The may be another variable or a promise, which will transitively be resolved
     */
-    put(value: T | Variable<T> | Promise<T>)
+    put(value: T | Variable<T> | Promise<T>, event?: UpdateEvent)
     /**
     * Gets the property value of this variable's value/object. This differs from `property` in that it returns the resolved value, not a variable
     * @param key The name of the property
@@ -40,7 +44,7 @@ declare namespace alkali {
     * @param key The name of the property
     * @param value The new value to assign to the property
     */
-    set<K extends keyof T>(key: KeyType, value: T[K] | Variable<T[K]> | Promise<T[K]>)
+    set<K extends keyof T>(key: KeyType, value: T[K] | Variable<T[K]> | Promise<T[K]>, event?: UpdateEvent)
     /**
     * Assigns undefined to the property of this variable's value
     * @param key The name of the property

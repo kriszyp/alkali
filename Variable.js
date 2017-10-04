@@ -50,7 +50,6 @@
 		if (notifies) {
 			this.notifies = notifies
 		}
-		this.sources = []
 	}
 	Context.prototype = {
 		constructor: Context,
@@ -384,7 +383,7 @@
 			}
 			return result
 		},
-		getValue: function(sync, forModification, forChild) {
+		getValue: function(sync, forChild) {
 			if (context) {
 				context.setVersion(forChild ? this.version : Math.max(this.version || 0, this.versionWithChildren || 0))
 			}
@@ -405,7 +404,7 @@
 					// parent needs value context, might want to do separate context,
 					// but would need to treat special so it retrieves the version
 					// only and not the versionWithChildren
-					object = parent.getValue(sync, forModification, true)
+					object = parent.getValue(sync, true)
 				} else {
 					object = parent.value
 				}
@@ -445,8 +444,7 @@
 			}
 			var value = this.value
 			return value !== undefined ?
-				this.value :
-				forModification ? (this.value = lang.deepCopy(this.default && this.default.valueOf())) : this.default
+				this.value : this.default
 		},
 		gotValue: function(sync, value) {
 			var previousNotifyingValue = this.returnedVariable
@@ -534,49 +532,63 @@
 			}
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
-		_changeValue: function(type, newValue) {
+		isCopyOnWrite: true,
+		_changeValue: function(type, newValue, event) {
 			var key = this.key
 			var parent = this.parent
 			if (!parent) {
-				return this.put(newValue, context)
+				return this.put(newValue, event)
 			}
 			var variable = this
-			var object = parent.getValue ? parent.getValue(true, true, true) : parent.value
-			if (object == null) {
-				// nothing there yet, create an object to hold the new property
-				parent.put(object = typeof key == 'number' ? [] : {})
-			} else if (typeof object != 'object') {
-				// if the parent is not an object, we can't set anything (that will be retained)
-				var error = new Error('Can not set property on non-object')
-				error.deniedPut = true
-				throw error
-
+			var object = parent.getValue ? parent.getValue(true, true) : parent.value
+			if (object != null) {
+				if (typeof object != 'object') {
+					// if the parent is not an object, we can't set anything (that will be retained)
+					var error = new Error('Can not set property on non-object')
+					error.deniedPut = true
+					throw error
+				}
+				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
+				if (oldValue === newValue && typeof newValue != 'object') {
+					// no actual change to make
+					return noChange
+				}
 			}
-			var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-			if (oldValue === newValue && typeof newValue != 'object') {
-				// no actual change to make
-				return noChange
-			}
-			if (typeof object.set === 'function') {
-				object.set(key, newValue)
+			if (object && typeof object.set === 'function') {
+				object.set(key, newValue, event)
 			} else {
 				if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
 					// if a put and the property value is a variable, assign it to that.
-					oldValue.put(newValue)
+					return oldValue.put(newValue, event)
 				} else {
 					if (newValue && newValue.then && !newValue.notifies) {
-						newValue = assignPromise(this, newValue, function(value) {
-							object[key] = value
+						// wait for it to resolve and then assign
+						return newValue.then(function(newValue) {
+							return variable._changeValue(type, newValue, event)
 						})
 					} else {
+						// copy, if this is a copy-on-write variable
+						// nothing there yet, create an object to hold the new property
+						object = object == null
+							? typeof key == 'number' ? [] : {}
+							: parent.isCopyOnWrite
+								? Object.assign(
+									object.constructor === Object
+									?	{}
+									:	object.constructor === Array
+										?	[]
+										: Object.create(Object.getPrototypeOf(object)), object)
+								: object
 						object[key] = newValue
 					}
 					// or set the setter/getter
 				}
+				event = event || new RefreshEvent()
+				var parentEvent = new PropertyChangeEvent(key, event, this)
+				parentEvent.oldValue = oldValue
+				parentEvent.target = variable
+				parent.put(object, parentEvent)
 			}
-			var event = new RefreshEvent()
-			event.oldValue = oldValue
-			event.target = variable
 			variable.updated(event, variable)
 
 			// now notify any object listeners
@@ -589,7 +601,7 @@
 					var listener = listeners[i]
 					if (listener !== parent) {
 						// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
-						listener._propertyChange(key, object, type)
+						listener.updated(event)
 					}
 				}
 			}
@@ -755,7 +767,7 @@
 					if ((updateEvent instanceof PropertyChangeEvent) &&
 							dependent.parent) {
 						if (dependent.key === updateEvent.key) {
-							dependent.updated(updateEvent.childEvent, variable, true)
+							dependent.updated(updateEvent.childEvent, variable)
 						}
 					} else {
 						dependent.updated(updateEvent, variable, true)
@@ -863,10 +875,10 @@
 				}
 			}
 		},
-		put: function(value) {
+		put: function(value, event) {
 			var variable = this
 			if (this.parent) {
-				return this._changeValue(RequestChange, value)
+				return this._changeValue(RequestChange, value, event)
 			}
 			var oldValue = this.getValue ? this.getValue(true) : this.value
 			if (oldValue === value && typeof value != 'object') {
@@ -888,7 +900,7 @@
 			} else {
 				variable.value = value
 			}
-			var event = new RefreshEvent()
+			event = event || new RefreshEvent()
 			event.oldValue = oldValue
 			event.target = variable
 			variable.updated(event, variable)
@@ -912,9 +924,9 @@
 			}
 			return value
 		},
-		set: function(key, value) {
+		set: function(key, value, event) {
 			// TODO: create an optimized route when the property doesn't exist yet
-			this.property(key)._changeValue(RequestSet, value)
+			this.property(key)._changeValue(RequestSet, value, event)
 		},
 		undefine: function(key) {
 			this.set(key, undefined)
@@ -1388,6 +1400,7 @@
 		}
 	}, {
 		fixed: true,
+		isCopyOnWrite: false,
 		// TODO: Move all the get and set functionality for maps out of Variable
 		property: function(key, PropertyClass) {
 			var properties = this._properties || (this._properties = new Map())
@@ -1446,9 +1459,9 @@
 			if (!this.hasOwnProperty('source1') && context) {
 				// TODO: Not sure if this is a helpful optimization or not
 				// if we have a single source, we can use ifModifiedSince
-					/*if (!contextualizedVariable && this.context && this.context.matches(context)) {
+				if (!contextualizedVariable && this.context && this.context.matches(context)) {
 						contextualizedVariable = this
-					}*/
+					}
 			}
 			var readyState = this.readyState
 			var parentContext = context
@@ -1619,7 +1632,7 @@
 			}
 			return args
 		},
-		put: function(value) {
+		put: function(value, event) {
 			var call = this
 			return when(this.valueOf(), function(originalValue) {
 				if (originalValue === value && typeof value != 'object') {
@@ -1628,9 +1641,9 @@
 				var transform = call.transform.valueOf()
 				if (transform.reverse) {
 					(transform.reverse).call(call, value, call.getArguments())
-					call.updated()
+					call.updated(event)
 				} else if (originalValue && originalValue.put) {
-					return originalValue.put(value)
+					return originalValue.put(value, event)
 				} else {
 					var error = new Error('Can not put value into a one-way transform, that lacks a reversal')
 					error.deniedPut = true
@@ -1750,9 +1763,9 @@
 			return version
 		},
 
-		put: function(value) {
+		put: function(value, event) {
 			var subject = this.subject
-			return this.generic.put(value, subject.getContextualized ? subject : new Context(subject))
+			return this.generic.put(value, event)
 		}
 	})
 

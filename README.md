@@ -890,18 +890,37 @@ aNumber.valueOf() // -> returns 10
 The computations (and invalidations) can be all be executed with an optional context, which effectively allows variables to be parameterized. This means that a given variable does not have to be used to only represent a single value, but the variable may be used to represent set of different variables depending on their context. This also facilitates the construction of very powerful caching mechanisms that can intelligently cache based on determining which parameters may lead to different results.
 
 
-## Variable Proxying
+## Variable Copy-on-Write
 
-Alkali variables can be assigned (with `put`) a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. The exception is that changing downstream an object shared with an upstream object. For example:
+Alkali variables that contain objects default to using copy-on-write semantics that protects object immutability. Whenever you `set` a property on a variable containing an object, a new copy of the object will be created and assigned the provide property value, leaving the original object untouched. For example:
+```javascript
+let obj = {foo: 1}
+let v = new Variable(obj)
+v.set('foo', 2)
+v.valueOf() -> {foo: 2}
+obj.foo -> 1
+```
+This behavior can be altered by setting the `isCopyOnWrite` flag to false on a variable:
+```javascript
+let obj = {foo: 1}
+let v = new Variable(obj)
+v.isCopyOnWrite = false
+v.set('foo', 2)
+obj.foo -> 2
+```
+
+Alkali variables can be assigned (with `put`) a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. Again, a new copied object will be created to contain the changes of a downstream variable. For example:
 ```javascript
 let sourceVariable = new Variable({foo: 1})
 let containingVariable = new Variable(sourceVariable)
-sourceVariable.put({foo: 2}) // this will propagate down to containingVariable
-containingVariable.set({foo: 3}) // this will affect the sourceVariable
-containingVariable.put({'foo', 4}) // this will not affect the sourceVariable
-containingVariable.get('foo') -> 4
-sourceVariable.get('foo') -> 3
+sourceVariable.set('foo', 2) // this will propagate down to containingVariable
+containingVariable.set('foo', 3) // this will not affect the sourceVariable
+containingVariable.get('foo') -> 3
+sourceVariable.get('foo') -> 2
 ```
+
+## Variable Proxying
+
 However, there may be situations where you want to explicitly define a variable as a proxy, such that changes propagate to the source, as well as to the proxying variable. This can be done by using the `is` method to assign the variable:
 ```javascript
 let sourceVariable = new Variable({foo: 1})
