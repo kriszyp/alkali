@@ -931,13 +931,27 @@
 		undefine: function(key) {
 			this.set(key, undefined)
 		},
-		is: function(proxiedVariable) {
-			var thisVariable = this
+		is: function(newValue, event) {
+			if (this.parent) {
+				var parent = this.parent
+				var key = this.key
+				var object = (parent.getValue ? parent.getValue(true, true) : parent.value)
+				var parentEvent = new PropertyChangeEvent(key, event || new RefreshEvent(), parent)
+				if (object) {
+					object[key] = newValue
+					this.updated(parentEvent, this)
+				} else {
+					object = (typeof key === 'number' ? [] : {})
+					object[key] = newValue
+					parent.is(object, parentEvent)
+				}
+				return this
+			}
 			this.fixed = true
-			return whenStrict(this.setValue(proxiedVariable), function(value) {
-				thisVariable.updated(new RefreshEvent(), thisVariable)
-				return thisVariable
-			})
+
+			this.value = newValue
+			this.updated(new RefreshEvent(), this)
+			return this
 		},
 		proxy: function(proxiedVariable) {
 			return this.is(proxiedVariable)
