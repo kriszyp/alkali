@@ -61,8 +61,11 @@ See the [Debugging](#debugging) section below for information on debugging tips 
 ## Typings
 Alkali includes an `index.d.ts` file to provide a TypeScript type interface.
 
+## TypeScript Plugin for Reactive Expressions
+The [ts-transform-alkali](https://github.com/kriszyp/ts-transform-reactive) can optionally be used to write and transform reactive properties and expressions that create alkali variables and properties with decorators.
+
 ## Babel Plugin for Reactive Expressions
-The [babel-plugin-transform-alkali](https://github.com/kriszyp/babel-plugin-transform-alkali) can optionally be used to write and transform reactive expressions that create alkali variables from expressions.
+Also, the [babel-plugin-transform-alkali](https://github.com/kriszyp/babel-plugin-transform-alkali) can optionally be used to write and transform reactive expressions for babel.
 
 ## Variable API
 
