@@ -1470,13 +1470,13 @@
 					return this.promise || this.cachedValue
 				}
 			}
-			if (!this.hasOwnProperty('source1') && context) {
+			/*if (!this.hasOwnProperty('source1') && context) {
 				// TODO: Not sure if this is a helpful optimization or not
 				// if we have a single source, we can use ifModifiedSince
 				if (!contextualizedVariable && this.context && this.context.matches(context)) {
 						contextualizedVariable = this
 					}
-			}
+			}*/
 			var readyState = this.readyState
 			var parentContext = context
 			var transformContext = context = context ? context.newContext() : new Context()
