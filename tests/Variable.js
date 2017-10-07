@@ -582,6 +582,19 @@ define([
 				assert.equal(alwaysAvailable.valueOf(), 'hi')
 			})
 		},
+		multiplePromisedTransforms: function() {
+			var transformCount = 0
+			var v = new Variable()
+			let result = v.to(function() {
+				transformCount++
+				return Promise.resolve('done')
+			})
+			result.then(function() {})
+			return result.then(function(result) {
+				assert.equal(transformCount, 1)
+				assert.equal(result, 'done')
+			})
+		},
 		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)
 			var signal = new Variable()
