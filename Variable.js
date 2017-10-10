@@ -364,17 +364,18 @@
 	var VariablePrototype = Variable.prototype = {
 		// for debugging use
 		get _currentValue() {
-			return this.valueOf()
+			return this.valueOf(true)
 		},
 		set _currentValue(value) {
 			this.put(value)
 		},
 		constructor: Variable,
-		valueOf: function() {
-			return this.gotValue(true, this.getValue(true))
+		valueOf: function(allowPromise) {
+			var result = this.gotValue(this.getValue())
+			return (allowPromise || !(result && result.then)) ? result : undefined
 		},
 		then: function(onFulfilled, onRejected) {
-			var result = this.gotValue(false, this.getValue())
+			var result = this.valueOf(true)
 			if (!result || !result.then) {
 				result = new lang.SyncPromise(result) // ensure it is promise-like
 			}
@@ -383,7 +384,7 @@
 			}
 			return result
 		},
-		getValue: function(sync, forChild) {
+		getValue: function(forChild) {
 			if (context) {
 				context.setVersion(forChild ? this.version : Math.max(this.version || 0, this.versionWithChildren || 0))
 			}
@@ -404,11 +405,11 @@
 					// parent needs value context, might want to do separate context,
 					// but would need to treat special so it retrieves the version
 					// only and not the versionWithChildren
-					object = parent.getValue(sync, true)
+					object = parent.getValue(true)
 				} else {
 					object = parent.value
 				}
-				if (!sync && object && object.then && !object.notifies) {
+				if (object && object.then && !object.notifies) {
 					return when(object, function(object) {
 						var value = object == null ? undefined :
 							typeof object.property === 'function' ? object.property(key) :
@@ -434,25 +435,19 @@
 				return value
 			}
 			if (this.promise) {
-				if (sync) {
-					if (context) {
-						context.notResolvedYet = true
-					}
-				} else { // async mode, we are fine with waiting
-					return this.promise
-				}
+				return this.promise
 			}
 			var value = this.value
 			return value !== undefined ?
 				this.value : this.default
 		},
-		gotValue: function(sync, value) {
+		gotValue: function(value) {
 			var previousNotifyingValue = this.returnedVariable
 			var variable = this
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
 					// nothing changed, immediately return valueOf
-					return sync ? value.valueOf() : value.then()
+					return value.valueOf(true)
 				}
 				// if there was a another value that we were dependent on before, stop listening to it
 				// TODO: we may want to consider doing cleanup after the next rendering turn
@@ -466,11 +461,9 @@
 				if (variable.listeners) {
 					value.notifies(variable)
 				}
-				if (sync) {
-					value = value.valueOf()
-				}
+				value = value.valueOf(true)
 			}
-			if (!sync && value && value.then) {
+			if (value && value.then) {
 				var deferredContext = context
 				return value.then(function(value) {
 					if (value) {
@@ -480,10 +473,10 @@
 						if (value.subscribe) {
 							if (deferredContext) {
 								return deferredContext.executeWithin(function() {
-									return Variable.prototype.gotValue.call(variable, sync, value)
+									return Variable.prototype.gotValue.call(variable, value)
 								})
 							} else {
-								return Variable.prototype.gotValue.call(variable, sync, value)							
+								return Variable.prototype.gotValue.call(variable, value)							
 							}
 						}
 					}
@@ -540,7 +533,7 @@
 				return this.put(newValue, event)
 			}
 			var variable = this
-			var object = parent.getValue ? parent.getValue(true, true) : parent.value
+			var object = parent.getValue ? parent.getValue(true) : parent.value
 			if (object != null) {
 				if (typeof object != 'object') {
 					// if the parent is not an object, we can't set anything (that will be retained)
@@ -587,7 +580,9 @@
 				var parentEvent = new PropertyChangeEvent(key, event, this)
 				parentEvent.oldValue = oldValue
 				parentEvent.target = variable
-				parent.put(object, parentEvent)
+				return when(parent.put(object, parentEvent), function() {
+					variable.updated(event, variable)
+				})
 			}
 			variable.updated(event, variable)
 
@@ -823,7 +818,7 @@
 				var event = {
 					value: function() {
 						return new Context(null, true).executeWithin(function() {
-							return variable.valueOf()
+							return variable.valueOf(true)
 						})
 					}
 				}
@@ -880,7 +875,7 @@
 			if (this.parent) {
 				return this._changeValue(RequestChange, value, event)
 			}
-			var oldValue = this.getValue ? this.getValue(true) : this.value
+			var oldValue = this.getValue ? this.getValue() : this.value
 			if (oldValue === value && typeof value != 'object') {
 				return noChange
 			}
@@ -908,9 +903,9 @@
 		},
 		get: function(key) {
 			if (this[key] || (this._properties && this._properties[key])) {
-				return this.property(key).valueOf()
+				return this.property(key).valueOf(true)
 			}
-			var object = this.getValue(true)
+			var object = this.getValue()
 			if (!object) {
 				return
 			}
@@ -920,7 +915,7 @@
 			var value = object[key]
 			if (value && value.notifies) {
 				// nested variable situation, get underlying value
-				return value.valueOf()
+				return value.valueOf(true)
 			}
 			return value
 		},
@@ -935,7 +930,7 @@
 			if (this.parent) {
 				var parent = this.parent
 				var key = this.key
-				var object = (parent.getValue ? parent.getValue(true, true) : parent.value)
+				var object = (parent.getValue ? parent.getValue(true) : parent.value)
 				var parentEvent = new PropertyChangeEvent(key, event || new RefreshEvent(), parent)
 				if (object) {
 					object[key] = newValue
@@ -1002,7 +997,7 @@
 			var collectionOf = this.collectionOf
 			if (collectionOf) {
 				var variable = this
-				return when(this.valueOf(), function(value) {
+				return when(this.valueOf(true), function(value) {
 					if (value && value.forEach) {
 						value.forEach(function(item, index) {
 							callbackOrItemClass.call(variable, variable.property(index, collectionOf))
@@ -1010,7 +1005,7 @@
 					}
 				})
 			}
-			return when(this.valueOf(callback), function(value) {
+			return when(this.valueOf(true), function(value) {
 				if (value && value.forEach) {
 					value.forEach(callbackOrItemClass)
 				}else{
@@ -1051,8 +1046,9 @@
 			// easiest way to cast to a variable class
 			return new Class(this)
 		},
-		whileResolving: function(valueUntilResolved) {
-			return new WhileResolving(this, valueUntilResolved)
+		whileResolving: function(valueUntilResolved, useLastValue) {
+			return valueUntilResolved || arguments.length > 0 ? new WhileResolving(this, valueUntilResolved, useLastValue) :
+				new WhileResolving(this, undefined, true) // for zero arguments we default to the last value
 		},
 		get schema() {
 			// default schema is the constructor
@@ -1327,7 +1323,7 @@
 
 	function arrayToModify(variable, callback) {
 		// TODO: switch this to allow promises
-		return when(variable.cachedValue || variable.valueOf(), function(array) {
+		return when(variable.cachedValue || variable.valueOf(true), function(array) {
 			if (!array) {
 				variable.put(array = [])
 			}
@@ -1447,7 +1443,7 @@
 			}
 		}
 	}, {
-		getValue: function(sync) {
+		getValue: function() {
 			// first check to see if we have the variable already computed
 			if (this.readyState == 'invalidated') {
 				this.readyState = nextVersion.toString()
@@ -1461,14 +1457,7 @@
 						return NOT_MODIFIED
 					}
 				}
-				if (sync) {
-					if (this.promise && context) {
-						context.notResolvedYet = true
-					}
-					return this.cachedValue
-				} else {
-					return this.promise || this.cachedValue
-				}
+				return this.promise || this.cachedValue
 			}
 			/*if (!this.hasOwnProperty('source1') && context) {
 				// TODO: Not sure if this is a helpful optimization or not
@@ -1497,33 +1486,30 @@
 				var afterPromiseResolved
 				var remaining = 1
 				var variable = this
-				if (!sync) {
-					var whenArgumentResolved = function(result) {
-						resolved[this.__index || 0] = result
-						remaining--
-						if(remaining === 0) {
-							return whenAllResolved()
-						}else{
-							return this.__previousPromiseResult
-						}
+				var whenArgumentResolved = function(result) {
+					resolved[this.__index || 0] = result
+					remaining--
+					if(remaining === 0) {
+						return whenAllResolved()
+					}else{
+						return this.__previousPromiseResult
 					}
 				}
 				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 					if (argument) {
-						if (sync) {
-							resolved[i] = argument.valueOf()
-						} else if (argument.then) {
+						var result = argument.valueOf(true)
+						if (result && result.then) {
 							remaining++
 							if (i === 0) {
-								lastPromiseResult = argument.then(whenArgumentResolved)
+								lastPromiseResult = result.then(whenArgumentResolved)
 							} else {
-								lastPromiseResult = argument.then(whenArgumentResolved.bind({
+								lastPromiseResult = result.then(whenArgumentResolved.bind({
 									__index: i,
 									__previousPromiseResult: lastPromiseResult
 								}))
 							}
 						} else {
-							resolved[i] = argument
+							resolved[i] = result
 						}
 					} else {
 						resolved[i] = argument
@@ -1539,66 +1525,43 @@
 	 					transformContext.ifModifiedSince = undefined
 	 				}
 					var version = transformContext.version
-					var notResolvedYet = transformContext.notResolvedYet
-					if (notResolvedYet) {
-						if (parentContext)
-							parentContext.notResolvedYet = true
-					} else {
-						if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
-							// get it out of the cache
-							if (parentContext) {
-								parentContext.setVersion(version)
-							}
-							if (parentContext && parentContext.ifModifiedSince >= version &&
-									parentContext.ifModifiedSince >= variable.cachedVersion &&
-									!variable.returnedVariable) {
-								return NOT_MODIFIED
-							}
-							if (sync) {
-								if (variable.promise && parentContext) {
-									parentContext.notResolvedYet = true
-								}
-								return variable.cachedValue
-							} else {
-								return variable.promise || promiseSafeResult(variable.cachedValue)
-							}
+					if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
+						// get it out of the cache
+						if (parentContext) {
+							parentContext.setVersion(version)
 						}
-						var finishedResolvingArgs = true
+						if (parentContext && parentContext.ifModifiedSince >= version &&
+								parentContext.ifModifiedSince >= variable.cachedVersion &&
+								!variable.returnedVariable) {
+							return NOT_MODIFIED
+						}
+						return variable.promise || promiseSafeResult(variable.cachedValue)
 					}
 
 					var result = transform ? transform.apply(variable, resolved) : resolved[0]
 					var isPromise = result && result.then && !result.notifies
 					version = transformContext.version
 
-					if (finishedResolvingArgs) {
-						if (isPromise) {
-							var promise = variable.promise = result
-							variable.cachedVersion = version
-							result = result.then(function(resolved) {
-								if (promise === variable.promise) { // make sure we are still the latest promise
-									variable.promise = null
-									onResolve(resolved, transformContext.version)
-								}
-								return resolved
-							}, function(error) {
-								if (promise === variable.promise) { // make sure we are still the latest promise
-									// clear out the cache on an error
-									variable.promise = null
-									variable.lastError = error
-									onResolve(null, -1)
-								}
-								throw error // rethrow so it isn't silenced
-							})
-						} else {
-							onResolve(result, version)
-						}
-					}
-					if (sync && isPromise) {
-						if (parentContext) {
-							parentContext.notResolvedYet = true 
-						}
-						// return what we have, stale or otherwise
-						return variable.cachedValue
+					if (isPromise) {
+						var promise = variable.promise = result
+						variable.cachedVersion = version
+						result = result.then(function(resolved) {
+							if (promise === variable.promise) { // make sure we are still the latest promise
+								variable.promise = null
+								onResolve(resolved, transformContext.version)
+							}
+							return resolved
+						}, function(error) {
+							if (promise === variable.promise) { // make sure we are still the latest promise
+								// clear out the cache on an error
+								variable.promise = null
+								variable.lastError = error
+								onResolve(null, -1)
+							}
+							throw error // rethrow so it isn't silenced
+						})
+					} else {
+						onResolve(result, version)
 					}
 					return promiseSafeResult(result)
 
@@ -1686,7 +1649,7 @@
 		},
 		put: function(value, event) {
 			var call = this
-			return when(this.valueOf(), function(originalValue) {
+			return when(this.valueOf(true), function(originalValue) {
 				if (originalValue === value && typeof value != 'object') {
 					return noChange
 				}
@@ -1710,72 +1673,48 @@
 	})
 
 	var RESOLUTION_UPDATE = {}
-	WhileResolving = lang.compose(Variable, function WhileResolving(variable, defaultValue) {
-		this.parent = variable
-		this.default = defaultValue
+		WhileResolving = lang.compose(Transform, function WhileResolving(variable, defaultValue, useLastValue) {
+		this.source = variable
+		if (defaultValue !== undefined) {
+			this.default = defaultValue
+		}
+		if (useLastValue) {
+			this.useLastValue = true
+		}
 	}, {
 		fixed: true,
-		getValue: function(sync) {
-			if (this.hasResolution) {
-				if (context) {
-					context.setVersion(this.version)
-				}
-				return this.resolvedValue
-			}
-			var variable = this
-			var result, isError
-			var version = this.version
-			this.parent.then(function(value) {
-				if (async) {
+		getValue: function() {
+			let result = Transform.prototype.getValue.call(this)
+			if (result && result.then) {
+				var version = this.version
+				var variable = this
+				result.then(function(value) {
 					if (version === variable.version) {
-						variable.resolvedValue = value
-						variable.hasResolution = true
-						variable.updated(RESOLUTION_UPDATE)
+						Variable.prototype.updated.call(variable)
+						variable.cachedVersion = variable.version
 					}
-				} else {
-					async = false
-					result = value
-				}
-			}, function (error) {
-				if (async) {
+				}, function (error) {
 					console.error('Variable resolution failed', error)
-				} else {
-					result = error
-					isError = true
-				}
-			})
-			if (async === false) {
-				if (isError) {
-					throw result
-				}
-				return result
+				})
+				return this.useLastValue && 'cachedValue' in this ? this.cachedValue : this.default
 			}
-			var async = true
-			return this.default
+			return result
 		},
-		updated: function(event) {
-			if (event === RESOLUTION_UPDATE) {
-				return Variable.prototype.updated.call(this)
-			}
-			if (event && event.visited.has(this)) {
-				return event
-			}
-			this.resolvedValue = undefined
-			this.hasResolution = false
-			return Variable.prototype.updated.apply(this, arguments)
+		put: function(value, event) {
+			return this.source.put(value, event)
 		}
 	})
 
 	var ContextualTransform = lang.compose(Transform, function ContextualTransform() {
 		Transform.apply(this, arguments)
 	}, {
-		getValue: function(sync) {
+		getValue: function() {
 			// first check to see if we have the variable already computed
 			var contextualizedVariable = context ? context.getContextualized(this) : this
 			if (contextualizedVariable && contextualizedVariable !== this) {
-				return contextualizedVariable.getValue(sync)
+				return contextualizedVariable.getValue()
 			}
-			return Transform.prototype.getValue.call(this, sync)
+			return Transform.prototype.getValue.call(this)
 		},
 		_needsContextualization: true
 	})
@@ -2175,15 +2114,15 @@
 //		context.distinctSubject = mergeSubject(context.distinctSubject, instance.subject)
 //		return instance
 	}
-	Variable.valueOf = function() {
+	Variable.valueOf = function(allowPromise) {
 		// contextualized valueOf
-		return instanceForContext(this, context).valueOf()
+		return instanceForContext(this, context).valueOf(allowPromise)
 	}
 	Variable.then = function(callback, errback) {
 		// contextualized valueOf
 		return instanceForContext(this, context).then(callback, errback)
 	}
-	Variable.getValue = function(sync) {
+	Variable.getValue = function() {
 		// contextualized getValue
 		return instanceForContext(this, context)
 	}

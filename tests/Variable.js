@@ -1214,7 +1214,7 @@ define([
 		promised: function() {
 			var v = new Variable(new Promise(function (r) {
 				setTimeout(function() {	r('a') }, 100)
-			}))
+			})).whileResolving()
 			assert.equal(v.valueOf(), undefined)
 			return new Promise(setTimeout).then(function () {
 				// still initial/undefined value
@@ -1240,7 +1240,7 @@ define([
 				setTimeout(function() { r('b') }, 100)
 			}))
 			// still initial value
-			assert.equal(v.valueOf(), 'z')
+			assert.equal(v.valueOf(), undefined)
 			return new Promise(function (r) { setTimeout(r, 110) }).then(function() {
 				// should contain new resolved value now
 				assert.equal(v.valueOf(), 'b')
@@ -1249,14 +1249,14 @@ define([
 
 		promisedAsTransform: function() {
 			var s = new Variable()
-			var t = s.to(function(primitiveValue) { return '<' + primitiveValue + '>' })
+			var t = s.to(function(primitiveValue) { return '<' + primitiveValue + '>' }).whileResolving()
 			s.put(new Promise(function (r) {
 				setTimeout(function() { r('a') }, 100)
 			}))
-			assert.equal(t.valueOf(), '<undefined>')
+			assert.equal(t.valueOf(), undefined)
 			return new Promise(setTimeout).then(function () {
 				// still initial/undefined value
-				assert.equal(t.valueOf(), '<undefined>')
+				assert.equal(t.valueOf(), undefined)
 				return new Promise(function (r) { setTimeout(r, 100) }).then(function() {
 					// should contain resolved value now
 					assert.equal(t.valueOf(), '<a>')
@@ -1266,7 +1266,8 @@ define([
 
 		promisedAsTransformWithInitial: function() {
 			var s = new Variable('z')
-			var t = s.to(function(primitiveValue) { return '<' + primitiveValue + '>' })
+			var t = s.to(function(primitiveValue) { return '<' + primitiveValue + '>' }).whileResolving()
+			assert.equal(t.valueOf(), '<z>' )
 			s.put(new Promise(function (r) {
 				setTimeout(function() { r('a') }, 100)
 			}))
