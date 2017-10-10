@@ -1490,14 +1490,51 @@
 				if (this && this.cachedVersion >= this.version && this.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
 					transformContext.ifModifiedSince = this.cachedVersion
 				}
+				// TODO: var hasCustomTransformFunction = this.transform && this.transform.value === ObjectValueOf
 		 		var transform = this.transform && this.transform.valueOf()
 
-				var argument, argumentName
-				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
-					args[i] = (argument && sync) ? argument.valueOf() : argument // for async, `then` will be called in whenAll
-				}
+				var argument, argumentName, lastPromiseResult, resolved = []
+				var afterPromiseResolved
+				var remaining = 1
 				var variable = this
-	 			return whenAll(args, function(resolved) {
+				if (!sync) {
+					var whenArgumentResolved = function(result) {
+						resolved[this.__index || 0] = result
+						remaining--
+						if(remaining === 0) {
+							return whenAllResolved()
+						}else{
+							return this.__previousPromiseResult
+						}
+					}
+				}
+				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
+					if (argument) {
+						if (sync) {
+							resolved[i] = argument.valueOf()
+						} else if (argument.then) {
+							remaining++
+							if (i === 0) {
+								lastPromiseResult = argument.then(whenArgumentResolved)
+							} else {
+								lastPromiseResult = argument.then(whenArgumentResolved.bind({
+									__index: i,
+									__previousPromiseResult: lastPromiseResult
+								}))
+							}
+						} else {
+							resolved[i] = argument
+						}
+					} else {
+						resolved[i] = argument
+					}
+				}
+				if (--remaining === 0) {
+					return whenAllResolved()
+					// everything resolved, fast path
+				}
+				isAsyncInputs = true
+				function whenAllResolved() {
 	 				if (transformContext.ifModifiedSince !== undefined) {
 	 					transformContext.ifModifiedSince = undefined
 	 				}
@@ -1585,15 +1622,16 @@
 							console.log('ready state different than when the variable trasnform started ', variable, variable.readyState, readyState)
 						}*/
 					}
-				})
-	 		} finally {
+				}
+				return lastPromiseResult
+			} finally {
 				if (parentContext) {
 					parentContext.setVersion(transformContext.version)
 				}
 	 			context = parentContext
-	 			isAsyncInputs = true
 	 		}
-		},
+	 	},
+
 		forDependencies: function(callback) {
 			// depend on the args
 			Variable.prototype.forDependencies.call(this, callback)

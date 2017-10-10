@@ -595,6 +595,19 @@ define([
 				assert.equal(result, 'done')
 			})
 		},
+		multipleInputPromisedTransforms: function() {
+			var transformCount = 0
+			var v = new Variable(Promise.resolve('done'))
+			let result = v.to(function(v) {
+				transformCount++
+				return v
+			})
+			result.then(function() {})
+			return result.then(function(result) {
+				assert.equal(transformCount, 1)
+				assert.equal(result, 'done')
+			})
+		},
 		derivedComposedInvalidations: function() {
 			var outer = new Variable(false)
 			var signal = new Variable()
