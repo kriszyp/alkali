@@ -318,7 +318,7 @@ declare namespace alkali {
   **/
   export function defineElement<T extends Element>(Element: { new(...params: {}[]): T}): ElementClass<T>
 
-  export type ElementProperties<T> = {
+  export type ElementProperties<T = HTMLElement> = {
     [P in keyof T]?: T[P]
   } & BaseElementProperties
 
