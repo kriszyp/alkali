@@ -1682,7 +1682,7 @@
 	}, {
 		fixed: true,
 		getValue: function() {
-			let result = Transform.prototype.getValue.call(this)
+			var result = Transform.prototype.getValue.call(this)
 			if (result && result.then) {
 				var version = this.version
 				var variable = this
