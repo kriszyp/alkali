@@ -346,44 +346,6 @@
 			return value && value.then ?
 				(value.then(callback, errorHandler) || value) : callback(value)
 		},
-		whenAll: function(inputs, callback) {
-			var promiseInvolved
-			var readyInputs = []
-			var remaining = 1
-			var result
-			var lastPromiseResult
-			for(var i = 0, l = inputs.length; i < l; i++) {
-				var input = inputs[i]
-				if(input && input.then) {
-					remaining++
-					(function(i, previousPromiseResult) {
-						lastPromiseResult = input.then(function(value) {
-							readyInputs[i] = value
-							onEach()
-							if(!remaining) {
-								return result
-							}else{
-								return previousPromiseResult
-							}
-						})
-					})(i, lastPromiseResult)
-				} else {
-					readyInputs[i] = input
-				}
-			}
-			onEach()
-			if (remaining > 0) {
-				return lastPromiseResult
-			} else {
-				return result
-			}
-			function onEach() {
-				remaining--
-				if (!remaining) {
-					 result = callback(readyInputs)
-				}
-			}
-		},
 		compose: function(Base, constructor, properties) {
 			var prototype = constructor.prototype = Object.create(Base.prototype)
 			setPrototypeOf(constructor, Base)

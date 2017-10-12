@@ -173,8 +173,6 @@
 		contextualized.notifies(this.listener)
 	}
 
-	var whenAll = lang.whenAll
-
 	function registerListener(value, listener) {
 		var listeners = propertyListenersMap.get(value)
 		var id = listener.listenerId || (listener.listenerId = ('-' + listenerId++))
