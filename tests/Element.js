@@ -2,11 +2,13 @@ define([
 	'../Element',
 	'../Variable',
 	'../operators',
+	'../util/lang',
 	'intern!object',
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Element, VariableExports, operators, registerSuite, assert, Promise) {
+], function (Element, VariableExports, operators, lang, registerSuite, assert, Promise) {
 	var Variable = VariableExports.Variable
+	var requestAnimationFrame = lang.requestAnimationFrame
 	var Div = Element.Div
 	var Label = Element.Label
 	var Button = Element.Button

@@ -125,14 +125,16 @@ define([
 			var a = new Variable(1)
 			var b = new Variable(2)
 			class GeneratorDiv extends Div {
-				*render() {
+				*render(properties) {
 					this.textContent = (yield a) + (yield b)
 				}
 			}
 			function *render2() {
 				this.textContent = 5 + (yield b)
 			}
-			var div = new GeneratorDiv()
+			var div = new GeneratorDiv({
+				foo: 3
+			})
 			var Div2 = Div({
 				render: render2
 			})

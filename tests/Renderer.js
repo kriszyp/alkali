@@ -1,12 +1,14 @@
 define([
 	'../Renderer',
 	'../Variable',
+	'../util/lang',
 	'intern!object',
 	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Renderer, VariableExports, registerSuite, assert, Promise) {
+], function (Renderer, VariableExports, lang, registerSuite, assert, Promise) {
 	var Variable = VariableExports.Variable
 	var div = document.createElement('div');
+	var requestAnimationFrame = lang.requestAnimationFrame
 	registerSuite({
 		name: 'Renderer',
 		PropertyRenderer: function () {
@@ -127,13 +129,13 @@ define([
 
 	    var count = 0
 
-	    var transformedData = data.to((data) => {
+	    var transformedData = data.to(function(data) {
 	      count++
 	      if (count > 1) {
 	      	throw new Error('Not cached properly')
 	      }
 	      return {
-	        data: data.map((datum) => Object.assign({}, datum)),
+	        data: data.map(function(datum){ lang.copy({}, datum)}),
 	        otherStuff: 'lolwut',
 	      }
 	    })
@@ -145,8 +147,8 @@ define([
 	    var selectedGroups = Variable.all([
 	      state.property('selection'),
 	      transformedData.property('data')
-	    ]).to(([selection, data]) => {
-	      return data.reduce((memo, datum) => {
+	    ], function(selection, data) {
+	      return data.reduce(function(memo, datum) {
 	        if (selection[datum.id]) {
 	          memo[datum.group] = true
 	        }
@@ -162,14 +164,14 @@ define([
 	    new Renderer.ElementRenderer({
 	      variable: selectedGroups,
 	      element: div,
-	      renderUpdate: (selectedGroups) => {
+	      renderUpdate: function(selectedGroups) {
 	        console.log('selectedGroups', selectedGroups)
 	        console.log('this.count === 1?', count === 1)
 	      }
 	    })
 
-	    setTimeout(() => state.set('selection', { 1: true }), 10)
-	    setTimeout(() => state.set('selection', { 1: true, 2: true }), 50)
+	    setTimeout(function() { state.set('selection', { 1: true }) }, 10)
+	    setTimeout(function() { state.set('selection', { 1: true, 2: true }) }, 50)
 	    return new Promise(function(resolve, reject) {
 		    setTimeout(function() {
 		    	state.set('selection', { 3: true })
