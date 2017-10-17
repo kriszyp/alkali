@@ -107,7 +107,7 @@ object.foo -> 2
 An optional class can be provided to define the class to use/instantiate for the property. Once the property variable has been created/accessed, it will be available as a property directly on the variable (as long as it doesn't conflict with any methods). In the case the property variable can be accessed from `objectVar.foo`.
 
 
-### `to(function)`
+### `to(function, reversal?)`
 
 This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be provided to the returned variable. For example:
 ```javascript
@@ -132,6 +132,8 @@ let sum = a.to((aValue) => {
 // sum will reactively update to changes in either a or b
 ```
 The `to` function will also wait for any promise values to resolve before executing as well.
+
+The optional `reversal` argument can define a function that will be called when the returned variable is changed (with `put` or child `set`), and can handle sending data back to the source.
 
 ### `get(propertyName)`
 

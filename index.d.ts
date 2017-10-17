@@ -5,7 +5,7 @@ declare namespace alkali {
   }
 
   class UpdateEvent {
-
+    visited: Set<Variable>
   }
 
   export class Variable<T = {}> implements Promise<T> {
@@ -30,7 +30,7 @@ declare namespace alkali {
     property<K extends keyof T>(key: KeyType): Variable<T[K]>
     property<U>(key: KeyType, PropertyClass: { new(): U }): U
     /**
-    * Assigns a new value to this variables (which marks it as updated and any listeners will be notified)
+    * Assigns a new value to this variables (which marks it as updated and any listeners will be notified). This is a request to change the variable, and subclasses can reject the put request, or return asynchronously.
     * @param value The new value to assign to the variable. The may be another variable or a promise, which will transitively be resolved
     */
     put(value: T | Variable<T> | Promise<T>, event?: UpdateEvent)
@@ -51,10 +51,10 @@ declare namespace alkali {
     */
     undefine(key: KeyType)
     /**
-    * Proxy the provided variable through this variable
+    * Define the value of this variable. This can be used to indicate that the some 
     * @param variable The variable to proxy
     */
-    proxy(variable: Variable<T>)
+    is(variable: Variable<T>)
     for(subject: any): Variable<T>
     /**
     * Creates a new variable that is a transform of this variable, using the provided function to compute
@@ -62,12 +62,14 @@ declare namespace alkali {
     * on this variable. Note that this is computed lazily/as-needed, the transform function is not guaranteed to
     * execute on every change, only as needed by consumers.
     * @param transform The transform function to use to compute the value of the returned variable
+    * @param reverseTransform The reverse transform function that is called when a value is put/set into the returned transform variable
     */
     to<U>(transform: (T) => Variable<U> | Promise<U> | U, reverseTransform?: (U) => any): Variable<U>
     /**
     * Indicate that the variable's value has changed (primarily used if the value has been mutated outside the alkali API, and alkali needs to be notified of the change)
+    * @param event An event object can be provided that will be passed to all variables that are updated/invalidated by this event
     */
-    updated()
+    updated(event?: UpdateEvent): UpdateEvent
     /**
     * Subscribe to the variable, calling the listener after changes to the variable's value.
     * @param listener The listener function that will be called after data changes. This will be called on the next micro-turn.
