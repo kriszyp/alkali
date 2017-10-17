@@ -524,7 +524,7 @@
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
 		get isWritable() {
-			return this.fixed ? this.value.isWritable : this._isWritable
+			return this.fixed ? !this.value || this.value.isWritable : this._isWritable
 		},
 		set isWritable(isWritable) {
 			this._isWritable = isWritable
@@ -1332,7 +1332,7 @@
 	function arrayToModify(variable, callback) {
 		// TODO: switch this to allow promises
 		return when(variable.cachedValue || variable.valueOf(true), function(array) {
-			let newArray = array ?
+			var newArray = array ?
 				variable.isWritable ? array.slice(0) : array
 				: []
 			var results = callback.call(variable, newArray)
