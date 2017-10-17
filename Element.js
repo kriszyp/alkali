@@ -152,9 +152,9 @@
 		styleDefinitions[property] = styleDefinitions[property] || defaultStyle
 	})
 	var styleSheet
-	var presumptiveParentMap = new WeakMap()
+	var presumptiveParentMap = new lang.WeakMap()
 
-	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
+	var setPrototypeOf = lang.setPrototypeOf
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	function createCssRule(selector) {
 		if (!styleSheet) {
@@ -753,7 +753,7 @@
 	}
 
 	function renderDescriptor(renderMethod) {
-		var map = new WeakMap()
+		var map = new lang.WeakMap()
 		return {
 			get: function() {
 				return map.has(this) ? map.get(this) : null
@@ -768,8 +768,10 @@
 	function makeElementConstructor(BaseClass) {
 		var isNativeElement = !BaseClass.with // TODO: Create a separate constructor for this
 		// this is an optimization to allow consecutive alkali constructors to bypass each other
-		while (BaseClass.prototype.constructor !== BaseClass && !BaseClass.hasOwnProperty('with')) {
-			BaseClass = getPrototypeOf(BaseClass)
+		if (Object.setPrototypeOf) {
+			while (BaseClass.prototype.constructor !== BaseClass && !BaseClass.hasOwnProperty('with')) {
+				BaseClass = getPrototypeOf(BaseClass)
+			}
 		}
 		var isNativeClass = Object.getOwnPropertyDescriptor(BaseClass, 'prototype').writable === false
 		return constructOrCall(BaseClass, isNativeElement && create, withProperties, isNativeClass)
@@ -1004,6 +1006,9 @@
 			}
 		} else if (extendElement && extendElement != 'div' && extendElement != 'span') {
 			console.warn('This browser does not support customized built-in elements, make sure to only extend Element, Div, or Span')
+		}
+		if (!Element.with) {
+			Element.with = withProperties
 		}
 		return selector ? Element.with(selector) : Element.with()
 	}
@@ -1284,7 +1289,7 @@
 	function hasOwn(From, Target, createInstance) {
 		if (typeof Target === 'object') {
 			// we were given an actual instance, use that
-			var elementMap = From.ownedClasses || (From.ownedClasses = new WeakMap())
+			var elementMap = From.ownedClasses || (From.ownedClasses = new lang.WeakMap())
 			var instanceMap = {get: function () {
 				return Target
 			}}
@@ -1296,10 +1301,10 @@
 				hasOwn(From, Target)
 			})
 		}
-		var elementMap = From.ownedClasses || (From.ownedClasses = new WeakMap())
+		var elementMap = From.ownedClasses || (From.ownedClasses = new lang.WeakMap())
 		// TODO: Go up through prototype chain of Target and set each one
 		if (!elementMap.has(Target)) {
-			var instanceMap = new WeakMap()
+			var instanceMap = new lang.WeakMap()
 			instanceMap.createInstance = createInstance
 			elementMap.set(Target, instanceMap)
 		}
@@ -1312,7 +1317,7 @@
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
 		if (createInstance) {
-			var ownedInstances = element.ownedInstances || (element.ownedInstances = new WeakMap())
+			var ownedInstances = element.ownedInstances || (element.ownedInstances = new lang.WeakMap())
 			var instance = ownedInstances.get(Target)
 			if (instance === undefined) {
 				ownedInstances.set(Target, instance = createInstance(element))

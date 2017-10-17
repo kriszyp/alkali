@@ -3,7 +3,20 @@
 	module.exports = factory() // Node
 }}(this, function () {
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
-	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
+	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) {
+		for (var key in proto) {
+			try {
+				if (!base.hasOwnProperty(key)) {
+					if (proto.hasOwnProperty(key)) {
+						Object.defineProperty(base, key, 
+							Object.getOwnPropertyDescriptor(proto, key))
+					} else {
+						base[key] = proto[key]
+					}
+				}
+			} catch(error) {}
+		}
+	})
 	var hasFeatures = {
 		requestAnimationFrame: typeof requestAnimationFrame != 'undefined',
 		defineProperty: Object.defineProperty && (function() {
@@ -310,7 +323,19 @@
 			}
 			return Promise
 		}()),
-
+		Set: typeof Set !== 'undefined' ? Set : function () {
+			var elements = []
+			return {
+				add: function(element) {
+					if (!this.has(element)) {
+						elements.push(element)
+					}
+				},
+				has: function(element) {
+					return elements.indexOf(element) > -1
+				}
+			}
+		},
 		WeakMap: has('WeakMap') ? WeakMap :
 	 	function (values, name) {
 	 		var mapProperty = '__' + (name || '') + id++
@@ -355,6 +380,7 @@
 			prototype.constructor = constructor
 			return constructor
 		},
+		setPrototypeOf: setPrototypeOf,
 		nextTurn: has('MutationObserver') ?
 			function (callback) {
 				// promises don't resolve consistently on the next micro turn (Edge doesn't do it right),

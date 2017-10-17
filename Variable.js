@@ -6,7 +6,7 @@
 	var noChange = {}
 	var context
 	var WeakMap = lang.WeakMap
-	var setPrototypeOf = Object.setPrototypeOf || (function(base, proto) { base.__proto__ = proto})
+	var setPrototypeOf = lang.setPrototypeOf
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	var isGenerator = lang.isGenerator
 	var undefined // makes it faster to be locally scoped
@@ -20,8 +20,8 @@
 		},
 	}
 
-	var propertyListenersMap = new WeakMap(null, 'propertyListenersMap')
-	var isStructureChecked = new WeakMap()
+	var propertyListenersMap = new lang.WeakMap(null, 'propertyListenersMap')
+	var isStructureChecked = new lang.WeakMap()
 	var nextVersion = Date.now()
 
 	var CacheEntry = lang.compose(WeakMap, function() {
@@ -75,7 +75,7 @@
 			// been used for resolution
 			var contextualized
 			if (this.distinctSubject) {
-				var contextMap = variable._contextMap || (variable._contextMap = new WeakMap())
+				var contextMap = variable._contextMap || (variable._contextMap = new lang.WeakMap())
 				contextualized = contextMap.get(this.distinctSubject)
 				if (!contextualized) {
 					contextMap.set(this.distinctSubject, contextualized = Object.create(variable))
@@ -205,7 +205,7 @@
 	}
 
 	function RefreshEvent() {
-		this.visited = new Set()
+		this.visited = new lang.Set()
 	}
 	RefreshEvent.prototype.type = 'refresh'
 
@@ -218,14 +218,14 @@
 	PropertyChangeEvent.prototype.type = 'update'
 
 	function AddEvent(args) {
-		this.visited = new Set()
+		this.visited = new lang.Set()
 		for (var key in args) {
 			this[key] = args[key]
 		}
 	}
 	AddEvent.prototype.type = 'add'
 	function DeleteEvent(args) {
-		this.visited = new Set()
+		this.visited = new lang.Set()
 		for (var key in args) {
 			this[key] = args[key]
 		}
@@ -563,7 +563,7 @@
 						object = object == null
 							? typeof key == 'number' ? [] : {}
 							: parent.isCopyOnWrite
-								? Object.assign(
+								? lang.copy(
 									object.constructor === Object
 									?	{}
 									:	object.constructor === Array
@@ -738,7 +738,7 @@
 			if (this.lastUpdate) {
 				var nextUpdateMap = this.nextUpdateMap
 				if (!nextUpdateMap) {
-					nextUpdateMap = this.nextUpdateMap = new WeakMap()
+					nextUpdateMap = this.nextUpdateMap = new lang.WeakMap()
 				}
 				nextUpdateMap.set(this.lastUpdate, updateEvent)
 			}
@@ -1312,9 +1312,9 @@
 		}
 	})
 	Variable.hasOwn = function(Target, createInstance) {
-		var instanceMap = new WeakMap()
+		var instanceMap = new lang.WeakMap()
 		instanceMap.createInstance = createInstance
-		var subjectMap = this.ownedClasses || (this.ownedClasses = new WeakMap())
+		var subjectMap = this.ownedClasses || (this.ownedClasses = new lang.WeakMap())
 		subjectMap.set(Target, instanceMap)
 	}
 
@@ -2046,7 +2046,7 @@
 
 	function hasOwn(Target, createForInstance) {
 
-		var ownedClasses = this.ownedClasses || (this.ownedClasses = new WeakMap())
+		var ownedClasses = this.ownedClasses || (this.ownedClasses = new lang.WeakMap())
 		// TODO: assign to super classes
 		var Class = this
 		ownedClasses.set(Target, createForInstance || function() { return new Target() })
@@ -2148,7 +2148,7 @@
 	Variable.from = function(value) {
 		if (value && typeof value === 'object') {
 			// a plain object, we use our own map to retrieve the instance (or create one)
-			var instanceMap = this.instanceMap || (this.instanceMap = new WeakMap())
+			var instanceMap = this.instanceMap || (this.instanceMap = new lang.WeakMap())
 			var instance = instanceMap.get(value)
 			if (!instance) {
 				instanceMap.set(value, instance = new this(value))
@@ -2307,7 +2307,7 @@
 	VBoolean = Variable.with({}, VBoolean)
 
 	function VSet(value) {
-		return makeSubVar(this, value instanceof Array ? new Set(value) : value, VSet)
+		return makeSubVar(this, value instanceof Array ? new lang.Set(value) : value, VSet)
 	}
 	VSet = Variable.with({
 		has: VFunction.returns(VBoolean),
@@ -2580,7 +2580,7 @@
 		return {
 			get: function() {
 				if (!variables) {
-					 variables = new WeakMap()
+					 variables = new lang.WeakMap()
 				}
 				var variable = variables.get(this)
 				if (!variable) {

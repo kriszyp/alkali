@@ -585,7 +585,7 @@ define([
 		multiplePromisedTransforms: function() {
 			var transformCount = 0
 			var v = new Variable()
-			let result = v.to(function() {
+			var result = v.to(function() {
 				transformCount++
 				return Promise.resolve('done')
 			})
@@ -598,7 +598,7 @@ define([
 		multipleInputPromisedTransforms: function() {
 			var transformCount = 0
 			var v = new Variable(Promise.resolve('done'))
-			let result = v.to(function(v) {
+			var result = v.to(function(v) {
 				transformCount++
 				return v
 			})
