@@ -566,7 +566,7 @@
 					} else {
 						// copy, if this is a copy-on-write variable
 						// nothing there yet, create an object to hold the new property
-						object = object == null
+						var newObject = object == null
 							? typeof key == 'number' ? [] : {}
 							: parent.isWritable
 								? lang.copy(
@@ -576,7 +576,7 @@
 										?	[]
 										: Object.create(Object.getPrototypeOf(object)), object)
 								: object
-						object[key] = newValue
+						newObject[key] = newValue
 					}
 					// or set the setter/getter
 				}
@@ -584,7 +584,9 @@
 				var parentEvent = new PropertyChangeEvent(key, event, this)
 				parentEvent.oldValue = oldValue
 				parentEvent.target = variable
-				return when(parent.put(object, parentEvent), function() {
+				return when(newObject === object ?
+						parent.updated(parentEvent, this) :
+						parent.put(newObject, parentEvent), function() {
 					variable.updated(event, variable)
 				})
 			}
