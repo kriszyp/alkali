@@ -212,7 +212,7 @@ define([
 				constructor() {
 					super(...arguments)
 					this.foo = this.property('foo', Foo)
-					this.isCopyOnWrite = false
+					this.isWritable = false
 				}
 			}
 			var obj = { foo: { baz: 3 } }
@@ -237,7 +237,7 @@ define([
 					super(...arguments)
 					this.foo = new Foo()
 					this.structured = true
-					this.isCopyOnWrite = false
+					this.isWritable = false
 				}
 			}
 			var obj = { foo: { baz: 3 } }

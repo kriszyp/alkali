@@ -135,7 +135,9 @@ define([
 	      	throw new Error('Not cached properly')
 	      }
 	      return {
-	        data: data.map(function(datum){ lang.copy({}, datum)}),
+	        data: data.map(function(datum){ 
+	        	return lang.copy({}, datum)
+	        }),
 	        otherStuff: 'lolwut',
 	      }
 	    })

@@ -461,18 +461,21 @@
 					}
 					renderer.renderUpdate()
 				} else {
-					if (update.previousIndex > -1) {
-						thisElement.removeChild(childElements[update.previousIndex])
-						childElements.splice(update.previousIndex, 1)
-					}
-					if (update.index > -1) {
-						var nextChild = childElements[update.index]
-						var newElement = Renderer.append(thisElement, eachItem(update.value))
-						if (nextChild) {
-							thisElement.insertBefore(newElement, nextChild)
-							childElements.splice(update.index, 0, newElement)
-						} else {
-							childElements.push(newElement)
+					for (var i = 0, l = update.actions.length; i < l; i++) {
+						var action = update.actions[i]
+						if (action.previousIndex > -1) {
+							thisElement.removeChild(childElements[action.previousIndex])
+							childElements.splice(action.previousIndex, 1)
+						}
+						if (action.index > -1) {
+							var nextChild = childElements[action.index]
+							var newElement = Renderer.append(thisElement, eachItem(action.value))
+							if (nextChild) {
+								thisElement.insertBefore(newElement, nextChild)
+								childElements.splice(action.index, 0, newElement)
+							} else {
+								childElements.push(newElement)
+							}
 						}
 					}
 				}

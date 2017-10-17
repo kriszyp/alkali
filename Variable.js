@@ -217,13 +217,13 @@
 	}
 	PropertyChangeEvent.prototype.type = 'update'
 
-	function AddEvent(args) {
+	function ArrayEvent(args) {
 		this.visited = new lang.Set()
 		for (var key in args) {
 			this[key] = args[key]
 		}
 	}
-	AddEvent.prototype.type = 'add'
+	ArrayEvent.prototype.type = 'array-update'
 	function DeleteEvent(args) {
 		this.visited = new lang.Set()
 		for (var key in args) {
@@ -523,7 +523,13 @@
 			}
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
-		isCopyOnWrite: true,
+		get isWritable() {
+			return this.fixed ? this.value.isWritable : this._isWritable
+		},
+		set isWritable(isWritable) {
+			this._isWritable = isWritable
+		},
+		_isWritable: true,
 		_changeValue: function(type, newValue, event) {
 			var key = this.key
 			var parent = this.parent
@@ -562,7 +568,7 @@
 						// nothing there yet, create an object to hold the new property
 						object = object == null
 							? typeof key == 'number' ? [] : {}
-							: parent.isCopyOnWrite
+							: parent.isWritable
 								? lang.copy(
 									object.constructor === Object
 									?	{}
@@ -1042,7 +1048,9 @@
 		},
 		as: function(Class) {
 			// easiest way to cast to a variable class
-			return new Class(this)
+			var instance = new Class(this)
+			instance.fixed = true
+			return instance
 		},
 		whileResolving: function(valueUntilResolved, useLastValue) {
 			return valueUntilResolved || arguments.length > 0 ? new WhileResolving(this, valueUntilResolved, useLastValue) :
@@ -1322,19 +1330,27 @@
 	function arrayToModify(variable, callback) {
 		// TODO: switch this to allow promises
 		return when(variable.cachedValue || variable.valueOf(true), function(array) {
-			if (!array) {
-				variable.put(array = [])
-			}
-			var results = callback.call(variable, array)
-			variable.cachedVersion++ // update the cached version, so any version checking will know it has changed
-			return results
+			let newArray = array ?
+				variable.isWritable ? array.slice(0) : array
+				: []
+			var results = callback.call(variable, newArray)
+			return when(newArray === array ? // if we are just modifying the original array
+					variable.updated(results[1], variable) : // then just send out an updated event
+					variable.put(newArray, results[1]), function() { // otherwise put in the new array
+				variable.cachedVersion++ // update the cached version, so any version checking will know it has changed
+				return results[0]
+			})
 		})
 	}
 
-	function insertedAt(variable, added, startingIndex, arrayLength) {
+	function insertedAt(variable, added, startingIndex, arrayLength, event) {
 		var addedCount = added.length
 		// adjust the key positions of any index properties after splice
 		if (addedCount > 0) {
+			event = event || new ArrayEvent({
+				modifier: variable,
+				actions: []
+			})
 			var arrayPosition
 			for (var i = arrayLength - addedCount; i > startingIndex;) {
 				var arrayPosition = variable[--i]
@@ -1346,13 +1362,13 @@
 			}
 			// send out updates
 			for (var i = 0, l = added.length; i < l; i++) {
-				variable.updated(new AddEvent({
+				event.actions.push({
 					value: added[i],
 					index: i + startingIndex,
-					modifier: variable
-				}), variable)
+				})
 			}
 		}
+		return event
 	}
 
 	function removedAt(variable, removed, startingIndex, removalCount, arrayLength) {
@@ -1360,6 +1376,10 @@
 		var i = startingIndex + removalCount
 		var arrayPosition
 		if (removalCount > 0) {
+			var event = new ArrayEvent({
+				modifier: variable,
+				actions: []
+			})
 			for (var i = startingIndex + removalCount; i < arrayLength + removalCount; i++) {
 				var arrayPosition = variable[i]
 				if (arrayPosition) {
@@ -1370,14 +1390,14 @@
 			}
 			// send out updates
 			for (var i = 0; i < removalCount; i++) {
-				variable.updated(new DeleteEvent({
+				event.actions.push({
 					previousIndex: startingIndex,
-					oldValue: removed[i],
-					modifier: variable
-				}), variable)
+					oldValue: removed[i]
+				})
 			}
 			variable.cachedVersion = variable.version // update the cached version so it doesn't need to be recomputed
 		}
+		return event
 	}
 
 	if (typeof Symbol !== 'undefined') {
@@ -1408,7 +1428,7 @@
 		}
 	}, {
 		fixed: true,
-		isCopyOnWrite: false,
+		isWritable: false,
 		// TODO: Move all the get and set functionality for maps out of Variable
 		property: function(key, PropertyClass) {
 			var properties = this._properties || (this._properties = new Map())
@@ -1669,6 +1689,11 @@
 			return this
 		}
 	})
+	Object.defineProperty(Transform.prototype, 'isWritable', {
+		get: function() {
+			return this.transform && !!this.transform.reverse
+		}
+	})
 
 	var RESOLUTION_UPDATE = {}
 		WhileResolving = lang.compose(Transform, function WhileResolving(variable, defaultValue, useLastValue) {
@@ -1787,39 +1812,39 @@
 					startingIndex = array.length + startingIndex
 				}
 				var results = array.splice.apply(array, args)
-				removedAt(this, results, startingIndex, removalCount, array.length)
-				insertedAt(this, [].slice.call(args, 2), startingIndex, array.length)
-				return results
+				var event = removedAt(this, results, startingIndex, removalCount, array.length)
+				event = insertedAt(this, [].slice.call(args, 2), startingIndex, array.length, event)
+				return [results, event]
 			})
 		},
 		push: function() {
 			var args = arguments
 			return arrayToModify(this, function(array) {
 				var results = array.push.apply(array, args)
-				insertedAt(this, args, array.length - args.length, array.length)
-				return results
+				var event = insertedAt(this, args, array.length - args.length, array.length)
+				return [results, event]
 			})
 		},
 		unshift: function() {
 			var args = arguments
 			return arrayToModify(this, function(array) {
 				var results = array.unshift.apply(array, args)
-				insertedAt(this, args, 0, array.length)
-				return results
+				var event = insertedAt(this, args, 0, array.length)
+				return [results, event]
 			})
 		},
 		pop: function() {
 			return arrayToModify(this, function(array) {
 				var results = array.pop()
-				removedAt(this, [results], array.length, 1)
-				return results
+				var event = removedAt(this, [results], array.length, 1)
+				return [results, event]
 			})
 		},
 		shift: function() {
 			return arrayToModify(this, function(array) {
 				var results = array.shift()
-				removedAt(this, [results], 0, 1, array.length)
-				return results
+				var event = removedAt(this, [results], 0, 1, array.length)
+				return [results, event]
 			})
 		}
 	})
@@ -2429,14 +2454,20 @@
 				return Transform.prototype.updated.call(this, event, by)
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
-			if (event.type === 'delete') {
-				var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
-				if (index > -1) {
-					contextualizedVariable.splice(index, 1)
-				}
-			} else if (event.type === 'add') {
-				if ([event.value].filter(this.arguments[0]).length > 0) {
-					contextualizedVariable.push(event.value)
+			if (event.type === 'array-update') {
+				for (var i = 0, l = event.actions.length; i < l; i++) {
+					var action = event.actions[i]
+					if (action.oldValue) {
+						var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
+						if (index > -1) {
+							contextualizedVariable.splice(index, 1)
+						}						
+					}
+					if (action.value) {
+						if ([event.value].filter(this.arguments[0]).length > 0) {
+							contextualizedVariable.push(event.value)
+						}
+					}
 				}
 			} else if (event.type === 'update') {
 				var object = event.parent.valueOf()
@@ -2487,11 +2518,22 @@
 				return Variable.prototype.updated.call(this, event, by)
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
-			if (event.type === 'delete') {
+			if (event.type === 'array-update') {
+				for (var i = 0, l = event.actions.length; i < l; i++) {
+					var action = event.actions[i]
+					if (action.previousIndex > -1) {
+						contextualizedVariable.splice(action.previousIndex, 1)
+					}
+					if (action.value) {
+						var array = contextualizedVariable.cachedValue
+						contextualizedVariable.push(this.arguments[0].call(this.arguments[1], this.source.property(array && array.length)))
+					}
+				}
+/*			if (event.type === 'delete') {
 				contextualizedVariable.splice(event.previousIndex, 1)
 			} else if (event.type === 'add') {
 				var array = contextualizedVariable.cachedValue
-				contextualizedVariable.push(this.arguments[0].call(this.arguments[1], this.source.property(array && array.length)))
+				contextualizedVariable.push(this.arguments[0].call(this.arguments[1], this.source.property(array && array.length)))*/
 			} else if (event.type === 'update') {
 				if (this.getCollectionOf()) {
 					return // if it has typed items, we don't need to propagate update events, since they will be handled by the variable item.

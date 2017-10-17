@@ -905,11 +905,11 @@ v.set('foo', 2)
 v.valueOf() -> {foo: 2}
 obj.foo -> 1
 ```
-This behavior can be altered by setting the `isCopyOnWrite` flag to false on a variable:
+This behavior can be altered by setting the `isWritable` flag to false on a variable:
 ```javascript
 let obj = {foo: 1}
 let v = new Variable(obj)
-v.isCopyOnWrite = false
+v.isWritable = false
 v.set('foo', 2)
 obj.foo -> 2
 ```
