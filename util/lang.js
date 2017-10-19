@@ -336,6 +336,20 @@
 				}
 			}
 		},
+		Map: typeof Map !== 'undefined' ? Map : function () {
+			var map = Object.create(null)
+			return {
+				set: function(key, value) {
+					map[key] = value
+				},
+				has: function(element) {
+					return Object.prototype.hasOwnProperty.call(map, key)
+				},
+				get: function(key) {
+					return map[key]
+				}
+			}
+		},
 		WeakMap: has('WeakMap') ? WeakMap :
 	 	function (values, name) {
 	 		var mapProperty = '__' + (name || '') + id++

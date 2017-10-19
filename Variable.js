@@ -6,6 +6,8 @@
 	var noChange = {}
 	var context
 	var WeakMap = lang.WeakMap
+	var Map = lang.Map
+	var Set = lang.Set
 	var setPrototypeOf = lang.setPrototypeOf
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
 	var isGenerator = lang.isGenerator
@@ -205,7 +207,7 @@
 	}
 
 	function RefreshEvent() {
-		this.visited = new lang.Set()
+		this.visited = new Set()
 	}
 	RefreshEvent.prototype.type = 'refresh'
 
@@ -218,14 +220,14 @@
 	PropertyChangeEvent.prototype.type = 'update'
 
 	function ArrayEvent(args) {
-		this.visited = new lang.Set()
+		this.visited = new Set()
 		for (var key in args) {
 			this[key] = args[key]
 		}
 	}
 	ArrayEvent.prototype.type = 'array-update'
 	function DeleteEvent(args) {
-		this.visited = new lang.Set()
+		this.visited = new Set()
 		for (var key in args) {
 			this[key] = args[key]
 		}

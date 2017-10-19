@@ -1424,36 +1424,36 @@
 			cleanup(element)
 		//}
 	}
-	if (typeof MutationObserver === 'function') {
-		var lifeStates = [{
-			name: 'detached',
-			nodes: 'removedNodes',
-			action: elementDetached
-		}, {
-			name: 'attached',
-			nodes: 'addedNodes',
-			action: elementAttached
-		}]
-		function firstVisit(node, state) {
-			if (state.name === 'attached') {
-				if (node.__alkaliAttached__) {
-					return false
-				} else {
-					node.__alkaliAttached__ = true
-					state.action(node)
-					return true
-				}
-			} else if (node.__alkaliAttached__) {
-				if (doc.body.contains(node)) {
-					// detached event, but it is actually still attached (will get attached in a later mutation record)
-					// so don't get through the detached/attached lifecycle
-					return false
-				}
-				node.__alkaliAttached__ = false
+	var lifeStates = [{
+		name: 'detached',
+		nodes: 'removedNodes',
+		action: elementDetached
+	}, {
+		name: 'attached',
+		nodes: 'addedNodes',
+		action: elementAttached
+	}]
+	function firstVisit(node, state) {
+		if (state.name === 'attached') {
+			if (node.__alkaliAttached__) {
+				return false
+			} else {
+				node.__alkaliAttached__ = true
 				state.action(node)
+				return true
 			}
-			return true
+		} else if (node.__alkaliAttached__) {
+			if (doc.body.contains(node)) {
+				// detached event, but it is actually still attached (will get attached in a later mutation record)
+				// so don't get through the detached/attached lifecycle
+				return false
+			}
+			node.__alkaliAttached__ = false
+			state.action(node)
 		}
+		return true
+	}
+	if (typeof MutationObserver === 'function') {
 		var observer = new MutationObserver(function(mutations) {
 			for (var i = 0, il = mutations.length; i < il; i++) {
 				var mutation = mutations[i]
@@ -1505,6 +1505,14 @@
 			childList: true,
 			subtree: true
 		})
+	} else {
+		setInterval(function() {
+			var all = document.all
+			var state = lifeStates[1]
+			for (var i = 0, l = all.length; i < l; i++) {
+				firstVisit(all[i], state)
+			}
+		}, 300)
 	}
 
 	lang.copy(VariableExports.Context.prototype, {
