@@ -144,7 +144,12 @@ define([
 			var numberInput = new NumberInput(new Variable(0))
 			document.body.appendChild(numberInput)
 			assert.strictEqual(numberInput.type, 'number')
-			assert.strictEqual(numberInput.valueAsNumber, 0)
+			var numberInputB = document.createElement('input')
+			numberInputB.type = 'number'
+			numberInputB.value = '0'
+			if (!isNaN(numberInputB.valueAsNumber)) { // only test if browser support type=number
+				assert.strictEqual(numberInput.valueAsNumber, 0)
+			}
 		},
 		dateInput: function() {
 			var startingDate = new Date(1458345600000)

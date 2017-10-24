@@ -323,8 +323,19 @@
 			}
 			return Promise
 		}()),
-		Set: typeof Set !== 'undefined' ? Set : function () {
-			var elements = []
+		Set: typeof Set !== 'undefined' ?
+			new Set(['a']).length ? Set :
+			function (elements) { // IE 11 doesn't support arguments to constructor
+				var set = new Set()
+				if (elements) {
+					for (var i = 0; i < elements.length; i++) {
+						set.add(elements[i])
+					}
+				}
+				return set
+			} :
+		function (elements) {
+			elements = elements || []
 			return {
 				add: function(element) {
 					if (!this.has(element)) {
