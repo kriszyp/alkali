@@ -1505,7 +1505,8 @@
 			childList: true,
 			subtree: true
 		})
-	} else {
+	} else if (typeof document !== 'undefined') {
+		// polling for ancient IE browsers
 		setInterval(function() {
 			var all = document.all
 			var state = lifeStates[1]
