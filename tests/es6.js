@@ -1,9 +1,7 @@
 define([
 	'../Element',
 	'../Variable',
-	'intern!object',
-	'intern/chai!assert'
-], function (Element, VariableExports, registerSuite, assert) {
+], function (Element, VariableExports) {
 	function valueOfAndNotify(variable, callback) {
 		var value = variable.valueOf()
 		variable.notifies(typeof callback === 'object' ? callback : {
@@ -18,9 +16,8 @@ define([
 	var Button = Element.Button
 	var defineElement = Element.defineElement
 	var element = Element.element
-	registerSuite({
-		name: 'es6',
-		react: function () {
+	suite('es6', function() {
+		test('react', function() {
 			var a = new Variable()
 			var b = new Variable()
 			var sum = react(function*() {
@@ -57,9 +54,9 @@ define([
 			assert.isTrue(targetInvalidated)
 			assert.equal(target.valueOf(), 10)
 
-		},
+		})
 
-		elementClass: function() {
+		test('elementClass', function() {
 			class MyDiv extends Div('.my-class', {title: 'my-title', wasClicked: false}) {
 				onclick() {
 					this.otherMethod()
@@ -83,24 +80,24 @@ define([
 			mySubDiv.click()
 			assert.isTrue(mySubDiv.wasClicked)
 			assert.isTrue(mySubDiv.alsoFlagged)
-		},
-		forOf: function() {
+		})
+		test('forOf', function() {
 			var arrayVariable = new Variable(['a', 'b', 'c'])
 			var results = []
 			for (let letter of arrayVariable) {
 				results.push(letter)
 			}
 			assert.deepEqual(results, ['a', 'b', 'c'])
-		},
-		Symbol: function() {
+		})
+		test('Symbol', function() {
 			let mySymbol = Symbol('my')
 			let obj = {
 				[mySymbol]: 'test'
 			}
 			let v = new Variable(obj)
 			assert.strictEqual(v.property(mySymbol).valueOf(), 'test')
-		},
-		Map: function() {
+		})
+		test('Map', function() {
 			let map = new Map()
 			map.set('a', 2)
 			var v = new Variable.VMap(map)
@@ -120,8 +117,8 @@ define([
 			v.set('2', 'two')
 			assert.strictEqual(map.get(2), 2)
 			assert.strictEqual(map.get('2'), 'two')
-		},
-		renderGenerator: function() {
+		})
+		test('renderGenerator', function() {
 			var a = new Variable(1)
 			var b = new Variable(2)
 			class GeneratorDiv extends Div {
@@ -155,8 +152,8 @@ define([
 					})
 				})
 			})
-		},
-		reactPromises: function() {
+		})
+		test('reactPromises', function() {
 			let currentResolver, currentRejecter, sum = 0, done = false
 			let errorThrown
 			var sequence = react(function*() {
@@ -197,8 +194,8 @@ define([
 					})
 				})
 			})
-		},
-		getPropertyWithClass: function() {
+		})
+		test('getPropertyWithClass', function() {
 			class Foo extends Variable {
 				constructor() {
 					super(...arguments)
@@ -221,8 +218,8 @@ define([
 			assert.strictEqual(bar.foo.baz2.valueOf(), 3)
 			bar.foo.baz.put(5)
 			assert.strictEqual(obj.foo.baz, 5)
-		},
-		structuredClass: function() {
+		})
+		test('structuredClass', function() {
 			class Foo extends Variable {
 				constructor() {
 					super(...arguments)
@@ -248,8 +245,8 @@ define([
 			assert.strictEqual(obj.foo.baz, 5)
 			assert.strictEqual(bar.property('foo').get('baz'), 5)
 			assert.strictEqual(bar.property('foo').get('bazDerived'), 10)
-		},
-		proxiedVariable: function() {
+		})
+		test('proxiedVariable', function() {
 			let Foo = Variable({
 				a: Variable,
 				*derived() {
@@ -276,13 +273,13 @@ define([
 			assert.isTrue(foo.bar == 'hello')
 			delete foo.bar
 			assert.isTrue(foo.bar.valueOf() == undefined)
-		},
-		instanceofElementClass: function() {
+		})
+		test('instanceofElementClass', function() {
 			var MyDiv = Div('.test')
 			// only do this if the language supports Symbol.hasInstance
 			//assert.isTrue(MyDiv instanceof Element.ElementClass)
-		},
-		registerTag: function() {
+		})
+		test('registerTag', function() {
 			class CustomElementTemp extends Div {
 				constructor() {
 					super(...arguments)
@@ -304,9 +301,9 @@ define([
 			assert.equal(custom.bar, 4)
 			assert.equal(custom.className, 'some-class')
 			assert.equal(custom.innerHTML, 'hi')
-		},
+		})
 
-		getterGeneratorOnVariable() {
+		test('getterGeneratorOnVariable', function() {
 			var Foo = Variable({
 				planet: Variable,
 				*recipient() {
@@ -325,8 +322,8 @@ define([
 			foo.planet.put('Saturn')
 			assert.isTrue(updated)
 			assert.strictEqual(greeting.valueOf(), 'Hello, Saturn')
-		},
-		getterGeneratorOnElement() {
+		})
+		test('getterGeneratorOnElement', function() {
 			var Foo = Div({
 				name: Variable,
 				*title() {
@@ -366,7 +363,7 @@ define([
 					assert.strictEqual(subFoo.title, 'John Smith')
 				})
 			})
-		
-		}
+
+		})
 	})
 })

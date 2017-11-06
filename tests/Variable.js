@@ -1,9 +1,6 @@
-define([
-	'../Variable',
-	'intern!object',
-	'intern/chai!assert',
-	'bluebird/js/browser/bluebird'
-], function (VariableExports, registerSuite, assert, Promise) {
+define(function(require) {
+	var VariableExports = require('../Variable')
+	var Promise = require('bluebird/js/browser/bluebird')
 	var Variable = VariableExports.Variable
 	var VArray = VariableExports.VArray
 	var VString = VariableExports.VString
@@ -22,10 +19,9 @@ define([
 		})
 		return value
 	}
-	registerSuite({
-		name: 'Variable',
+	suite('Variable', function() {
 
-		'simple single value': function () {
+		test('simple single value', function() {
 			var invalidated = false
 			var variable = new Variable(1)
 			assert.equal(valueOfAndNotify(variable, function() {
@@ -35,9 +31,9 @@ define([
 			variable.put(2)
 			assert.equal(variable.valueOf(), 2)
 			assert.isTrue(invalidated)
-		},
+		})
 
-		'simple caching value': function () {
+		test('simple caching value', function() {
 			var invalidated = false
 			var value = 1
 			var variable = new Transform(null, function () {
@@ -54,8 +50,8 @@ define([
 			assert.equal(variable.valueOf(), 2)
 			assert.equal(value, 2)
 			assert.isTrue(invalidated)
-		},
-		'simple caching value, no subscribe': function () {
+		})
+		test('simple caching value, no subscribe', function() {
 			var recomputed = false
 			var value = 1
 			var variable = new Variable(1)
@@ -73,8 +69,8 @@ define([
 			variable.put(2)
 			assert.equal(result.valueOf(), 8)
 			assert.isTrue(recomputed)
-		},
-		'simple caching value, resubscribe': function () {
+		})
+		test('simple caching value, resubscribe', function() {
 			var recomputed = false
 			var value = 1
 			var variable = new Variable(1)
@@ -90,8 +86,8 @@ define([
 				}
 			})
 			assert.equal(result.valueOf(), 4)
-		},
-		'on/off': function () {
+		})
+		test('on/off', function() {
 			var invalidated = false
 			var value = 1
 			var variable = new Transform(null, function () {
@@ -115,9 +111,9 @@ define([
 			variable.stopNotifies(target)
 			invalidated = false
 			variable.put(3)
-			assert.isFalse(invalidated);	
-		},
-		'property access': function () {
+			assert.isFalse(invalidated);
+		})
+		test('property access', function() {
 			var object = {
 				a: 1,
 				b: 10
@@ -140,9 +136,9 @@ define([
 				assert.equal(aProperty.valueOf(), 3)
 				assert.isTrue(invalidated)
 			})
-		},
+		})
 
-		'delegated properties': function() {
+		test('delegated properties', function() {
 			var MyVar = Variable({
 				a: Variable
 			})
@@ -162,14 +158,14 @@ define([
 			assert.isTrue(invalidated)
 			assert.equal(myVar.a.valueOf(), 5)
 			assert.equal(fromMyVar.a2.valueOf(), 25)
-		},
-		'separate non-live property caching': function() {
+		})
+		test('separate non-live property caching', function() {
 			var myVar = new Variable({
 				a: 2,
 				b: 10
 			})
 			var computedA
-			var doubleA = myVar.property('a').to(function(a) { 
+			var doubleA = myVar.property('a').to(function(a) {
 				computedA = true
 				return a * 2
 			})
@@ -183,8 +179,8 @@ define([
 			myVar.set('b', 15)
 			assert.equal(doubleA.valueOf(), 6)
 			assert.isFalse(computedA)
-		},
-		'caching property of transform': function() {
+		})
+		test('caching property of transform', function() {
 			var v = new Variable(5)
 			var transformed = 0
 			var result = v.to(function(v) {
@@ -201,8 +197,8 @@ define([
 			assert.equal(result.property('twice').valueOf(), 20)
 			assert.equal(result.property('triple').valueOf(), 30)
 			assert.equal(transformed, 2)
-		},
-		'caching property of transform 2': function() {
+		})
+		test('caching property of transform 2', function() {
 			var v = new Variable(5)
 			var transformed = 0
 			var result = v.to(function(v) {
@@ -224,8 +220,8 @@ define([
 			assert.equal(result2.property('twice').valueOf(), 10)
 			assert.equal(result2.property('triple').valueOf(), 15)
 			assert.equal(transformed, 1)
-		},
-		'caching property of transform live': function() {
+		})
+		test('caching property of transform live', function() {
 			var v = new Variable(5)
 			var transformed = 0
 			var result = v.to(function(v) {
@@ -247,8 +243,8 @@ define([
 			assert.equal(result2.property('twice').valueOf(), 10)
 			assert.equal(result2.property('triple').valueOf(), 15)
 			assert.equal(transformed, 1)
-		},
-		'structured assignment': function() {
+		})
+		test('structured assignment', function() {
 			var MyVar = Variable({
 				a: Variable,
 				b: Variable
@@ -267,8 +263,8 @@ define([
 			assert.equal(myVar.a.valueOf(), 4)
 			assert.equal(myVar.get('b'), 20)
 			assert.equal(myVar.a2.valueOf(), 16)
-		},
-		'successive puts': function() {
+		})
+		test('successive puts', function() {
 			var v = new Variable(1)
 			var v2 = new Variable(2)
 			var v3 = new Variable(3)
@@ -294,8 +290,8 @@ define([
 			assert.equal(v.valueOf(), 8)
 			assert.equal(v2.valueOf(), 7)
 			assert.equal(v3.valueOf(), 7)
-		},
-		'upstream proxy of mutations': function() {
+		})
+		test('upstream proxy of mutations', function() {
 			var v = new Variable({a: 1})
 			var v2 = new Variable()
 			v2.is(v)
@@ -314,9 +310,9 @@ define([
 			assert.strictEqual(v2.valueOf().a, 3)
 			assert.strictEqual(v.get('a'), 3)
 			assert.strictEqual(v.valueOf().a, 3)
-		},
+		})
 
-		mapAndFilter: function(){
+		test('mapAndFilter', function(){
 			var v = new VArray(['a', 'b'])
 			var result = v.map(function(letter) {
 				return letter.toUpperCase()
@@ -325,17 +321,17 @@ define([
 			})
 			assert.deepEqual(result.valueOf(), ['B'])
 
-		},
+		})
 
-		'transform with mutations': function() {
+		test('transform with mutations', function() {
 			var v = new Variable({a: 1})
 			var v2 = new VArray(['a'])
 			var transformed = v.to(function(v) { return v2 }).as(VArray)
 			transformed.push('b')
 			assert.strictEqual(v2.get(1), 'b')
-		},
+		})
 
-		'function call': function () {
+		test('function call', function() {
 			var add = new Variable(function (a, b) {
 				return a + b
 			}, function (value, args) {
@@ -355,8 +351,8 @@ define([
 			b.put(4)
 			assert.isTrue(invalidated)
 			assert.equal(sum.valueOf(), 7)
-		},
-		transform: function () {
+		})
+		test('transform', function() {
 			var a = new Variable()
 			var b = new Variable()
 			var sum = a.to(function (a) {
@@ -396,8 +392,8 @@ define([
 			assert.equal(sum.valueOf(), 10)
 			assert.isTrue(targetInvalidated)
 			assert.equal(target.valueOf(), 10)
-		},
-		mixedMap: function() {
+		})
+		test('mixedMap', function() {
 			var a = new Variable()
 			var b = new VArray()
 			var plusTwo = a.map(function(a) {
@@ -418,8 +414,8 @@ define([
 			b.put([1, 2])
 			assert.equal(plusTwo.valueOf(), 4)
 			assert.deepEqual(bPlusTwo.valueOf(), [3, 4])
-		},
-		derivedMap: function() {
+		})
+		test('derivedMap', function() {
 			var a = new Variable(2)
 			var b = new Variable(3)
 			var sum = a.to(function (a_val) {
@@ -431,8 +427,8 @@ define([
 			assert.equal(mult.valueOf(), 10)
 			b.put(4)
 			assert.equal(mult.valueOf(), 12)
-		},
-		derivedMapWithArray: function() {
+		})
+		test('derivedMapWithArray', function() {
 			var a = new Variable([2])
 			var b = new Variable([3])
 			var sum = a.to(function (a_val) {
@@ -445,8 +441,8 @@ define([
 			assert.deepEqual(mult.valueOf(), [10])
 			b.put([4])
 			assert.deepEqual(mult.valueOf(), [12])
-		},
-		typedMap: function() {
+		})
+		test('typedMap', function() {
 			var Foo = Variable({
 				foo: Variable
 			})
@@ -478,8 +474,8 @@ define([
 				lettersResolved.push(letter)
 			})
 			assert.deepEqual(lettersResolved, ['a', 'b'])
-		},
-		VString: function() {
+		})
+		test('VString', function() {
 			var vs = new VString('hello')
 			var transformed = vs.toUpperCase().slice(1, 3)
 			var invalidated
@@ -489,8 +485,8 @@ define([
 			vs.put('hi')
 			assert.isTrue(invalidated)
 			assert.equal(transformed.valueOf(), 'I')
-		},
-		VNumber: function() {
+		})
+		test('VNumber', function() {
 			var vn = new VNumber(344)
 			var transformed = vn.toExponential().indexOf('e+')
 			var invalidated
@@ -500,8 +496,8 @@ define([
 			vn.put(3)
 			assert.isTrue(invalidated)
 			assert.equal(transformed.valueOf(), 1)
-		},
-		transformAndCast: function() {
+		})
+		test('transformAndCast', function() {
 			var vn = new VNumber(344)
 			var transformed = vn.to(function(num) {
 				return 'num: ' + num
@@ -513,8 +509,8 @@ define([
 			vn.put(3)
 			assert.isTrue(invalidated)
 			assert.equal(transformed.valueOf(), 'NUM: 3')
-		},
-		transformAndCastClass: function() {
+		})
+		test('transformAndCastClass', function() {
 			var vn = new VNumber(344)
 			var TransformToString = Transform.with({
 				transform: function(num) {
@@ -529,14 +525,14 @@ define([
 			vn.put(3)
 			assert.isTrue(invalidated)
 			assert.equal(transformed.valueOf(), 'NUM: 3')
-		},
-		VDate: function() {
+		})
+		test('VDate', function() {
 			var d = new VDate(1482816115981)
 			assert.equal(d.toUTCString().toUpperCase().valueOf(), 'TUE, 27 DEC 2016 05:21:55 GMT')
 			d.setTime(1483816115981)
 			assert.equal(d.toUTCString().toString(), 'Sat, 07 Jan 2017 19:08:35 GMT')
-		},
-		VSet: function() {
+		})
+		test('VSet', function() {
 			var vs = new VSet(['a', 'b'])
 			var a = vs.has('a')
 			var c = vs.has('c')
@@ -555,14 +551,14 @@ define([
 			vs.clear()
 			assert.equal(a.valueOf(), false)
 			assert.equal(c.valueOf(), false)
-		},
-		variablePromise: function() {
+		})
+		test('variablePromise', function() {
 			var p = new Variable(Promise.resolve('hi'))
 			return p.then(function(value) {
 				assert.equal(value, 'hi')
 			})
-		},
-		variablePromiseWhileResolving: function() {
+		})
+		test('variablePromiseWhileResolving', function() {
 			var p = Promise.resolve('hi')
 			var v = new Variable(p)
 			var alwaysAvailable = v.whileResolving('loading')
@@ -581,8 +577,8 @@ define([
 				assert.isTrue(notified)
 				assert.equal(alwaysAvailable.valueOf(), 'hi')
 			})
-		},
-		multiplePromisedTransforms: function() {
+		})
+		test('multiplePromisedTransforms', function() {
 			var transformCount = 0
 			var v = new Variable()
 			var result = v.to(function() {
@@ -594,8 +590,8 @@ define([
 				assert.equal(transformCount, 1)
 				assert.equal(result, 'done')
 			})
-		},
-		multipleInputPromisedTransforms: function() {
+		})
+		test('multipleInputPromisedTransforms', function() {
 			var transformCount = 0
 			var v = new Variable(Promise.resolve('done'))
 			var result = v.to(function(v) {
@@ -607,8 +603,8 @@ define([
 				assert.equal(transformCount, 1)
 				assert.equal(result, 'done')
 			})
-		},
-		derivedComposedInvalidations: function() {
+		})
+		test('derivedComposedInvalidations', function() {
 			var outer = new Variable(false)
 			var signal = new Variable()
 			var arr = [1,2,3]
@@ -625,8 +621,8 @@ define([
 			signal.updated()
 			outer.put(false)
 			assert.deepEqual(derived.valueOf(), [false, [8,10,12]])
-		},
-		mapWithArray: function() {
+		})
+		test('mapWithArray', function() {
 			var values = [0,1,2,3,4,5]
 			var all = new Variable(values)
 			var odd = all.to(function(arr) {
@@ -640,8 +636,8 @@ define([
 				return arr[arr.length-1]
 			})
 			assert.deepEqual(last.valueOf(), 5)
-		},
-		derivedConditionalMapWithArray: function() {
+		})
+		test('derivedConditionalMapWithArray', function() {
 			var values = [0,1,2,3,4,5]
 			var all = new VArray(values)
 			var subset = new VArray([2,3,4])
@@ -658,8 +654,8 @@ define([
 			subset.updated()
 			assert.deepEqual(filter1.valueOf(), [2,3,4], 'filter1 should return subset of values')
 			assert.deepEqual(filter2.valueOf(), [2], 'filter2 should return first element of subset')
-		},
-		parentalNotification: function(){
+		})
+		test('parentalNotification', function(){
 			var parent = new Variable({
 				a: 1
 			})
@@ -674,8 +670,8 @@ define([
 			parentNotified = false
 			parent.property('a').updated()
 			assert.isTrue(parentNotified)
-		},
-		parentalParentalNotification: function(){
+		})
+		test('parentalParentalNotification', function(){
 			var parent = new Variable({
 				a: {
 					b: 1
@@ -692,8 +688,8 @@ define([
 			parentNotified = false
 			parent.property('a').property('b').updated()
 			assert.isTrue(parentNotified)
-		},
-		separateChildPath: function(){
+		})
+		test('separateChildPath', function(){
 			var parent = new Variable({
 				a: {
 					b: {
@@ -719,9 +715,9 @@ define([
 			parentReference.property('a').property('b').set('d', 6)
 			assert.isTrue(parentNotified)
 			assert.isFalse(siblingNotified)
-		},
+		})
 
-		relisten: function() {
+		test('relisten', function() {
 			var v = new Variable({foo: 1})
 			var ref = new Variable(v)
 			var ref2 = new Variable()
@@ -745,9 +741,9 @@ define([
 			fooTransformed.valueOf()
 			fooRef2.put(2)
 			assert.isTrue(updated)
-		},
+		})
 
-		array: function () {
+		test('array', function() {
 			var array = [1, 2]
 			var variable = new VArray(array)
 			var twice = variable.map(function(item){
@@ -758,9 +754,9 @@ define([
 				results.push(value)
 			})
 			assert.deepEqual(results, [2, 4])
-		},
+		})
 
-		'array positions': function () {
+		test('array positions', function() {
 			var v = new VArray(['a', 'b'])
 			var a = v.property(0)
 			var b = v.property(1)
@@ -776,9 +772,9 @@ define([
 			v.unshift('0')
 			assert.strictEqual(a.valueOf(), 'a')
 			assert.strictEqual(b.valueOf(), 'b')
-		},
+		})
 
-		'array events': function() {
+		test('array events', function() {
 			var va = new (VArray.of(Variable))([{a: 1}, {a: 2}])
 			var mapCount = 0
 			var lastItemVar
@@ -804,9 +800,9 @@ define([
 					assert.equal(arrayChangeCount, 2)
 				})
 			})
-		},
+		})
 
-		promise: function () {
+		test('promise', function() {
 			var resolvePromise
 			var promise = new Promise(function(resolve){
 				resolvePromise = resolve
@@ -824,9 +820,9 @@ define([
 			return finished.then(function() {
 				assert.equal(sum, 6)
 			})
-		},
+		})
 
-		promiseComposition: function() {
+		test('promiseComposition', function() {
 			var inner = new Variable('a')
 			var resolvePromise
 			var promise = new Promise(function(resolve) {
@@ -854,9 +850,9 @@ define([
 				assert.equal(innerCallbackInvoked, 1, 'inner map not invoked exactly once: ' + innerCallbackInvoked)
 				assert.deepEqual(result, ['promise','a'])
 			})
-		},
+		})
 
-		schema: function() {
+		test('schema', function() {
 			var object = {
 				a: 1,
 				b: 'foo'
@@ -882,9 +878,9 @@ define([
 			assert.strictEqual(propertyB.validation.valueOf().length, 0)
 			propertyB.put('')
 			assert.strictEqual(propertyB.validation.valueOf().length, 1)
-		},
+		})
 
-		schemaCustomValidate: function() {
+		test('schemaCustomValidate', function() {
 			var object = {
 				a: 1
 			}
@@ -905,9 +901,9 @@ define([
 			propertyA.put(8)
 			assert.strictEqual(derived.property('a').validation.valueOf().length, 1)
 			assert.strictEqual(propertyA.validation.valueOf().length, 1)
-		},
+		})
 
-		composite: function() {
+		test('composite', function() {
 			var a = new Variable(1)
 			var b = new Variable(2)
 			var c = new Variable(3)
@@ -922,9 +918,9 @@ define([
 			assert.deepEqual(result, [4, 2, 3])
 			c.put(6)
 			assert.deepEqual(result, [4, 2, 6])
-		},
+		})
 
-		incrementalUpdate: function() {
+		test('incrementalUpdate', function() {
 			var array = new VArray([2, 4, 6])
 			var sum = array.to(function(array) {
 				return array.reduce(function(a, b) {return a + b})
@@ -951,18 +947,18 @@ define([
 			assert.strictEqual(lastUpdate.type, 'array-update')
 			assert.strictEqual(lastUpdate.actions[0].previousIndex, 0)
 			assert.isUndefined(lastUpdate.actions[0].value)
-		},
+		})
 
-		nestedVariableProperty: function() {
+		test('nestedVariableProperty', function() {
 			var obj = {a: 2}
 			var v = new Variable(obj)
 			obj.derived = v.property('a').to(function(v) {
 				return v * 2
 			})
 			assert.strictEqual(v.property('derived').valueOf(), v.get('derived'))
-		},
+		})
 
-		nestedPropertyInvalidation: function() {
+		test('nestedPropertyInvalidation', function() {
 			var outer = { middle: { inner: new Variable() } }
 			var outerVar = new Variable(outer)
 			var tfInvalidated = 0
@@ -994,9 +990,9 @@ define([
 					assert.equal(propInvalidated, 3)
 				})
 			})
-		},
+		})
 
-		outerVariableCaching: function() {
+		test('outerVariableCaching', function() {
 			var label = new Variable()
 			var internal
 			var outerExecutionCount = 0
@@ -1019,9 +1015,9 @@ define([
 	    internal.put(3)
 	    assert.equal(l2.valueOf(), 'start-3')
     	assert.equal(outerExecutionCount, 2)
-		},
+		})
 
-		filterArray: function() {
+		test('filterArray', function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var greaterThanFour = arrayVariable.filter(function(item) {
 				return item > 4
@@ -1033,9 +1029,9 @@ define([
 			assert.strictEqual(greaterThanFour.valueOf().length, 2)
 			arrayVariable.push(1)
 			assert.strictEqual(greaterThanFour.valueOf().length, 2)
-		},
+		})
 
-		mapReduceArray: function() {
+		test('mapReduceArray', function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var mapOperations = 0
 			var doubled = arrayVariable.map(function(item) {
@@ -1069,9 +1065,9 @@ define([
 			assert.deepEqual(doubled.valueOf(), [6, 8, 18, 2])
 			assert.strictEqual(sum.valueOf(), 34)
 			assert.strictEqual(mapOperations, 6)
-		},
+		})
 
-		someArray: function() {
+		test('someArray', function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var oneGreaterThanFour = arrayVariable.some(function(item) {
 				return item > 4
@@ -1079,9 +1075,9 @@ define([
 			assert.isTrue(oneGreaterThanFour.valueOf())
 			arrayVariable.splice(1, 2)
 			assert.isFalse(oneGreaterThanFour.valueOf())
-		},
+		})
 
-		keyBy: function() {
+		test('keyBy', function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var index = arrayVariable.keyBy(function (key) {
 				return key
@@ -1092,9 +1088,9 @@ define([
 			arrayVariable.push(9)
 			assert.strictEqual(index.get(9), 18)
 			assert.strictEqual(index.get(5), 10)
-		},
+		})
 
-		groupBy: function() {
+		test('groupBy', function() {
 			var arrayVariable = new VArray([{even: false, n: 3}, {even: true, n: 4}, {even: false, n: 5}])
 			var index = arrayVariable.groupBy('even')
 			assert.strictEqual(index.get(false).length, 2)
@@ -1105,9 +1101,9 @@ define([
 			assert.strictEqual(index.get(false).length, 2)
 			assert.strictEqual(index.get(true).length, 2)
 			assert.strictEqual(index.get(true)[1].n, 6)
-		},
+		})
 
-		contextualClassProperty: function() {
+		test('contextualClassProperty', function() {
 			var TestVariable = Variable()
 			var TestSubject = Variable()
 			TestSubject.hasOwn(TestVariable)
@@ -1121,8 +1117,8 @@ define([
 			assert.strictEqual(TestVariable.property('a').for().valueOf(), 0)
 			assert.strictEqual(TestVariable.property('a').for(subject1).valueOf(), 1)
 			assert.strictEqual(TestVariable.property('a').for(subject2).valueOf(), 2)
-		},
-		contextualizedFilter: function() {
+		})
+		test('contextualizedFilter', function() {
 			var TestVariable = VArray()
 			var TestSubject = VArray()
 			TestSubject.hasOwn(TestVariable)
@@ -1149,8 +1145,8 @@ define([
 			assert.strictEqual(greaterThanFour.for(subject2).valueOf().length, 1)
 			TestVariable.for(subject1).push(1)
 			assert.strictEqual(greaterThanFour.for(subject1).valueOf().length, 2)
-		},
-		emptyKey: function() {
+		})
+		test('emptyKey', function() {
 			var v = new Variable({})
 			var updated
 			valueOfAndNotify(v.property(''), function(updateEvent) {
@@ -1158,8 +1154,8 @@ define([
 			})
 			v.set('', 'test')
 			assert.strictEqual(updated, true)
-		},
-		getPropertyWithVariable: function() {
+		})
+		test('getPropertyWithVariable', function() {
 			var foo = new Variable('foo')
 			var bar = new Variable({ foo: foo })
 
@@ -1171,9 +1167,9 @@ define([
 			foo.put('2')
 			assert.isTrue(updated)
 			assert.strictEqual(bar.property('foo').valueOf(), '2')
-		},
+		})
 
-		switchedPropertyVariable: function() {
+		test('switchedPropertyVariable', function() {
 			var view = new Variable(0)
 			var scope = new Variable(0)
 			var testData = {
@@ -1205,13 +1201,13 @@ define([
 			assert.isFalse(updated)
 		  view.put(1)
 			assert.equal(final.valueOf(), '(b)')
-		},
-		JSON: function() {
+		})
+		test('JSON', function() {
 			var obj = new Variable({foo: new Variable('bar')})
 			assert.strictEqual(JSON.stringify(obj), '{"foo":"bar"}')
-		},
+		})
 
-		promised: function() {
+		test('promised', function() {
 			var v = new Variable(new Promise(function (r) {
 				setTimeout(function() {	r('a') }, 100)
 			})).whileResolving()
@@ -1231,9 +1227,9 @@ define([
 					})
 				})
 			})
-		},
+		})
 
-		promisedWithInitialValue: function() {
+		test('promisedWithInitialValue', function() {
 			var v = new Variable('z')
 			assert.equal(v.valueOf(), 'z')
 			v.put(new Promise(function (r) {
@@ -1245,9 +1241,9 @@ define([
 				// should contain new resolved value now
 				assert.equal(v.valueOf(), 'b')
 			})
-		},
+		})
 
-		promisedAsTransform: function() {
+		test('promisedAsTransform', function() {
 			var s = new Variable()
 			var t = s.to(function(primitiveValue) { return '<' + primitiveValue + '>' }).whileResolving()
 			s.put(new Promise(function (r) {
@@ -1262,9 +1258,9 @@ define([
 					assert.equal(t.valueOf(), '<a>')
 				})
 			})
-		},
+		})
 
-		promisedAsTransformWithInitial: function() {
+		test('promisedAsTransformWithInitial', function() {
 			var s = new Variable('z')
 			var t = s.to(function(primitiveValue) { return '<' + primitiveValue + '>' }).whileResolving()
 			assert.equal(t.valueOf(), '<z>' )
@@ -1279,18 +1275,18 @@ define([
 					assert.equal(t.valueOf(), '<a>')
 				})
 			})
-		},
+		})
 
-		'initialized variable updates source': function() {
+		test('initialized variable updates source', function() {
 			var sourceVariable = new Variable({foo: 1})
 			var containingVariable = new Variable(sourceVariable)
 			sourceVariable.set('foo', 2) // this will propagate down to containingVariable
 			containingVariable.set('foo', 3) // this will update the sourceVariable
 			assert.equal(containingVariable.get('foo'), 3)
 			assert.equal(sourceVariable.get('foo'), 3)
-		},
+		})
 
-		'initialized property updates source': function() {
+		test('initialized property updates source', function() {
 			var source = new Variable('a')
 			// transform as initial value
 			var transform = function(v) {
@@ -1330,9 +1326,9 @@ define([
 			assert.equal(pa.valueOf(), undefined)
 			assert.equal(pb.valueOf(), true)
 			assert.equal(reverseCalled, 0)
-		},
+		})
 
-		'Variable default returned when variable value is undefined': function() {
+		test('Variable default returned when variable value is undefined', function() {
 			var v = new Variable()
 			v.default = 'a'
 			assert.equal(v.valueOf(), 'a')
@@ -1341,24 +1337,24 @@ define([
 			/* Isn't this an explicit assignment of the variable?
 			v.put(undefined)
 			assert.equal(v.valueOf(), 'a')*/
-		},
+		})
 
-		'Variable default is not resolved': function() {
+		test('Variable default is not resolved', function() {
 			var d = new Variable('default')
 			var v = new Variable()
 			v.default = d
 			assert.strictEqual(v.valueOf(), 'default')
-		},
+		})
 
-		'Property resolves to default value': function() {
+		test('Property resolves to default value', function() {
 			var v = new Variable()
 			v.default = { v: 'default' }
 			var vp = v.property('v')
 			assert.deepEqual(v.valueOf(), { v: 'default' })
 			assert.deepEqual(vp.valueOf(), 'default')
-		},
-		
-		'Assignment does not change defaults': function() {
+		})
+
+		test('Assignment does not change defaults', function() {
 			var v = new Variable()
 			var defaultObject = v.default = { v: 'default' }
 			var vp = v.property('v')
@@ -1366,6 +1362,7 @@ define([
 			vp.put('new value')
 			assert.equal(vp.valueOf(), 'new value')
 			assert.equal(defaultObject.v, 'default')
-		}
+		})
 	})
+	console.log('registered tests')
 })

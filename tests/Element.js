@@ -3,10 +3,8 @@ define([
 	'../Variable',
 	'../operators',
 	'../util/lang',
-	'intern!object',
-	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Element, VariableExports, operators, lang, registerSuite, assert, Promise) {
+], function (Element, VariableExports, operators, lang, Promise) {
 	var Variable = VariableExports.Variable
 	var requestAnimationFrame = lang.requestAnimationFrame
 	var Div = Element.Div
@@ -34,14 +32,13 @@ define([
 	var extend = Element.extend
 	var assign = Element.assign
 	var VArray = VariableExports.VArray
-	registerSuite({
-		name: 'Element',
-		simpleElement: function () {
+	suite('Element', function() {
+		test('simpleElement', function() {
 			var testDiv = new Div({id: 'test-div'})
 			assert.equal(testDiv.tagName, 'DIV')
 			assert.equal(testDiv.getAttribute('id'), 'test-div')
-		},
-		'change in variable': function () {
+		})
+		test('change in variable', function() {
 			var variable = new Variable(4)
 			var withVariable = Div({
 				title: variable,
@@ -55,8 +52,8 @@ define([
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(element.title, '5')
 			})
-		},
-		nesting: function() {
+		})
+		test('nesting', function() {
 			var Structure = Div('.top', {id: 'top'}, [
 				Div('.middle-1', [
 					Span('#bottom-1'),
@@ -77,8 +74,8 @@ define([
 			assert.strictEqual(middle1.firstChild.nextSibling.nodeValue, 'a text node')
 			assert.strictEqual(middle1.firstChild.nextSibling.nextSibling.id, 'bottom-2')
 			assert.strictEqual(structureElement.lastChild.className, 'middle-2')
-		},
-		textInput: function() {
+		})
+		test('textInput', function() {
 			var textVariable = new Variable('start')
 			var textInput = new Input(textVariable)
 			document.body.appendChild(textInput)
@@ -94,8 +91,8 @@ define([
 				textInput.dispatchEvent(nativeEvent)
 				assert.strictEqual(textVariable.valueOf(), 'change from input')
 			})
-		},
-		checkbox: function() {
+		})
+		test('checkbox', function() {
 			var boolVariable = new Variable(true)
 			var BoundCheckbox = Checkbox(boolVariable)
 			var checkboxInput = new BoundCheckbox()
@@ -106,8 +103,8 @@ define([
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(checkboxInput.checked, false)
 			})
-		},
-		radio: function() {
+		})
+		test('radio', function() {
 			var boolVariable = new Variable(true)
 			var radio = new Radio(boolVariable)
 			document.body.appendChild(radio)
@@ -117,8 +114,8 @@ define([
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.strictEqual(radio.checked, false)
 			})
-		},
-		numberInput: function() {
+		})
+		test('numberInput', function() {
 			var numberVariable = new Variable(2020)
 			var numberInput = new NumberInput(numberVariable)
 			document.body.appendChild(numberInput)
@@ -139,8 +136,8 @@ define([
 				assert.strictEqual(numberVariable.valueOf(), 10)
 			})
 			assert.strictEqual(new Radio().type, 'radio')
-		},
-		numberInput0: function() {
+		})
+		test('numberInput0', function() {
 			var numberInput = new NumberInput(new Variable(0))
 			document.body.appendChild(numberInput)
 			assert.strictEqual(numberInput.type, 'number')
@@ -150,8 +147,8 @@ define([
 			if (!isNaN(numberInputB.valueAsNumber)) { // only test if browser support type=number
 				assert.strictEqual(numberInput.valueAsNumber, 0)
 			}
-		},
-		dateInput: function() {
+		})
+		test('dateInput', function() {
 			var startingDate = new Date(1458345600000)
 			var dateVariable = new Variable(startingDate)
 			var dateInput = new DateInput(dateVariable)
@@ -171,8 +168,8 @@ define([
 				dateInput.dispatchEvent(nativeEvent)
 				assert.strictEqual(dateVariable.valueOf().getTime(), startingDate.getTime())
 			})
-		},
-		radios: function() {
+		})
+		test('radios', function() {
 			var radioGroup = new Div([
 				new Radio({
 					name: 'radio-group',
@@ -184,8 +181,8 @@ define([
 				})
 			])
 			assert.strictEqual(radioGroup.firstChild.type, 'radio')
-		},
-		select: function() {
+		})
+		test('select', function() {
 			var options = [{id: 1, text: 'One'}, {id: 2, text: 'Two'}, {id: 3, text: 'Three'}]
 			var selected = new Variable(3)
 			var select = new Select({
@@ -215,8 +212,8 @@ define([
 				assert.strictEqual(select.firstChild.nextSibling.selected, true)
 				assert.strictEqual(select.value, '2')
 			})
-		},
-		textarea: function() {
+		})
+		test('textarea', function() {
 			var textVariable = new Variable('start')
 			var textInput = new Textarea(textVariable)
 			document.body.appendChild(textInput)
@@ -233,8 +230,8 @@ define([
 				assert.strictEqual(textVariable.valueOf(), 'change from input')
 			})
 
-		},
-		events: function() {
+		})
+		test('events', function() {
 			var WithClick = Div({
 				onclick: function() {
 					this.wasClicked = true
@@ -243,8 +240,8 @@ define([
 			var divElement = new WithClick()
 			divElement.click()
 			assert.isTrue(divElement.wasClicked)
-		},
-		contentNode: function() {
+		})
+		test('contentNode', function() {
 			var title = new Variable('title')
 			var someContent = new Variable('content')
 			var Layout = extend(Div, {id: 'top'})
@@ -273,16 +270,16 @@ define([
 				assert.strictEqual(middle.firstChild.nodeValue, 'new title')
 				assert.strictEqual(container.firstChild.firstChild.nodeValue, 'new content')
 			})
-		},
-		nestedElements: function() {
+		})
+		test('nestedElements', function() {
 			var result = new Div('.top', [
 				new Div('.middle-1')
 			])
 			var middle = result.firstChild
 			assert.strictEqual(middle.className, 'middle-1')
-		},
+		})
 
-		childrenDOMOrderWithVariables: function(){
+		test('childrenDOMOrderWithVariables', function(){
 			var Vars = [1, 2, 3].map(function(v) { return new Variable(v) });
 			var children = [
 				'First node ', new VArray(Vars).map(function(v) { return Span([v]) })
@@ -290,24 +287,24 @@ define([
 			var div = new Div(children);
 			document.body.appendChild(div)
 			assert.strictEqual(div.firstChild.nodeType, 3)
-		},
+		})
 
-		append: function() {
+		test('append', function() {
 			var top = new Div('.top')
 			append(top, Span, Span('.second'))
 			assert.strictEqual(top.firstChild.tagName, 'SPAN')
 			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
-		},
+		})
 
-		appendAsMethod: function() {
+		test('appendAsMethod', function() {
 			HTMLElement.prototype.append = append
 			var top = new Div('.top')
 			top.append(Span, Span('.second'))
 			assert.strictEqual(top.firstChild.tagName, 'SPAN')
 			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
-		},
+		})
 
-		prependAsMethod: function() {
+		test('prependAsMethod', function() {
 			HTMLElement.prototype.prepend = prepend
 			HTMLElement.prototype.append = append
 			var top = new Div('.top')
@@ -316,9 +313,9 @@ define([
 			assert.strictEqual(top.firstChild.tagName, 'SPAN')
 			assert.strictEqual(top.firstChild.nextSibling.className, 'second')
 			assert.strictEqual(top.firstChild.nextSibling.nextSibling.className, 'last')
-		},
+		})
 
-		list: function() {
+		test('list', function() {
 			var arrayVariable = new VArray(['a', 'b', 'c'])
 			var listElement = new UL({
 				content: arrayVariable,
@@ -346,8 +343,8 @@ define([
 					})
 				})
 			})
-		},
-		listOfMappedObjects: function() {
+		})
+		test('listOfMappedObjects', function() {
 			var TypedArray = VArray.of(Variable.with({name: Variable}))
 			var arrayVariable = new TypedArray([{name:'a'}, {name: 'b'},{name: 'c'}])
 			var listElement = new UL(arrayVariable.map(function(item) {
@@ -362,8 +359,8 @@ define([
 				assert.strictEqual(listElement.childNodes[0].innerHTML, 'A')
 				assert.strictEqual(listElement.children.length, 3)
 			})
-		},
-		listOfMappedObjectsWithChangingType: function() {
+		})
+		test('listOfMappedObjectsWithChangingType', function() {
 			var TypedArray = VArray.of(Variable.with({name: Variable}))
 			var arrayVariable = new TypedArray([{name:'a'}, {name: 'b'},{name: 'c', isSpan: true}])
 			var listElement = new UL(arrayVariable.map(function(item) {
@@ -383,8 +380,8 @@ define([
 				assert.strictEqual(listElement.childNodes[0].tagName, 'SPAN')
 				assert.strictEqual(listElement.children.length, 3)
 			})
-		},
-		simplePropertyAccess: function() {
+		})
+		test('simplePropertyAccess', function() {
 			var MyComponent = extend(Div, {})
 			MyComponent.children = [
 			    Span(MyComponent.property('title')),
@@ -398,8 +395,8 @@ define([
 
 			document.body.appendChild( el )
 			assert.strictEqual(el.firstChild.textContent, 'text for the span')
-		},
-		applyPropertyToChild: function() {
+		})
+		test('applyPropertyToChild', function() {
 			var MyComponent = extend(Div, {})
 			MyComponent.children = [
 				Anchor(MyComponent.property('title'), {
@@ -429,8 +426,8 @@ define([
 					assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
 				})
 			})
-		},
-		applyVariableToChild: function() {
+		})
+		test('applyVariableToChild', function() {
 			var Link, Body, Title
 			var MyComponent = Div({
 				title: Title = Variable(),
@@ -466,8 +463,8 @@ define([
 					assert.strictEqual(myComponent.lastChild.textContent, 'New Title, World')
 				})
 			})
-		},
-		lookupForSingleInstanceVariable: function() {
+		})
+		test('lookupForSingleInstanceVariable', function() {
 			var MyVariable = Variable()
 			var MyDiv = Div(MyVariable)
 			var div1 = new MyDiv()
@@ -479,8 +476,8 @@ define([
 				assert.strictEqual(div1.textContent, '3')
 				assert.strictEqual(div2.textContent, '3')
 			})
-		},
-		lookupForMultipleInstanceVariable: function() {
+		})
+		test('lookupForMultipleInstanceVariable', function() {
 			var MyVariable = Variable.with()
 			var MyDiv = Div(MyVariable, {
 				hasOwn: MyVariable
@@ -497,8 +494,8 @@ define([
 				assert.strictEqual(div1.textContent, '1')
 				assert.strictEqual(div2.textContent, '2')
 			})
-		},
-		inheritance: function() {
+		})
+		test('inheritance', function() {
 			var a = new Variable('a')
 			var b = new Variable('b')
 
@@ -520,8 +517,8 @@ define([
 					assert.strictEqual(div1.title, 'B')
 				})
 			})
-		},
-		cleanup: function() {
+		})
+		test('cleanup', function() {
 			var a = new Variable('a')
 			var div = new Div([
 				a,
@@ -534,8 +531,8 @@ define([
 					assert.strictEqual(a.listeners, false)
 				})
 			})
-		},
-		classes: function() {
+		})
+		test('classes', function() {
 			var a = new Variable(false)
 			var b = new Variable(true)
 			var DivWithClass = Div('.first')
@@ -565,8 +562,8 @@ define([
 					})
 				})
 			})
-		},
-		classesAsObjectVariable: function() {
+		})
+		test('classesAsObjectVariable', function() {
 			var obj = new Variable({
 				b: true
 			})
@@ -590,8 +587,8 @@ define([
 					})
 				})
 			})
-		},
-		dynamicClass: function() {
+		})
+		test('dynamicClass', function() {
 			var MyButton = Div({
 				num: Variable
 			})
@@ -603,8 +600,8 @@ define([
 				})]
 			var b = new MyButton({num: 2})
 			assert.strictEqual(b.firstChild.className, 'test-2')
-		},
-		renderProperty: function() {
+		})
+		test('renderProperty', function() {
 			var MyComponent = extend(Div, {
 				renderFoo: function(value) {
 					this.textContent = value + 'foo'
@@ -626,8 +623,8 @@ define([
 					})
 				})
 			})
-		},
-		attributes: function() {
+		})
+		test('attributes', function() {
 			var v = new Variable('one')
 			var div = new Div({
 				attributes: {
@@ -642,8 +639,8 @@ define([
 			return new Promise(requestAnimationFrame).then(function() {
 				assert.strictEqual(div.getAttribute('aria-describedby'), 'two')
 			})
-		},
-		attributesWithObject: function() {
+		})
+		test('attributesWithObject', function() {
 			var v = new Variable({
 				role: 'button',
 				'aria-describedby': 'one'
@@ -661,8 +658,8 @@ define([
 				assert.strictEqual(div.getAttribute('aria-describedby'), 'two')
 				assert.isFalse(div.hasAttribute('role'))
 			})
-		},
-		dataset: function() {
+		})
+		test('dataset', function() {
 			var v = new Variable('one')
 			var div = new Div({
 				dataset: {
@@ -678,8 +675,8 @@ define([
 			return new Promise(requestAnimationFrame).then(function() {
 				assert.strictEqual(div.getAttribute('data-bar'), 'two')
 			})
-		},
-		datasetWithObject: function() {
+		})
+		test('datasetWithObject', function() {
 			var v = new Variable({
 				foo: 'foo-value',
 				bar: 'one'
@@ -699,8 +696,8 @@ define([
 				assert.strictEqual(div.dataset.foo, undefined)
 				assert.strictEqual(div.getAttribute('data-bar'), 'two')
 			})
-		},
-		styleObject: function() {
+		})
+		test('styleObject', function() {
 			var v = new Variable('25px')
 			var MyDiv = Div({
 				style: {
@@ -726,9 +723,9 @@ define([
 			return new Promise(requestAnimationFrame).then(function() {
 				assert.strictEqual(div.style.paddingLeft, '35px')
 			})
-		},
+		})
 
-		attributeProperties: function() {
+		test('attributeProperties', function() {
 			var b = new Variable(true)
 			var button = new Button({
 				disabled: b,
@@ -752,9 +749,9 @@ define([
 				assert.isFalse(button.hasAttribute('disabled'))
 				assert.strictEqual(label.htmlFor, 'two')
 			})
-		},
+		})
 
-		overrideDefaultWithRender: function() {
+		test('overrideDefaultWithRender', function() {
 			var widthRendered, textContentRendered
 			var MyComponent = extend(Div, {
 				renderWidth: function() {
@@ -777,8 +774,8 @@ define([
 			assert.strictEqual(textContentRendered, true)
 			assert.strictEqual(component.textContent, 'hello')
 			assert.strictEqual(component.innerHTML, '') // make sure it blocks normal textContent
-		},
-		lifecycle: function() {
+		})
+		test('lifecycle', function() {
 			var created = false
 			var attached = 0
 			var detached = 0
@@ -810,9 +807,9 @@ define([
 					assert.equal(detached, 1, 'expected a single detach event')
 				})
 			})
-		},
+		})
 
-		assignElement: function() {
+		test('assignElement', function() {
 			var div = document.body.appendChild(new Div())
 			var v = new Variable()
 			assign(div, {
@@ -822,31 +819,31 @@ define([
 			return new Promise(requestAnimationFrame).then(function() {
 				assert.equal(div.title, 'foo')
 			})
-		},
+		})
 
-		assignConstructor: function() {
+		test('assignConstructor', function() {
 			var MyDiv = Div()
 			assign(MyDiv, {
 				title: 'foo'
 			})
 			var div = document.body.appendChild(new MyDiv())
 			assert.equal(div.title, 'foo')
-		},
+		})
 
-		content0: function() {
+		test('content0', function() {
 			var div = document.body.appendChild(new Div([Span(0), new Span(0), Span({content: 0})]))
 			assert.equal(div.childNodes[0].textContent, '0')
 			assert.equal(div.childNodes[1].textContent, '0')
 			assert.equal(div.childNodes[2].textContent, '0')
-		},
+		})
 
-		undefinedNode: function() {
+		test('undefinedNode', function() {
 			var div = document.body.appendChild(new Div([undefined, null, UL]))
 			assert.equal(div.childNodes[0].tagName, 'UL')
 			assert.equal(div.childNodes[1], undefined)
-		},
+		})
 
-		listUpdateDuringPromise: function() {
+		test('listUpdateDuringPromise', function() {
 			var v = new VArray(new Promise(function (resolve) {
 				setTimeout(function() {
 					resolve([1, 2])
@@ -871,8 +868,8 @@ define([
 					})
 				})
 			})
-		},
-		promiseInOperator: function() {
+		})
+		test('promiseInOperator', function() {
 			var source = new Variable()
 			var promised = source.to(function(s) {
 				return s && new Promise(function(r) {
@@ -915,8 +912,8 @@ define([
 					})
 				})
 			})
-		},
-		performanceBaseline: function() {
+		})
+		test('performanceBaseline', function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 100; i++) {
 				var childDiv = container.appendChild(document.createElement('div'))
@@ -925,8 +922,8 @@ define([
 				container.innerHTML = ''
 			}
 
-		},
-		performance: function() {
+		})
+		test('performance', function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 100; i++) {
 				var a = new Variable('a')
@@ -936,6 +933,6 @@ define([
 				]))
 				container.innerHTML = ''
 			}
-		}
+		})
 	})
 });

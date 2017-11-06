@@ -1,0 +1,22 @@
+<html>
+<body>
+<script src="../node_modules/mocha/mocha.js"></script>
+<script src="../node_modules/chai/chai.js"></script>
+<script>
+	mocha.setup('tdd')
+	assert = chai.assert
+	dojoConfig = {
+		async: true,
+		packages: [{
+			name: 'alkali',
+			location: '../../../alkali'
+		}]
+	}
+</script>
+<script src="../node_modules/dojo/dojo.js"></script>
+<script>
+	require(['alkali/tests/all'], function(all) { mocha.run() })
+</script>
+<div id="mocha"></div>
+</body>
+</html>

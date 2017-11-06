@@ -2,16 +2,13 @@ define([
 	'../Renderer',
 	'../Variable',
 	'../util/lang',
-	'intern!object',
-	'intern/chai!assert',
 	'bluebird/js/browser/bluebird'
-], function (Renderer, VariableExports, lang, registerSuite, assert, Promise) {
+], function (Renderer, VariableExports, lang, Promise) {
 	var Variable = VariableExports.Variable
 	var div = document.createElement('div');
 	var requestAnimationFrame = lang.requestAnimationFrame
-	registerSuite({
-		name: 'Renderer',
-		PropertyRenderer: function () {
+	suite('Renderer', function() {
+		test('PropertyRenderer', function() {
 			document.body.appendChild(div);
 			var variable = new Variable('start');
 			var renderer = new Renderer.PropertyRenderer({
@@ -35,8 +32,8 @@ define([
 					});
 				});
 			});
-		},
-		ContentRenderer: function () {
+		})
+		test('ContentRenderer', function() {
 			document.body.appendChild(div);
 			var variable = new Variable('start');
 			var renderer = new Renderer.ContentRenderer({
@@ -48,8 +45,8 @@ define([
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.equal(div.innerHTML, 'next');
 			});
-		},
-		PromisedUpdate: function () {
+		})
+		test('PromisedUpdate', function() {
 			var resolvePromise;
 			var promise = new Promise(function(resolve){
 				resolvePromise = resolve;
@@ -68,8 +65,8 @@ define([
 				return new Promise(requestAnimationFrame);
 			});
 
-		},
-		getPropertyWithVariable: function() {
+		})
+		test('getPropertyWithVariable', function() {
 			var foo = new Variable('foo')
 			var bar = new Variable({ foo: foo })
 			var renderer = new Renderer.PropertyRenderer({
@@ -80,8 +77,8 @@ define([
 			return new Promise(requestAnimationFrame).then(function(){
 				assert.equal(div.foo, 'foo')
 			})
-		},
-		'transform with Renderer': function() {
+		})
+		test('transform with Renderer', function() {
 			var state = new Variable({
 				selection: []
 			})
@@ -110,8 +107,8 @@ define([
 					assert.equal(transformed, 1)
 				})
 			})
-		},
-		'Renderer with complex transform': function() {
+		})
+		test('Renderer with complex transform', function() {
 
 	    var data = new Variable([{
 	      id: 1,
@@ -135,7 +132,7 @@ define([
 	      	throw new Error('Not cached properly')
 	      }
 	      return {
-	        data: data.map(function(datum){ 
+	        data: data.map(function(datum){
 	        	return lang.copy({}, datum)
 	        }),
 	        otherStuff: 'lolwut',
@@ -180,9 +177,9 @@ define([
 			    resolve()
 		    }, 100)
 	    })
-		},
+		})
 
-		RendererInvalidation: function() {
+		test('RendererInvalidation', function() {
 			document.body.appendChild(div);
 			var outer = new Variable(false);
 			var signal = new Variable();
@@ -239,6 +236,6 @@ define([
 					});
 				});
 			});
-		}
+		})
 	});
 });

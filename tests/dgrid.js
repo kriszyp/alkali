@@ -19,9 +19,8 @@ define([
 			}
 		}
 	}
-	registerSuite({
-		name: 'dstore',
-		dstoreUpdates: function() {
+	suite('dstore', function() {
+		test('dstoreUpdates', function() {
 			var store = new Memory({
 				data: [
 					{id: 1, name: 'one'},
@@ -51,10 +50,10 @@ define([
 			assert.strictEqual(lastCountUpdate.type, 'refresh')
 			lastCountUpdate = null
 			store.put({id: 4, name: 'FOUR'})
-			assert.strictEqual(count.valueOf(), 3)			
+			assert.strictEqual(count.valueOf(), 3)
 			assert.strictEqual(lastCountUpdate.type, 'refresh')
-		},
-		resolveDStoreAsyncPromise: function() {
+		})
+		test('resolveDStoreAsyncPromise', function() {
 			var store = new Memory({
 				data: [
 					{id: 1, name: 'one'},
@@ -69,8 +68,8 @@ define([
 				result.push({i: item.id, n: item.name})
 			})
 			assert.deepEqual(result, [{i:1,n:'one'},{i:2,n:'two'},{i:3,n:'three'}])
-		},
-		listenerRemovedWhenVariableChanged: function() {
+		})
+		test('listenerRemovedWhenVariableChanged', function() {
 			var m1 = new MockStore()
 			var m2 = new MockStore()
 			assert.equal(m1.handlers.length, 0)
@@ -84,8 +83,8 @@ define([
 			storeVar.valueOf()
 			assert.equal(m1.handlers.length, 0)
 			assert.equal(m2.handlers.length, 1)
-		},
-		listenerRegistrationIdempotent: function() {
+		})
+		test('listenerRegistrationIdempotent', function() {
 			var m1 = new MockStore()
 			var m2 = new MockStore()
 			assert.equal(m1.handlers.length, 0)

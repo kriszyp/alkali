@@ -2,6 +2,7 @@ define([
 	'./unit',
 	'./Renderer',
 	'./Element',
-  './es6'
+  	'./dstore',
+	'./es6'
 ], function () {
 });

@@ -19,20 +19,19 @@
     "url": "http://github.com/kriszyp/alkali"
   },
   "scripts": {
-    "test": "intern-client config=tests/intern",
+    "test": "./node_modules/.bin/mocha tests/unit -u tdd",
     "test.sauce": "intern-runner config=tests/intern",
     "test.proxy": "intern-runner config=tests/intern --proxyOnly"
   },
   "main": "./index.js",
-  "dependencies": {
-  },
+  "dependencies": {},
   "typings": "./index.d.ts",
   "dojoBuild": "package.js",
   "devDependencies": {
     "bluebird": "^3.3.3",
     "dojo": "^1.10.2",
     "dojo-dstore": "^1.1.1",
-    "intern-geezer": "^2",
-	"intern": "^2.2.2"
+    "mocha": "^4",
+    "chai": "^4"
   }
 }

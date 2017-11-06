@@ -1,21 +1,17 @@
-define([
-	'../Variable',
-	'../Copy',
-	'intern!object',
-	'intern/chai!assert'
-], function (VariableExports, Copy, registerSuite, assert) {
+define(function(require) {
+	var VariableExports = require('../Variable')
+	var Copy = require('../Copy')
 	var Variable = VariableExports.Variable
-	registerSuite({
-		name: 'Copy Variable',
+	suite('Copy Variable', function() {
 
-		'simple single value': function () {
+		test('simple single value', function() {
 			var invalidated = false;
 			var variable = new Variable({
 				a: 1,
 				b: 2
 			});
 			var a = variable.property('a');
-			var copy = new Copy(variable);			
+			var copy = new Copy(variable);
 			var copyA = copy.property('a');
 			var invalidated = false;
 			a.notifies({
@@ -35,8 +31,8 @@ define([
 			copy.save();
 			assert.isTrue(invalidated);
 			assert.equal(a.valueOf(), 4);
-		},
-		'nested object': function () {
+		})
+		test('nested object', function() {
 			var invalidated = false;
 			var variable = new Variable({
 				a: 1,
@@ -45,7 +41,7 @@ define([
 				}
 			});
 			var c = variable.property('b').property('c');
-			var copy = new Copy(variable);			
+			var copy = new Copy(variable);
 			var copyC = copy.property('b').property('c');
 			var invalidated = false;
 			c.notifies({
@@ -65,7 +61,7 @@ define([
 			copy.save();
 			assert.isTrue(invalidated);
 			assert.equal(c.valueOf(), 4);
-		}
+		})
 
 	});
 });
