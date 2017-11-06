@@ -1,5 +1,5 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang', './operators', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {				
+	define(['./util/lang', './operators', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {
 	module.exports = factory(require('./util/lang'), require('./operators'), require('./Variable')) // Node
 }}(this, function (lang, operators, VariableExports) {
 
@@ -25,7 +25,66 @@
 		return sources
 	}
 
-	var reactive = {
+	var typeMappings = new Map()
+	typeMappings.set('string', VariableExports.VString)
+	typeMappings.set('number', VariableExports.VNumber)
+	typeMappings.set('boolean', VariableExports.VBoolean)
+	typeMappings.set('undefined', Variable)
+	typeMappings.set(null, Variable)
+	typeMappings.set(Array, VArray)
+	typeMappings.set(Map, VariableExports.VMap)
+	typeMappings.set(Set, VariableExports.VSet)
+	function reactive(value) {
+		return fromValue(value, true)
+	}
+	function fromValue(value, fixed, deferObject) {
+
+		// get the type for primitives or known constructors (or null)
+		let Type = typeMappings.get(typeof value) || typeMappings.get(value && value.constructor)
+		if (Type) {
+			return new Type(value)
+		}
+		if (deferObject) {
+			return
+		}
+		// an object
+		var objectVar = new Variable()
+		if (fixed) {
+			objectVar.fixed = true
+		}
+		for (var key in value) {
+			var propertyValue = value[key]
+			var propertyVariable = fromValue(propertyValue, false, true)
+			if (propertyVariable) {
+				propertyVariable.key = key
+				propertyVariable.parent = objectVar
+				if (objectVar[key] === undefined) {
+					objectVar[key] = propertyVariable
+				} else {
+					(objectVar._properties || (objectVar._properties = {}))[key] = propertyVariable
+				}
+			} else {
+				// deferred, use getter/setter
+				defineValueProperty(objectVar, key, value)
+			}
+		}
+		return objectVar
+	}
+
+
+	function defineValueProperty(target, key, object) {
+		var Type
+		Object.defineProperty(target, key, {
+			get: function() {
+				return reactive.get(this, key, Type || (Type = fromValue(object[key])))
+			},
+			set: function(value) {
+				reactive.set(this, key, value)
+			},
+			enumerable: true
+		})
+	}
+	lang.copy(reactive, {
 		from: function(value, options) {
 			if (value && value.property) {
 				return value
@@ -47,7 +106,7 @@
 			}
 			// not even truthy, return undefined
 		},
-		get: function(target, key, Type) { // for babel decorators
+		get: function(target, key, Type) { // for TS/Babel decorators
 			var property = (target._properties || (target._properties = {}))[key]
 			if (!property) {
 				target._properties[key] = property = new (getType(Type))()
@@ -122,22 +181,19 @@
 				}
 			}
 		}
-	}
+	})
 	lang.copy(reactive, operators)
 
-	var typeMappings = new Map()
-	typeMappings.set('string', VariableExports.VString)
-	typeMappings.set('number', VariableExports.VNumber)
-	typeMappings.set('boolean', VariableExports.VBoolean)
-	typeMappings.set(Array, VArray)
-	typeMappings.set(Map, VariableExports.VMap)
-	typeMappings.set(Set, VariableExports.VSet)
 	function getType(Type) {
 		if (typeMappings.has(Type)) {
 			return typeMappings.get(Type)
 		} else if (typeof Type === 'object') {
 			if (Type instanceof Array) {
-				return VArray.of(getType(Type[0]))
+				if (Type[0]) {
+					return VArray.of(getType(Type[0]))
+				} else {
+					return VArray
+				}
 			}
 			var typedObject = {}
 			for (var key in Type) {

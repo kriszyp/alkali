@@ -10,7 +10,7 @@ declare namespace alkali {
 
   export class Variable<T = {}> implements Promise<T> {
     /**
-    * Create a new Variable, with reactive capabilities, that holds a varying value. 
+    * Create a new Variable, with reactive capabilities, that holds a varying value.
     * @param value Initial value for variable
     */
     constructor(value?: T | Promise<T> | Variable<T>)
@@ -21,7 +21,7 @@ declare namespace alkali {
     valueOf(): T
     /**
     * Listen for the value of the variable, waiting if necessary, for any dependent promises to resolve. If the variable has a synchronously available value, the callback will be called immediately/synchronously
-    */ 
+    */
     then<U>(callback?: (T) => U | Promise<U>, errback?: (T) => U | Promise<U>): Promise<U>
     /**
     * Returns a variable corresponding to the property of the value of this variable
@@ -51,7 +51,7 @@ declare namespace alkali {
     */
     undefine(key: KeyType)
     /**
-    * Define the value of this variable. This can be used to indicate that the some 
+    * Define the value of this variable. This can be used to indicate that the some
     * @param variable The variable to proxy
     */
     is(variable: Variable<T>)
@@ -87,7 +87,7 @@ declare namespace alkali {
     as<U>(Type: { new(): U }): U
     /**
     * Returns a new variable that is sourced from `this` variable and when the source
-    * returns asynchronously (an upstream promise), this will immediately return 
+    * returns asynchronously (an upstream promise), this will immediately return
     * the `valueUntilResolved` until the `this` variable is resolved (and which point
     * it will update and return that source value)
     * @param valueUntilResolved The value to return while waiting for the source value to resolve
@@ -194,7 +194,7 @@ declare namespace alkali {
   }
   export class VMap<K = {}, V= {}> extends Variable<Map<K, V>> {
   }
-  export class VSet<T = {}> extends Variable<Set<T>> {    
+  export class VSet<T = {}> extends Variable<Set<T>> {
   }
   export class VPromise<T> extends Variable<Promise<T>> {
     //to<U>(transform: (T) => VPromise<U> | Variable<U> | Promise<U> | U): VPromise<U>
@@ -215,13 +215,21 @@ declare namespace alkali {
     constructor(source: any, transform: (...v) => T, sources: any[])
   }
 
+  export function reactive(value: string): Vstring
+  export function reactive(value: number): Vnumber
+  export function reactive(value: boolean): Boolean & VBoolean
+  export function reactive<T>(value: T[]): VArray<T>
+  export function reactive<T>(value: Map<K, V>): VMap<K, V>
+  export function reactive<T>(value: Set<V>): VSet<V>
+  export function reactive<T>(value: T): Reacts<T>
+
   /**
   * Decorator function to be used for marking properties, classes, methods as reactive
   */
   export function reactive(target: {}, key?: string): void
   export function direct(target: {}, key?: string): void
+
   export function react<T>(reactiveFunction: () => T): Variable<T>
-  export function react<T>(value: T): Reacts<T>
   /**
   * Compose a new variable based on the provided input variables. The returned variable will hold an array
   * with elements corresponding to the values of the input variables, and will update in response to changes
@@ -258,7 +266,7 @@ declare namespace alkali {
   export function round(a: Variable<number> | number): vnumber
 
   /*
-  * The context used to compute a variable    
+  * The context used to compute a variable
   */
   export class Context {
       /* A value that represents the entity requesting a value from a variable, allowing a variable

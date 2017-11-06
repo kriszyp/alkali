@@ -1,6 +1,6 @@
 /// <reference path="./typings.d.ts" />
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-  define(['./Element', './Renderer', './reactive', './Copy', './operators', './Variable', './util/lang'], factory) } else if (typeof module === 'object' && module.exports) {        
+  define(['./Element', './Renderer', './reactive', './Copy', './operators', './Variable', './util/lang'], factory) } else if (typeof module === 'object' && module.exports) {
   module.exports = factory(require('./Element'), require('./Renderer'), require('./reactive'), require('./Copy'), require('./operators'), require('./Variable'), require('./util/lang')) // Node
 }}(this, function (Element, Renderer, reactive, Copy, operators, VariableExports, lang) {
 
@@ -15,6 +15,6 @@
 	main.Renderer = Renderer.ElementRenderer
 	lang.copy(main, Renderer)
 	lang.copy(main, operators)
-	main.default = undefined // no default export
+	main.default = reactive // no default export
 	return main
 }))
