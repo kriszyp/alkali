@@ -4,4 +4,5 @@ define(function(require) {
   require('./Variable')
   require('./Copy')
   require('./operators')
+  require('./reactive')
 });

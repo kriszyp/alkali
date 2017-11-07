@@ -35,26 +35,29 @@
 	typeMappings.set(Map, VariableExports.VMap)
 	typeMappings.set(Set, VariableExports.VSet)
 	function reactive(value) {
-		return fromValue(value, true)
+		return fromValue(value)
 	}
-	function fromValue(value, fixed, deferObject) {
+	function fromValue(value, isProperty, deferObject) {
 
 		// get the type for primitives or known constructors (or null)
 		let Type = typeMappings.get(typeof value) || typeMappings.get(value && value.constructor)
 		if (Type) {
-			return new Type(value)
+			return new Type(isProperty ? undefined : value)
 		}
 		if (deferObject) {
 			return
 		}
 		// an object
-		var objectVar = new Variable()
-		if (fixed) {
+		var objectVar
+		if (isProperty) {
+			objectVar = new Variable()
+		} else {
+			objectVar = new Variable(value)
 			objectVar.fixed = true
 		}
 		for (var key in value) {
 			var propertyValue = value[key]
-			var propertyVariable = fromValue(propertyValue, false, true)
+			var propertyVariable = fromValue(propertyValue, true, true)
 			if (propertyVariable) {
 				propertyVariable.key = key
 				propertyVariable.parent = objectVar
@@ -76,7 +79,7 @@
 		var Type
 		Object.defineProperty(target, key, {
 			get: function() {
-				return reactive.get(this, key, Type || (Type = fromValue(object[key])))
+				return reactive.get(this, key, function() { return fromValue(object[key], true) })
 			},
 			set: function(value) {
 				reactive.set(this, key, value)
