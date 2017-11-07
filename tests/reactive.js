@@ -39,5 +39,12 @@ define(function(require) {
 			assert.equal(objVar.obj.subObj.str.valueOf(), 'hi')
 			assert.equal(objVar.circular.circular.flag.valueOf(), true)
 		})
+		test('change original data', function() {
+			var obj = {
+				foo: 3
+			}
+			reactive(obj).foo.put(3)
+			assert.equal(obj.foo, 3)
+		})
 	})
 })
