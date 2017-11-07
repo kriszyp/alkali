@@ -1,7 +1,5 @@
-define([
-	'../reactive',
-	'bluebird/js/browser/bluebird'
-], function (reactive, Promise) {
+define(function(require) {
+	var reactive = require('../reactive')
 	suite('reactive', function() {
 
 		test('primitive types', function() {
