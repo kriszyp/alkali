@@ -1,5 +1,5 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {				
+	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {
 	module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable')) // Node
 }}(this, function (lang, Renderer, VariableExports) {
 	var Variable = VariableExports.Variable
@@ -320,7 +320,7 @@
 		dataset: applySubProperties(function(newValue, element, key) {
 			key = key || this.name
 			if (newValue == null) {
-				delete element.dataset[key]	
+				delete element.dataset[key]
 			} else {
 				element.dataset[key] = newValue
 			}
@@ -1521,7 +1521,7 @@
 			var element = this.subject
 			var distinctive = true
 			;(this.generics || (this.generics = [])).push(Variable)
-			do {
+			while (element) {
 				if (this.distinctSubject === element) {
 					distinctive = false
 				}
@@ -1540,7 +1540,8 @@
 						return specifiedInstance
 					}
 				}
-			} while ((element = element.parentNode || presumptiveParentMap.get(element)))
+				element = element.parentNode || presumptiveParentMap.get(element)
+			}
 			// else if no specific context is found, return default instance
 			return Variable.defaultInstance
 		},
