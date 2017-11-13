@@ -1363,6 +1363,21 @@ define(function(require) {
 			assert.equal(vp.valueOf(), 'new value')
 			assert.equal(defaultObject.v, 'default')
 		})
+
+		test('Class as a collection', function() {
+			var MyVar = Variable.with({
+				name: VString,
+				id: VNumber
+			})
+			MyVar.add(new MyVar({name: 'one', id: 1}))
+			let filtered = MyVar.filter((item) => item.name != 'exclude')
+			filtered.forEach(function() {
+
+			})
+			MyVar.add({name: 'two', id: 2})
+			MyVar.delete(2)
+			MyVar.clear()
+		})
 	})
 	console.log('registered tests')
 })

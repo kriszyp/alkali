@@ -1,5 +1,5 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
+	define(['./util/lang', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {
   module.exports = factory(require('./util/lang'), require('./Variable')) // Node
 }}(this, function (lang, VariableExports) {
 	var doc = typeof document !== 'undefined' && document
@@ -17,12 +17,8 @@
 		if (options.selector) {
 			this.selector = options.selector
 		}
-		if (options.elements) {
-			this.elements = options.elements
-			this.element = this.elements[0]
-			for(var i = 0, l = this.elements.length; i < l; i++) {
-				(this.elements[i].alkaliRenderers || (this.elements[i].alkaliRenderers = [])).push(this)
-			}
+		if (options.getElements) {
+			this.getElements = options.getElements
 		}
 		else if (options.element) {
 			var element = this.element = options.element;
@@ -59,7 +55,7 @@
 		if (options.updateOnStart === false){
 			var contextualized = this.contextualized || this.variable
 			this.variable.valueOf(this)
-			// even if we don't render on start, we still need to compute the value so we can depend on the computed 
+			// even if we don't render on start, we still need to compute the value so we can depend on the computed
 			// TODO: we may need to handle recontextualization if it returns a promise
 			contextualized.notifies(this)
 		} else {
@@ -75,19 +71,35 @@
 		},
 		updated: function (updateEvent, by, context) {
 			if (!this.invalidated) {
-				if (!context || this.contextMatches(context)) {
-					// do this only once, until we render again
-					this.invalidated = true
-					if (this.deferredRender) {
-						this.deferredRender.isCanceled = true
-						this.deferredRender = null
-					}
-					var renderer = this
-					requestAnimationFrame(function(){
-						invalidatedElements = null
-						renderer.updateRendering(renderer.alwaysUpdate)
+				if (this.getElements) {
+					var variable = this.variable
+					var invalidated = this.invalidated || (this.invalidated = new lang.Set())
+					this.getElements().forEach(function(element) {
+						if (doesEffect(variable, element, updateEvent)){
+							invalidated.add(element)
+						}
+						/*if (element.constructor.getForClass(element, variable) == by) {
+							invalidated.add(element)
+						}*/
 					})
+				} else {
+				// do this only once, until we render again
+					this.invalidated = true
 				}
+				if (this.deferredRender) {
+					this.deferredRender.isCanceled = true
+					this.deferredRender = null
+				}
+				var renderer = this
+				requestAnimationFrame(function() {
+					if (renderer.invalidated === true) {
+						renderer.updateRendering(renderer.alwaysUpdate, renderer.element)
+					} else {
+						renderer.invalidated.forEach(function(element) {
+							renderer.updateRendering(renderer.alwaysUpdate, element)
+						})
+					}
+				})
 			}
 		},
 		executeWithin: Context.prototype.executeWithin,
@@ -213,6 +225,8 @@
 			this.renderUpdate(undefined, element)
 			return
 		}
+		var Element = element.constructor
+		var generalized = Element._generalized
 		var resolved
 		var renderer = this
 		var deferredRender
@@ -231,9 +245,17 @@
 					if (renderer.contextualized && renderer.contextualized !== renderer.variable) {
 						renderer.contextualized.stopNotifies(renderer)
 					}
-					renderer.executeWithin(function() {
-						renderer.contextualized = renderer.variable.notifies(renderer)
-					})
+					if (generalized) {
+						var rendererIdentifier = renderer.toString()
+						if (!generalized[rendererIdentifier]) {
+							generalized[rendererIdentifier] = true;
+							(renderer.contextualized = renderer.variable).notifies(renderer)
+						}
+					} else {
+						renderer.executeWithin(function() {
+							renderer.contextualized = renderer.variable.notifies(renderer)
+						})
+					}
 					if(value !== undefined || renderer.started){
 						renderer.started = true
 						renderer.renderUpdate(value, element)
@@ -245,9 +267,17 @@
 		})
 		if(!resolved){
 			// start listening for changes immediately
-			this.executeWithin(function() {
-				renderer.contextualized = renderer.variable.notifies(renderer)
-			})
+			if (generalized) {
+				var rendererIdentifier = renderer.toString()
+				if (!generalized[rendererIdentifier]) {
+					generalized[rendererIdentifier] = true;
+					(renderer.contextualized = renderer.variable).notifies(renderer)
+				}
+			} else {
+				renderer.executeWithin(function() {
+					renderer.contextualized = renderer.variable.notifies(renderer)
+				})
+			}
 			this.deferredRender = deferredRender
 			if (this.renderLoading) {
 				// if we have loading renderer call it

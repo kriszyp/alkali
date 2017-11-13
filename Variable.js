@@ -1,5 +1,5 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang'], factory) } else if (typeof module === 'object' && module.exports) {				
+	define(['./util/lang'], factory) } else if (typeof module === 'object' && module.exports) {
 	module.exports = factory(require('./util/lang')) // Node
 }}(this, function (lang) {
 	var deny = {}
@@ -113,7 +113,7 @@
 				(xor & 16777215) * 1099511627776 + // compute hash on lower 24 bits that overflow into upper 32 bits
 				((this.version / 4294967296 >>> 0) * 435 & 2097151) * 4294967296 // hash on upper 32 bits*/
 			// 54 bit derivative of FNV1a that better uses JS numbers/operators
-			
+
 			// a fast, efficient hash
 			//return this.version = (this.version ^ (version || 0)) * 1049011 + (this.version / 5555555 >>> 0)
 			// if we are using globally monotonically increasing version, we can just use max
@@ -268,7 +268,7 @@
 				return
 			}
 			if (callback) { // custom handler
-				callback(value) 
+				callback(value)
 			} else {
 				variable.value = value
 			}
@@ -396,7 +396,7 @@
 						// just too complicated to handle NOT_MODIFED objects for now
 						// TODO: Maybe handle this and delegate NOT_MODIFIED through this
 						// chain and through gotValue
-						context.ifModifiedSince = undefined 
+						context.ifModifiedSince = undefined
 					}
 				}
 				var property = this
@@ -476,7 +476,7 @@
 									return Variable.prototype.gotValue.call(variable, value)
 								})
 							} else {
-								return Variable.prototype.gotValue.call(variable, value)							
+								return Variable.prototype.gotValue.call(variable, value)
 							}
 						}
 					}
@@ -1287,10 +1287,11 @@
 							enumerable: true
 						}
 					})(key, value)
-					if (value === Variable) {
-						value = Variable() // create own instance
-					}
+//					if (value === Variable)
+					value = Variable() // create own instance
 					value.isPropertyClass = true
+					value.key = key
+					value.parent = this
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)
 				} else if (value.defineAs) {
@@ -1301,8 +1302,11 @@
 			}
 			Object.defineProperty(prototype, key, descriptor)
 			if (value !== undefined) {
-				// TODO: If there is a getter/setter here, use defineProperty
-				this[key] = value
+				if (key in this) {
+					Object.defineProperty(this, key, { value: value, configurable: true, enumerable: true })
+				} else {
+					this[key] = value
+				}
 			} else {
 				// getter/setter
 				Object.defineProperty(this, key, descriptor)
@@ -1547,7 +1551,7 @@
 	 					transformContext.ifModifiedSince = undefined
 	 				}
 					var version = transformContext.version
-					if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
+					if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number.
 						// get it out of the cache
 						if (parentContext) {
 							parentContext.setVersion(version)
@@ -2143,14 +2147,23 @@
 	}
 	Variable.valueOf = function(allowPromise) {
 		// contextualized valueOf
+		if (this.parent) {
+			return Variable.prototype.valueOf.call(this, allowPromise)
+		}
 		return instanceForContext(this, context).valueOf(allowPromise)
 	}
 	Variable.then = function(callback, errback) {
 		// contextualized valueOf
+		if (this.parent) {
+			return Variable.prototype.then.call(this, callback, errback)
+		}
 		return instanceForContext(this, context).then(callback, errback)
 	}
-	Variable.getValue = function() {
+	Variable.getValue = function(forChild) {
 		// contextualized getValue
+		if (this.parent) {
+			return Variable.prototype.getValue.call(this, forChild)
+		}
 		return instanceForContext(this, context)
 	}
 	Variable.put = function(value) {
@@ -2202,7 +2215,19 @@
 	Variable.updated = function(updateEvent, by) {
 		return instanceForContext(this, context).updated(updateEvent, by)
 	}
-	Variable._Transform = ContextualTransform
+	Variable._Transform = ContextualTransform;
+
+	// delegate to the variable's collection
+	['add', 'delete', 'clear', 'filter', 'map', 'forEach'].forEach(function(name) {
+		Variable[name] = function() {
+			return this.collection[name].apply(this.collection, arguments)
+		}
+	})
+	// create a new variable with a default value
+	Variable.default = function(value) {
+		return Variable.with({default: value})
+	}
+
 	var proxyHandler = {
 		get: function(target, name) {
 			var value = target[name]
@@ -2245,10 +2270,10 @@
 	})
 	Object.defineProperty(Variable, 'collection', {
 		get: function() {
-			return this._collection
+			return this.hasOwnProperty('_collection') ? this._collection : (this.collection = new VCollection())
 		},
 		set: function(Collection) {
-			if (this._collection != Collection) {
+			if (!this.hasOwnProperty('_collection') || this._collection != Collection) {
 				this._collection = Collection
 				Collection.collectionOf = this
 			}
@@ -2297,8 +2322,8 @@
 				})
 			},
 			writable: true,
-			configurable: true			
-		}		
+			configurable: true
+		}
 	}
 
 	function VString(value) {
@@ -2308,7 +2333,7 @@
 	function VNumber(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : Number(value), VNumber)
 	}
-	
+
 	VString = Variable.with({
 		charAt: VFunction.returns(VString),
 		codeCharAt: VFunction.returns(VNumber),
@@ -2319,8 +2344,8 @@
 		substr: VFunction.returns(VString),
 		slice: VFunction.returns(VString),
 		toUpperCase: VFunction.returns(VString),
-		toLowerCase: VFunction.returns(VString),
-		length: VNumber
+		toLowerCase: VFunction.returns(VString)
+		//length: VNumber
 	}, VString)
 
 	VNumber = Variable.with({
@@ -2350,6 +2375,39 @@
 		}
 	})
 
+	function VCollection(value) {
+		var SubClass = makeSubVar(this, value, VCollection)
+		if (SubClass) {
+			return SubClass
+		}
+		this._instanceMap = new lang.Map()
+	}
+	VCollection = Variable.with({
+		getId: function(instance) {
+			return instance.id
+		},
+		add: function(instance) {
+			let id = this.getId(instance)
+			this._instanceMap.set(id, instance)
+			this.updated(new RefreshEvent(id))
+		},
+		put: function(instance) {
+			this._instanceMap.set(this.getId(instance), instance)
+		},
+		delete: function(instanceOrId) {
+			var id = typeof instanceOrId == 'object' ? this.getId(instanceOrId) : instanceOrId
+			this._instanceMap.delete(id)
+			this.updated(new RefreshEvent(id))
+		},
+		clear: function() {
+			this._instanceMap.clear()
+			this.updated(new RefreshEvent())
+		},
+		valueOf: function() {
+			return Array.from(this._instanceMap ? this._instanceMap.values() : [])
+		}
+	}, VCollection)
+
 	function VDate(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : new Date(value), VDate)
 	}
@@ -2369,6 +2427,19 @@
 			return this.then()
 		},
 	})
+
+	function doesEffect(variable, subject, event) {
+		if (typeof variable === 'function') {
+			return variable.for(subject) == event.by
+		}
+		var ignores
+		forDependencies(variable, function(dependency) {
+			if (!ignores && !doesEffect(dependency, subject, event)) {
+				ignores = true
+			}
+		})
+		return !ignores
+	}
 	var exports = {
 		__esModule: true,
 		Variable: Variable,
@@ -2390,6 +2461,7 @@
 		NotifyingContext: NotifyingContext,
 		all: all,
 		react: react,
+		doesEffect: doesEffect,
 		objectUpdated: objectUpdated,
 		NOT_MODIFIED: NOT_MODIFIED
 	}
@@ -2444,7 +2516,7 @@
 		var IterativeResults = lang.compose(returns ? returns.as(IterativeMethod) : IterativeMethod, constructor, properties)
 		IterativeResults.prototype.method || (IterativeResults.prototype.method = method)
 		Object.defineProperty(IterativeResults.prototype, 'isIterable', {value: true});
-		VArray[method] = VArray.prototype[method] = function() {
+		VCollection[method] = VCollection.prototype[method] = VArray[method] = VArray.prototype[method] = function() {
 			var results = new IterativeResults(this)
 			results.source = this
 			results.arguments = arguments
@@ -2465,7 +2537,7 @@
 						var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
 						if (index > -1) {
 							contextualizedVariable.splice(index, 1)
-						}						
+						}
 					}
 					if (action.value) {
 						if ([event.value].filter(this.arguments[0]).length > 0) {

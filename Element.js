@@ -1,5 +1,5 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {				
+	define(['./util/lang', './Renderer', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {
 	module.exports = factory(require('./util/lang'), require('./Renderer'), require('./Variable')) // Node
 }}(this, function (lang, Renderer, VariableExports) {
 	var Variable = VariableExports.Variable
@@ -177,7 +177,11 @@
 			var child = children[i]
 			var childNode
 			if (child != null) { // we just skip nulls and undefined, helps make it easier to write conditional element logic
-				if (typeof child === 'function') {
+				if (child.notifies) {
+					// a variable
+					var ref = child.isIterable ? fragment : parent
+					fragment.appendChild(childNode = variableAsContent(ref, child))
+				} else if (typeof child === 'function') {
 					// an element constructor
 					currentParent = parent
 					childNode = new child()
@@ -185,10 +189,6 @@
 					if (child.isContentNode) {
 						container.contentNode = childNode
 					}
-				} else if (child.notifies) {
-					// a variable
-					var ref = child.isIterable ? fragment : parent
-					fragment.appendChild(childNode = variableAsContent(ref, child))
 				} else if (typeof child == 'object') {
 					if (child instanceof Array) {
 						// array of sub-children
@@ -320,7 +320,7 @@
 		dataset: applySubProperties(function(newValue, element, key) {
 			key = key || this.name
 			if (newValue == null) {
-				delete element.dataset[key]	
+				delete element.dataset[key]
 			} else {
 				element.dataset[key] = newValue
 			}
@@ -1010,7 +1010,10 @@
 		if (!Element.with) {
 			Element.with = withProperties
 		}
-		return selector ? Element.with(selector) : Element.with()
+		return bindElementClass(Element, {
+			selector: selector,
+			uniqueTag: true
+		})
 	}
 
 	var Element = setupElement(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
@@ -1245,6 +1248,7 @@
 	Element.options = {
 		moveLiveElementsEnabled: true,
 	}
+	Element.setForClass = setForClass
 	Element.content = function(Element){
 		// container marker
 		function Content() {
@@ -1280,6 +1284,79 @@
 			}
 		})
 		return ExtendedElement
+	}
+
+	function makePreBoundVariable(variable) {
+		return {
+			variable: variable,
+			valueOf() {
+				return this.variable.valueOf()
+			},
+			notifies: function() {} // noop in this case
+		}
+	}
+
+	Element.bindElementClass = bindElementClass
+	function bindElementClass(Element, options) {
+		var applyOnCreate = getApplySet(Element)
+		var preBoundProperties = {}
+		for (var key in applyOnCreate) {
+			var value = applyOnCreate[key]
+			// TODO: Create single instances of all these functions
+			if (value && value.notifies) {
+				new PropertyRenderer({
+					name: key,
+					variable: value,
+					getElements: function() {
+						if (options.uniqueTag) {
+							return document.getElementsByTagName(BoundElement.tagName)
+						}
+						return getElementInstances(BoundElement, options.parent)
+					}
+				})
+				preBoundProperties[key] = makePreBoundVariable(value)
+			}
+		}
+
+		if (Element.children) {
+			var newChildren = []
+			for (var i = 0; i < Element.children.length; i++) {
+				var child = Element.children[i]
+				if (child) {
+					if (child.notifies) {
+						throw new Error('Variables can not be used as child nodes in generalized/bound classes, consider wrapping with a span')
+					}
+					if (typeof child === 'function') {
+						child = bindElementClass(child, {
+							parent: options.parent
+						})
+					}
+				}
+				newChildren[i] = child
+			}
+			preBoundProperties.children = newChildren
+		}
+		var content = applyOnCreate.content
+		if (content && content.notifies) {
+			var renderer = new TextRenderer({
+				getElements: true, // TODO: find main text node
+				variable: content
+			})
+			preBoundProperties.content = makePreBoundVariable(content)
+		}
+		var BoundElement = options.selector ? Element.with(options.selector, preBoundProperties) : Element.with(preBoundProperties)
+		return BoundElement
+	}
+
+	function getElementInstances(Element, parent) {
+		var selector = Element.tagName
+		var className = Element._applyOnCreate.className
+		if (className) {
+			selector += className
+		}
+		return [].filter.call((parent || document).querySelectorAll(selector), function(element) {
+			return element instanceof Element
+		})
 	}
 
 	function forTarget(target) {
@@ -1325,6 +1402,14 @@
 			}
 			return instance
 		}
+	}
+
+	function setForClass(element, Target, instance) {
+		var From = element.constructor
+		var ownedClasses = From.ownedClasses || (From.ownedClasses = new lang.WeakMap())
+		ownedClasses.set(Target, true)
+		var ownedInstances = element.ownedInstances || (element.ownedInstances = new lang.WeakMap())
+		ownedInstances.set(Target, instance)
 	}
 
 	function propertyForElement(key) {

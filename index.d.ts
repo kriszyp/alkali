@@ -111,7 +111,10 @@ declare namespace alkali {
     static all<T>(...inputs: Array<Variable<T>>): Variable<Array<T>>
     static all(...inputs: Array<Variable<any>>): Variable<Array<any>>
 
-    static with<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
+    static with<V, Props>(this: V, properties: {[P in keyof Props]: new (...args: any[]) => Props[P]}): {
+        new (...args: any[]): V & Props
+    } & V & Props
+
     static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
 
     schema: Variable
@@ -219,8 +222,8 @@ declare namespace alkali {
   export function reactive(value: number): Vnumber
   export function reactive(value: boolean): Boolean & VBoolean
   export function reactive<T>(value: T[]): VArray<T>
-  export function reactive<T>(value: Map<K, V>): VMap<K, V>
-  export function reactive<T>(value: Set<V>): VSet<V>
+  export function reactive<T, K, V>(value: Map<K, V>): VMap<K, V>
+  export function reactive<T, V>(value: Set<V>): VSet<V>
   export function reactive<T>(value: T): Reacts<T>
 
   /**
