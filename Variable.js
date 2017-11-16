@@ -657,14 +657,14 @@
 				}
 				sources.push(contextualized)
 			})
-			if (contextualizes) {
+/*			if (contextualizes) {
 				var contextualized = new ContextualizedVariable()
 				//context.instanceMap.set(this, contextualized)
 				contextualized.sources = sources
 				contextualized.init()
 				return contextualized
 			}
-
+*/
 			if (this.listeningToObject === null) {
 				// we were previously listening to an object, but it needs to be restored
 				// calling valueOf will cause the listening object to be restored
@@ -781,8 +781,17 @@
 				if (this.returnedVariable && this.fixed) {
 					this.returnedVariable.updated(updateEvent, this)
 				}
-				if (this.constructor.collection) {
-					this.constructor.collection.updated(updateEvent, this)
+				var Class = this.constructor
+				var variable = this
+				if (Class.collection) {
+					Class.collection.updated(new ArrayEvent({
+						source: this,
+						parent: updateEvent,
+						visited: updateEvent.visited,
+						doesAffect: function(subject) {
+							return Class.for(subject).valueOf() == variable.valueOf()
+						}
+					}), this)
 				}
 			}
 			if (this.parent) {
@@ -1266,7 +1275,7 @@
 			if (typeof value === 'function' && key !== 'collectionOf') {
 				if (value.notifies) {
 					// variable class
-					descriptor = (function(key, Class) {
+					function getDescriptor(key, Class) {
 						return {
 							get: function() {
 								var property = (this._properties || (this._properties = {}))[key]
@@ -1286,12 +1295,11 @@
 							},
 							enumerable: true
 						}
-					})(key, value)
-//					if (value === Variable)
-					value = Variable() // create own instance
-					value.isPropertyClass = true
-					value.key = key
-					value.parent = this
+					}
+					var descriptor = getDescriptor(key, value)
+					Object.defineProperty(prototype, key, descriptor)
+					Object.defineProperty(this, key, descriptor)
+					continue
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)
 				} else if (value.defineAs) {
@@ -2147,24 +2155,15 @@
 	}
 	Variable.valueOf = function(allowPromise) {
 		// contextualized valueOf
-		if (this.parent) {
-			return Variable.prototype.valueOf.call(this, allowPromise)
-		}
 		return instanceForContext(this, context).valueOf(allowPromise)
 	}
 	Variable.then = function(callback, errback) {
 		// contextualized valueOf
-		if (this.parent) {
-			return Variable.prototype.then.call(this, callback, errback)
-		}
 		return instanceForContext(this, context).then(callback, errback)
 	}
 	Variable.getValue = function(forChild) {
 		// contextualized getValue
-		if (this.parent) {
-			return Variable.prototype.getValue.call(this, forChild)
-		}
-		return instanceForContext(this, context)
+		return instanceForContext(this, context).getValue(forChild)
 	}
 	Variable.put = function(value) {
 		// contextualized setValue
@@ -2172,14 +2171,18 @@
 	}
 	Variable.for = function(subject) {
 		if (subject != null) {
-			if (subject.target && !subject.constructor.getForClass) {
-				// makes HTML events work
-				subject = subject.target
-			}
-			var instance
-			instance = new Context(subject).specify(this)
-			if (instance && !instance.subject) {
-				instance.subject = subject
+			if (typeof subject == 'object') {
+				if (subject.target && !subject.constructor.getForClass) {
+					// makes HTML events work
+					subject = subject.target
+				}
+				var instance
+				instance = new Context(subject).specify(this)
+				if (instance && !instance.subject) {
+					instance.subject = subject
+				}
+			} else {
+				return this.collection.for(subject)
 			}
 			// TODO: Do we have a global context that we set on defaultInstance?
 			return instance || this.defaultInstance
@@ -2201,14 +2204,6 @@
 			return new this(value)
 		}
 	}
-	Variable.notifies = function(target) {
-		var instance = instanceForContext(this, context)
-		instance.notifies(target)
-		return instance
-	}
-	Variable.stopNotifies = function(target) {
-		this.defaultInstance.stopNotifies(target)
-	}
 	Variable.getCollectionOf = function () {
 		return this.collectionOf
 	}
@@ -2218,7 +2213,7 @@
 	Variable._Transform = ContextualTransform;
 
 	// delegate to the variable's collection
-	['add', 'delete', 'clear', 'filter', 'map', 'forEach'].forEach(function(name) {
+	['add', 'delete', 'clear', 'filter', 'map', 'forEach', 'notifies', 'stopNotifies'].forEach(function(name) {
 		Variable[name] = function() {
 			return this.collection[name].apply(this.collection, arguments)
 		}
@@ -2386,6 +2381,9 @@
 		getId: function(instance) {
 			return instance.id
 		},
+		for: function(id) {
+			return new this.collectionOf().is(this._instanceMap.get(id))
+		},
 		add: function(instance) {
 			let id = this.getId(instance)
 			this._instanceMap.set(id, instance)
@@ -2402,6 +2400,12 @@
 		clear: function() {
 			this._instanceMap.clear()
 			this.updated(new RefreshEvent())
+		},
+		forEach: function(callback) {
+			var collection = this
+			Array.from(this._instanceMap.keys()).forEach(function(id) {
+				callback(collection.for(id))
+			})
 		},
 		valueOf: function() {
 			return Array.from(this._instanceMap ? this._instanceMap.values() : [])
@@ -2428,18 +2432,6 @@
 		},
 	})
 
-	function doesEffect(variable, subject, event) {
-		if (typeof variable === 'function') {
-			return variable.for(subject) == event.by
-		}
-		var ignores
-		forDependencies(variable, function(dependency) {
-			if (!ignores && !doesEffect(dependency, subject, event)) {
-				ignores = true
-			}
-		})
-		return !ignores
-	}
 	var exports = {
 		__esModule: true,
 		Variable: Variable,
@@ -2461,7 +2453,6 @@
 		NotifyingContext: NotifyingContext,
 		all: all,
 		react: react,
-		doesEffect: doesEffect,
 		objectUpdated: objectUpdated,
 		NOT_MODIFIED: NOT_MODIFIED
 	}

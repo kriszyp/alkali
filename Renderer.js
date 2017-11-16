@@ -38,28 +38,17 @@
 		if (options.alwaysUpdate) {
 			this.alwaysUpdate = options.alwaysUpdate
 		}
-		if (!variable.updated) {
-			// baconjs-esqe API
-			var renderer = this
-			variable.subscribe(function (event) {
-				// replace the variable with an object
-				// that returns the value from the event
-				renderer.variable = {
-					valueOf: function () {
-						return event.value()
-					}
-				}
-				renderer.updated()
-			})
-		}
 		if (options.updateOnStart === false){
 			var contextualized = this.contextualized || this.variable
 			this.variable.valueOf(this)
 			// even if we don't render on start, we still need to compute the value so we can depend on the computed
 			// TODO: we may need to handle recontextualization if it returns a promise
 			contextualized.notifies(this)
-		} else {
+		} else if (element) {
 			this.updateRendering(true)
+		} else {
+			// bound to a class, just do notification
+			this.variable.notifies(this)
 		}
 	}
 	Renderer.prototype = {
@@ -75,7 +64,7 @@
 					var variable = this.variable
 					var invalidated = this.invalidated || (this.invalidated = new lang.Set())
 					this.getElements().forEach(function(element) {
-						if (doesEffect(variable, element, updateEvent)){
+						if (!updateEvent.doesAffect || updateEvent.doesAffect(element)){
 							invalidated.add(element)
 						}
 						/*if (element.constructor.getForClass(element, variable) == by) {
@@ -228,9 +217,9 @@
 		var Element = element.constructor
 		var generalized = Element._generalized
 		var resolved
-		var renderer = this
+		var renderer = element === this.element ? this : Object.create(this, { element: { value: element} })
 		var deferredRender
-		this.executeWithin(function() {
+		renderer.executeWithin(function() {
 			deferredRender = renderer.variable.then(function(value) {
 				resolved = true
 				if (deferredRender) {

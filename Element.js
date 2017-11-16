@@ -342,6 +342,9 @@
 			} else {
 				styleObjectHandler(element, value, key)
 			}
+		},
+		_item: function(element, value) {
+			setForClass(element, value.constructor, value)
 		}
 	}
 
@@ -1248,7 +1251,6 @@
 	Element.options = {
 		moveLiveElementsEnabled: true,
 	}
-	Element.setForClass = setForClass
 	Element.content = function(Element){
 		// container marker
 		function Content() {
@@ -1289,8 +1291,8 @@
 	function makePreBoundVariable(variable) {
 		return {
 			variable: variable,
-			valueOf() {
-				return this.variable.valueOf()
+			then(callback, errorHandler) {
+				return this.variable.then(callback, errorHandler)
 			},
 			notifies: function() {} // noop in this case
 		}
@@ -1337,12 +1339,33 @@
 			preBoundProperties.children = newChildren
 		}
 		var content = applyOnCreate.content
-		if (content && content.notifies) {
-			var renderer = new TextRenderer({
-				getElements: true, // TODO: find main text node
-				variable: content
-			})
-			preBoundProperties.content = makePreBoundVariable(content)
+		if (content) {
+			if (content.notifies) {
+				var renderer = new TextRenderer({
+					getElements: function() {
+						if (options.uniqueTag) {
+							return document.getElementsByTagName(BoundElement.tagName)
+						}
+						return getElementInstances(BoundElement, options.parent)
+					}, // TODO: find main text node
+					variable: content,
+					position: 0
+				})
+				preBoundProperties.content = makePreBoundVariable(content)
+			} else if (content instanceof Array) {
+				preBoundProperties.content = content.map(function(child) {
+					if (child.notifies) {
+						// TODO: Maybe we can support this with position
+						throw new Error('Variables can not be used as child nodes in generalized/bound classes, consider wrapping with a span')
+					}
+					if (typeof child === 'function') {
+						child = bindElementClass(child, {
+							parent: options.parent
+						})
+					}
+					return child
+				})
+			}
 		}
 		var BoundElement = options.selector ? Element.with(options.selector, preBoundProperties) : Element.with(preBoundProperties)
 		return BoundElement
@@ -1355,7 +1378,7 @@
 			selector += className
 		}
 		return [].filter.call((parent || document).querySelectorAll(selector), function(element) {
-			return element instanceof Element
+			return element.constructor === Element
 		})
 	}
 
@@ -1407,9 +1430,13 @@
 	function setForClass(element, Target, instance) {
 		var From = element.constructor
 		var ownedClasses = From.ownedClasses || (From.ownedClasses = new lang.WeakMap())
-		ownedClasses.set(Target, true)
+		var instanceMap = ownedClasses.get(Target)
+		if (!instanceMap) {
+			ownedClasses.set(Target, instanceMap = new lang.WeakMap())
+		}
 		var ownedInstances = element.ownedInstances || (element.ownedInstances = new lang.WeakMap())
 		ownedInstances.set(Target, instance)
+		instanceMap.set(element, instance)
 	}
 
 	function propertyForElement(key) {
