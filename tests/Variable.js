@@ -1066,9 +1066,14 @@ define(function(require) {
 			}).num, 1)
 			assert.equal(transformCount, 1)
 			b.triple()
-
 			assert.equal(b.valueOf().num, 3)
 			assert.equal(transformCount, 1) // no need to retransform, we are only change the contents of the variable that was returned
+			b.triple()
+			assert.equal(b.valueOf().num, 9)
+			assert.equal(transformCount, 1) // no need to retransform, we are only change the contents of the variable that was returned
+			a.set('num', 5)
+			assert.equal(b.valueOf().num, 5)
+			assert.equal(transformCount, 2)
 		})
 
 		test('mapReduceArray', function() {

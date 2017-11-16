@@ -1671,7 +1671,7 @@
 		},
 		put: function(value, event) {
 			var call = this
-			return when(this.valueOf(true), function(originalValue) {
+			return whenStrict(this.getValue(), function(originalValue) {
 				if (originalValue === value && typeof value != 'object') {
 					return noChange
 				}
