@@ -1,5 +1,5 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang'], factory) } else if (typeof module === 'object' && module.exports) {				
+	define(['./util/lang'], factory) } else if (typeof module === 'object' && module.exports) {
 	module.exports = factory(require('./util/lang')) // Node
 }}(this, function (lang) {
 	var deny = {}
@@ -113,7 +113,7 @@
 				(xor & 16777215) * 1099511627776 + // compute hash on lower 24 bits that overflow into upper 32 bits
 				((this.version / 4294967296 >>> 0) * 435 & 2097151) * 4294967296 // hash on upper 32 bits*/
 			// 54 bit derivative of FNV1a that better uses JS numbers/operators
-			
+
 			// a fast, efficient hash
 			//return this.version = (this.version ^ (version || 0)) * 1049011 + (this.version / 5555555 >>> 0)
 			// if we are using globally monotonically increasing version, we can just use max
@@ -268,7 +268,7 @@
 				return
 			}
 			if (callback) { // custom handler
-				callback(value) 
+				callback(value)
 			} else {
 				variable.value = value
 			}
@@ -396,7 +396,7 @@
 						// just too complicated to handle NOT_MODIFED objects for now
 						// TODO: Maybe handle this and delegate NOT_MODIFIED through this
 						// chain and through gotValue
-						context.ifModifiedSince = undefined 
+						context.ifModifiedSince = undefined
 					}
 				}
 				var property = this
@@ -476,7 +476,7 @@
 									return Variable.prototype.gotValue.call(variable, value)
 								})
 							} else {
-								return Variable.prototype.gotValue.call(variable, value)							
+								return Variable.prototype.gotValue.call(variable, value)
 							}
 						}
 					}
@@ -1547,7 +1547,7 @@
 	 					transformContext.ifModifiedSince = undefined
 	 				}
 					var version = transformContext.version
-					if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number. 
+					if (variable.cachedVersion >= version || resolved[0] == NOT_MODIFIED) { // note that cached version can get "ahead" of `version` of all dependencies, in cases where the transform ends up executing an valueOf() that advances the resolution context version number.
 						// get it out of the cache
 						if (parentContext) {
 							parentContext.setVersion(version)
@@ -2297,8 +2297,8 @@
 				})
 			},
 			writable: true,
-			configurable: true			
-		}		
+			configurable: true
+		}
 	}
 
 	function VString(value) {
@@ -2308,7 +2308,7 @@
 	function VNumber(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : Number(value), VNumber)
 	}
-	
+
 	VString = Variable.with({
 		charAt: VFunction.returns(VString),
 		codeCharAt: VFunction.returns(VNumber),
@@ -2462,10 +2462,10 @@
 				for (var i = 0, l = event.actions.length; i < l; i++) {
 					var action = event.actions[i]
 					if (action.oldValue) {
-						var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
+						var index = contextualizedVariable.cachedValue.indexOf(action.oldValue)
 						if (index > -1) {
 							contextualizedVariable.splice(index, 1)
-						}						
+						}
 					}
 					if (action.value) {
 						if ([event.value].filter(this.arguments[0]).length > 0) {

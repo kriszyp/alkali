@@ -115,7 +115,7 @@ define([
 			variable.stopNotifies(target)
 			invalidated = false
 			variable.put(3)
-			assert.isFalse(invalidated);	
+			assert.isFalse(invalidated);
 		},
 		'property access': function () {
 			var object = {
@@ -169,7 +169,7 @@ define([
 				b: 10
 			})
 			var computedA
-			var doubleA = myVar.property('a').to(function(a) { 
+			var doubleA = myVar.property('a').to(function(a) {
 				computedA = true
 				return a * 2
 			})
@@ -1035,7 +1035,26 @@ define([
 			assert.strictEqual(greaterThanFour.valueOf().length, 2)
 		},
 
-		mapReduceArray: function() {
+		test('splice and filter', function() {
+			var strings = new VArray(['foo', 'bar', 'baz'])
+			var startsWithB = strings.filter(function(v) {
+				return v[0] === 'b'
+			})
+
+			var updateCount = 0
+			assert.deepEqual(valueOfAndNotify(startsWithB, function() {
+				updateCount++
+			}), ['bar', 'baz'])
+			strings.splice(1, 1)
+
+			strings.valueOf()
+			// -> ['foo', 'baz']
+
+			assert.deepEqual(startsWithB.valueOf(), ['baz'])
+			assert.equal(updateCount, 1)
+		})
+
+		test('mapReduceArray', function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var mapOperations = 0
 			var doubled = arrayVariable.map(function(item) {
@@ -1357,7 +1376,7 @@ define([
 			assert.deepEqual(v.valueOf(), { v: 'default' })
 			assert.deepEqual(vp.valueOf(), 'default')
 		},
-		
+
 		'Assignment does not change defaults': function() {
 			var v = new Variable()
 			var defaultObject = v.default = { v: 'default' }
