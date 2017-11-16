@@ -1051,25 +1051,24 @@ define(function(require) {
 		})
 
 		test('transform and cast', function() {
-			var a = new Variable(1)
+			var a = new Variable({ num: 1 })
 			var Tripler = Variable.with({
 				triple: function() {
-					return this.valueOf() * 3
+					return this.put({ num: this.valueOf().num * 3})
 				}
 			})
 			var transformCount = 0
-			var b = a.to(function(a) {
+			var b = a.to(function(obj) {
 				transformCount++
-				return a * 2
+				return new Tripler(obj)
 			}).as(Tripler)
 			assert.equal(valueOfAndNotify(b, function() {
-			}), 2)
-			assert.equal(b.triple(), 6)
+			}).num, 1)
 			assert.equal(transformCount, 1)
-			a.put(2)
-			assert.equal(b.valueOf(), 4)
-			assert.equal(b.triple(), 12)
-			assert.equal(transformCount, 2)
+			b.triple()
+
+			assert.equal(b.valueOf().num, 3)
+			assert.equal(transformCount, 1) // no need to retransform, we are only change the contents of the variable that was returned
 		})
 
 		test('mapReduceArray', function() {
