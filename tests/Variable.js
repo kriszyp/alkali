@@ -1031,6 +1031,25 @@ define(function(require) {
 			assert.strictEqual(greaterThanFour.valueOf().length, 2)
 		})
 
+		test('splice and filter', function() {
+			var strings = new VArray(['foo', 'bar', 'baz'])
+			var startsWithB = strings.filter(function(v) {
+				return v[0] === 'b'
+			})
+
+			var updateCount = 0
+			assert.deepEqual(valueOfAndNotify(startsWithB, function() {
+				updateCount++
+			}), ['bar', 'baz'])
+			strings.splice(1, 1)
+
+			strings.valueOf()
+			// -> ['foo', 'baz']
+
+			assert.deepEqual(startsWithB.valueOf(), ['baz'])
+			assert.equal(updateCount, 1)
+		})
+
 		test('mapReduceArray', function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var mapOperations = 0
