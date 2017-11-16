@@ -1054,6 +1054,17 @@ define([
 			assert.equal(updateCount, 1)
 		})
 
+		test('transform and cast', function() {
+			var a = new Variable(1)
+			var Tripler = Variable.with({
+				triple: function() {
+					return this.valueOf() * 3
+				}
+			})
+			var b = a.to(function(a) { return a * 2 }).as(Tripler)
+			assert.equal(b.triple(), 6)
+		})
+
 		test('mapReduceArray', function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var mapOperations = 0
