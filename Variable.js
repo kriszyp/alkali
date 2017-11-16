@@ -2468,8 +2468,8 @@
 						}
 					}
 					if (action.value) {
-						if ([event.value].filter(this.arguments[0]).length > 0) {
-							contextualizedVariable.push(event.value)
+						if ([action.value].filter(this.arguments[0]).length > 0) {
+							contextualizedVariable.push(action.value)
 						}
 					}
 				}
