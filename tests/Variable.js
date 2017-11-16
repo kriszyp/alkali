@@ -1061,8 +1061,19 @@ define([
 					return this.valueOf() * 3
 				}
 			})
-			var b = a.to(function(a) { return a * 2 }).as(Tripler)
+			var transformCount = 0
+			var b = a.to(function(a) {
+				transformCount++
+				return a * 2
+			}).as(Tripler)
+			assert.equal(valueOfAndNotify(b, function() {
+			}), 2)
 			assert.equal(b.triple(), 6)
+			assert.equal(transformCount, 1)
+			a.put(2)
+			assert.equal(b.valueOf(), 4)
+			assert.equal(b.triple(), 12)
+			assert.equal(transformCount, 2)
 		})
 
 		test('mapReduceArray', function() {
