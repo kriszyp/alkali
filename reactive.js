@@ -53,7 +53,10 @@
 			objectVar = new Variable()
 		} else {
 			objectVar = new Variable(value)
-			objectVar.fixed = true
+			if (value && typeof value == 'object') {
+				// by default, if given an object (or variable or array), treat it as fixed
+				objectVar.fixed = true
+			}
 		}
 		for (var key in value) {
 			var propertyValue = value[key]

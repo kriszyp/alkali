@@ -473,28 +473,27 @@
 			var updates = this.updates
 			container = thisElement
 			updates.forEach(function(update) {
-				if (update.type === 'refresh') {
+				if (update.type === 'replaced') {
 					renderer.builtList = false
 					for (var i = 0, l = childElements.length; i < l; i++) {
 						thisElement.removeChild(childElements[i])
 					}
 					renderer.renderUpdate()
 				} else {
-					for (var i = 0, l = update.actions.length; i < l; i++) {
-						var action = update.actions[i]
-						if (action.previousIndex > -1) {
-							thisElement.removeChild(childElements[action.previousIndex])
-							childElements.splice(action.previousIndex, 1)
-						}
-						if (action.index > -1) {
-							var nextChild = childElements[action.index]
-							var newElement = Renderer.append(thisElement, eachItem(action.value))
-							if (nextChild) {
-								thisElement.insertBefore(newElement, nextChild)
-								childElements.splice(action.index, 0, newElement)
-							} else {
-								childElements.push(newElement)
-							}
+					var index = update.startingIndex
+					for (var i = 0; i < update.deleteCount; i++) {
+						thisElement.removeChild(childElements[update.startingIndex])
+					}
+					childElements.splice(update.startingIndex, update.deleteCount)
+					for (var i = 0; i < update.items.length; i++) {
+						var value = update.items[i]
+						var nextChild = childElements[i + update.startingIndex]
+						var newElement = Renderer.append(thisElement, eachItem(value))
+						if (nextChild) {
+							thisElement.insertBefore(newElement, nextChild)
+							childElements.splice(i + update.startingIndex, 0, newElement)
+						} else {
+							childElements.push(newElement)
 						}
 					}
 				}

@@ -1,5 +1,5 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define([], factory) } else if (typeof module === 'object' && module.exports) {				
+	define([], factory) } else if (typeof module === 'object' && module.exports) {
 	module.exports = factory() // Node
 }}(this, function () {
 	var getPrototypeOf = Object.getPrototypeOf || (function(base) { return base.__proto__ })
@@ -8,7 +8,7 @@
 			try {
 				if (!base.hasOwnProperty(key)) {
 					if (proto.hasOwnProperty(key)) {
-						Object.defineProperty(base, key, 
+						Object.defineProperty(base, key,
 							Object.getOwnPropertyDescriptor(proto, key))
 					} else {
 						base[key] = proto[key]
@@ -71,7 +71,7 @@
 	// for what Variables need
 	// An observe function, with polyfile
 	var observe =
-		has('defineProperty') ? 
+		has('defineProperty') ?
 		function observe(target, listener) {
 			/*for(var i in target) {
 				addKey(i)
@@ -232,8 +232,8 @@
 	var extendClass, constructOrCall
 	try {
 		// do this with an eval to avoid syntax errors in browsers that do not support class and new.target
-		extendClass = eval('(function(Base){ return class extends Base {}})')
-		var possibleConstructOrCall = eval('"use strict";(function(BaseClass, constructHandler, callHandler, constructClass){ return function Element() { return this instanceof Element ? constructHandler ? constructHandler.apply(new.target || this.constructor, arguments) : constructClass ? Reflect.construct(BaseClass, arguments, new.target || this.constructor) : lang.functionConstruct(BaseClass, arguments, new.target || this.constructor, this) : callHandler.apply(Element, arguments) } })')
+		extendClass = eval('(function(Base){ return class extends Base {}})\n\n//# sourceURL=alkali:///class-extend')
+		var possibleConstructOrCall = eval('"use strict";(function(BaseClass, constructHandler, callHandler, constructClass){ return function Element() { return this instanceof Element ? constructHandler ? constructHandler.apply(new.target || this.constructor, arguments) : constructClass ? Reflect.construct(BaseClass, arguments, new.target || this.constructor) : lang.functionConstruct(BaseClass, arguments, new.target || this.constructor, this) : callHandler.apply(Element, arguments) } })\n\n//# sourceURL=alkali:///construct-or-call')
 		// actually using new.target bombs in Edge, so it is basically unusable
 		new (possibleConstructOrCall(function() {}, function() {}))()
 		constructOrCall = possibleConstructOrCall

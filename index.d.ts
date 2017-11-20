@@ -6,7 +6,11 @@ declare namespace alkali {
 
   class UpdateEvent {
     visited: Set<Variable>
+    type: ('replaced' | 'property' | 'added' | 'removed' | 'entry' | 'spliced')
+    child?: UpdateEvent
   }
+
+
 
   export class Variable<T = {}> implements Promise<T> {
     /**
@@ -70,6 +74,11 @@ declare namespace alkali {
     * @param event An event object can be provided that will be passed to all variables that are updated/invalidated by this event
     */
     updated(event?: UpdateEvent): UpdateEvent
+    /**
+    * Listen to the variable, and receive notification of update events
+    * @param listener The listener object that will be called with data events. This will be called synchronously/immediately as part of the event dispatching.
+    */
+    notifies(listener: { updated: (event: UpdateEvent) => any }): void
     /**
     * Subscribe to the variable, calling the listener after changes to the variable's value.
     * @param listener The listener function that will be called after data changes. This will be called on the next micro-turn.
@@ -218,13 +227,13 @@ declare namespace alkali {
     constructor(source: any, transform: (...v) => T, sources: any[])
   }
 
-  export function reactive(value: string): Vstring
-  export function reactive(value: number): Vnumber
-  export function reactive(value: boolean): Boolean & VBoolean
-  export function reactive<T>(value: T[]): VArray<T>
-  export function reactive<T, K, V>(value: Map<K, V>): VMap<K, V>
-  export function reactive<T, V>(value: Set<V>): VSet<V>
-  export function reactive<T>(value: T): Reacts<T>
+  export function reactive(initialValue: string): Vstring
+  export function reactive(initialValue: number): Vnumber
+  export function reactive(initialValue: boolean): Boolean & VBoolean
+  export function reactive<T>(initialValue: T[]): VArray<T>
+  export function reactive<T, K, V>(map: Map<K, V>): VMap<K, V>
+  export function reactive<T, V>(set: Set<V>): VSet<V>
+  export function reactive<T>(initialValue: T): Reacts<T>
 
   /**
   * Decorator function to be used for marking properties, classes, methods as reactive

@@ -10,10 +10,10 @@
 
 The basic approach of using Alkali within your application, is to first create "Variables" that holds your source data. A variable is the central entity in Alkali and represents a value that may change and can be reacted to. Next, we can traverse or transform variables into other derived variables. These variables can be used in the browser or server-side (in Node). In the browser, we can use these transformations, or the orginal variables directly, in element constructors to create bindings to DOM elements. A simple example would look like:
 ```javascript
-import { Variable, Div, Span } from 'alkali'
+import { reactive, Div, Span } from 'alkali'
 
 // construct a variable
-let greeting = new Variable('Hi')
+let greeting = reactive('Hi')
 // create a new variable based on the first
 let fullGreeting = greeting.to(greeting => greeting + ', World')
 // construct a div, with the fullGreeting variable bound as the content
@@ -37,6 +37,8 @@ Alkali is tested and runs on IE11+ or any other modern browser, and can also on 
 
 Again, the central entity in the data model system is a "Variable" (similar notion has variously been known by various names such as "reactive", "signal", "property", "stream", "observable", and others). This object represents and holds a value that may change in the future. A variable can also be likened to a promise, except it can continue to change, rather than resolving one time. Depending on the interface, we can read the value, be notified when it has changed, change the value, and get meta and error information about the type of the value.
 
+The simplest way to create a variable is by calling the `reactive(initialValue)` function, which will provided value as the initial value of the variable.
+
 Notifications of data changes are delivered by update notifications. When a downstream subscriber is interested in the results of a variable change, it can request the latest value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. And Variables support bi-directional flow. They can be updated as well as monitored.
 
 Variables also support promises as values, and the variable pipeline will handle waiting for a promises to resolve to do computations.
@@ -47,7 +49,7 @@ The Variable class can be extended and variable classes can be used like variabl
 
 The main/index module in alkali exports all of functionality in alkali. If you are using ES6 module format, you can import different constructors and utilities like:
 ```javascript
-import { Variable, Div } from 'alkali'
+import { reactive, Div } from 'alkali'
 ```
 Alkali uses UMD format, so it can be consumed by CommonJS or AMD module systems as well.
 
@@ -67,11 +69,37 @@ The [ts-transform-alkali](https://github.com/kriszyp/ts-transform-reactive) can 
 ## Babel Plugin for Reactive Expressions
 Also, the [babel-plugin-transform-alkali](https://github.com/kriszyp/babel-plugin-transform-alkali) can optionally be used to write and transform reactive expressions for babel.
 
+## reactive API
+
+The Variable is main API for creating variables with most data.
+
+### `reactive(initialValue: any)`: Variable
+This creates a new variable, using the intial value. The provided value will also be used to dictate the "type" or structure of the returned variable. Provide a primitive will return a variable with reactive methods mirroring the primitive methods. If you provide an object, it will return variable with reactive properties corresponding to the properties on the object. For example:
+```
+import { reactive } from 'alkali'
+let greeting = reactive('hello')
+let upperCaseHello = greeting.toUpperCase()
+upperCaseHello.valueOf() -> "HELLO"
+greeting.put('hi')
+upperCaseHello.valueOf() -> "HI" // reactively updates
+```
+
+Likewise returned variables will have reactive properties:
+```
+let person = reactive({
+	name: 'John',
+})
+let name = person.name
+name.valueOf() -> 'John'
+person.name = 'Jane'
+name.valueOf() -> 'Jane'
+```
+
 ## Variable API
 
-The Variable is main API for creating variables and their derivative.
+The Variable class defines the variable structure, their properties and methods, and provides a base class for creating new variable classes.
 
-### Variable(initialValue)
+### `new Variable(initialValue: any)`
 
 This is the constructor for a variable. You may create a variable with an initial value, provided as the optional argument.
 
@@ -79,8 +107,8 @@ This is the constructor for a variable. You may create a variable with an initia
 
 This returns the current value of the variable. This method also allows variables to be used directly in expressions in place of primitive values, where JavaScript coercion will automatically convert a value. For example a variable with the number 4 can be used:
 ```javascript
-import { Variable } from 'alkali' // assuming ES6 module transpilation
-let four = new Variable(4)
+import { reactive } from 'alkali' // assuming ES6 module transpilation
+let four = reactive(4)
 four * four -> 16
 '#' + four -> '#4'
 four < 5 -> true
@@ -98,7 +126,7 @@ If the `value` passed in is not different than the current value, no changes wil
 This returns a variable representing the value of the property of the variable. If this variable's value is an object, the property variable's value will be the value of the given property name. This variable will respond to changes in the object, and putting a value in a property variable will update the corresponding property on the parent object. For example:
 ```javascript
 let object = {foo: 1};
-let objectVar = new Variable(object);
+let objectVar = reactive(object);
 let foo = objectVar.property('foo');
 foo.valueOf() -> 1
 foo.put(2);
@@ -111,7 +139,7 @@ An optional class can be provided to define the class to use/instantiate for the
 
 This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be provided to the returned variable. For example:
 ```javascript
-let number = new Variable(3);
+let number = reactive(3);
 number.valueOf() -> 3
 let doubled = number.to((value) => value * 2);
 doubled.valueOf() -> 6
@@ -122,8 +150,8 @@ doubled.valueOf() -> 10
 
 A `to` function can return variables as well, in which case you can effectively chain variables together, merging their changes. For example:
 ```javascript
-let a = new Variable(1)
-let b = new Variable(2)
+let a = reactive(1)
+let b = reactive(2)
 let sum = a.to((aValue) => {
 	return b.to((bValue) => {
 		return aValue + bValue;
@@ -178,17 +206,17 @@ This static method will return a variable instance mapped to the target object. 
 This function allows you to compose a new variable from an array of input variables, where the resulting variable will update in response to changes from any of the input variables. The return variable will hold an array of values that represent the value of each of the input variable's values (in the same order as the variables were provided). This is intended to mirror the `Promise.all()` API. For example:
 
 ```javascript
-import { all, Variable } from 'alkali'
-let a = Variable(1);
-let b = Variable(2);
-let sum = Variable.all(a, b).to(([a, b]) => a + b);
+import { all, reactive } from 'alkali'
+let a = reactive(1);
+let b = reactive(2);
+let sum = all(a, b).to(([a, b]) => a + b);
 ```
 
 `all` will also work with a set of arguments, instead of an array. It was will also work with an object, in which case each property value will be resolved, and the result will resolved to an object with the resolved values.
 
 You can also provide an optional `transform` argument that will do a transform of the input values, which is essentially shorthand for `all(...).to(...)`:
 ```
-let sum = Variable.all([a, b], (a, b) => a + b);
+let sum = all([a, b], (a, b) => a + b);
 ```
 
 ## Variables as Arrays (`VArray`)
@@ -214,13 +242,13 @@ In addition, `keyBy` and `groupBy` methods are also available:
 
 ## Structured Variables
 
-With variables we can define structured data that will be represented by a corresponding variable structure. We can create new extended `Variable`s with their own object structure. This can be done by provided a structure in a direct call to `Variable` (without `new`) which will return an subclassed `Variable` class/constructor. Once we have defined the structure, these property variables will be available as properties directly on the variable class and instances. For example:
+With variables we can define structured data that will be represented by a corresponding variable structure. We can create new extended `Variable`s with their own object structure. This can be done by provided a structure in a call to `Variable.with` or a direct call (without `new`) which will return an subclassed `Variable` class/constructor. Once we have defined the structure, these property variables will be available as properties directly on the variable class and instances. For example:
 ```javascript
-let MyVariable = Variable({
-	name: Variable
+let MyVariable = Variable.with({
+	name: VString,
 	// we can subclass and define structures and use these in properties
 	subObject: Variable({
-		subValue: Variable,
+		subValue: VNumber,
 		foo: OtherCustomVariable
 	})
 })
@@ -229,16 +257,16 @@ let MyVariable = Variable({
 
 This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API). We can also values to these properties and they will be assigned to the value of the variable. For example:
 ```
-let myVar = new MyVariable({ name: 'Alkali' })
-myVar.name // the "name" property variable
-myVar.name.valueOf() -> 'Alkali'
-myVar.name.subscribe(event => console.log('new name', event.value()))
+let myVar = new MyVariable({ name: 'Alkali' });
+myVar.name; // the "name" property variable
+myVar.name.valueOf(); -> 'Alkali'
+myVar.name.subscribe(event => console.log('new name', event.value()));
 // assign a new value to the property, will trigger the listener
-myVar.name = 'New name'
+myVar.name = 'New name';
 // assignment the same as this:
-myVar.name.put('New name')
+myVar.name.put('New name');
 // we can traverse into the sub class/objects:
-myVar.subObject.subValue.put(3)
+myVar.subObject.subValue.put(3);
 ```
 We could go further and define list structures as well (here we demonstrate inline class definitions):
 ```javascript
@@ -246,9 +274,20 @@ let MyVariable = Variable({
 	myList: VArray.of(Variable({
 		foo: Variable()
 	}))
-})
+});
 ```
 
+## Variable Collections ('VCollection')
+Variable collections are a class that provides `Set` like interface, with a map-like implementation for storing values based on their id/primary-key, and provide `Array`'s iterative methods to easily access the data like an array. This is an excellent general purpose class for working with collections of objects, that have an identity.
+
+In addition, any time you create a new variable class (with `Variable.with`, `Variable`, or extending with `class` syntax), this class has its own implicit, default collection that can be accessed from the static `collection` property, and instances can be added to and removed from it. The idiomatic way to create a model class with alkali is to create a variable class and then using it's collection to manage and interact with the set of instances. For example:
+```
+let MyVariable = Variable.with({
+	name: VString,
+	age: VNumber
+});
+let john = MyVariable.collection.add({ name: "John", age: 17})
+```
 
 ### Primitive Typed Variables
 We can also define properties with a specific primitive type. Alkali exports classes for primitive typed variables:
@@ -358,7 +397,7 @@ Each of the property values will be assigned to the newly created element.
 
 If any of the values are alkali variables, they will be automatically bound to the element, reactively updating the element in response to any changes to the variable. For example:
 ```javascript
-let a = new Variable(1);
+let a = reactive(1);
 document.body.appendChild(new Div({title: a}));
 a.put(2); // will update the title of the div
 ```
@@ -412,12 +451,12 @@ let table = new Table([
 
 A variable may be provided directly as an argument as well. This variable will be connected to the default `content` of the element. Again, for most elements, this variable will be mapped to the text content of the element. For example:
 ```javascript
-let greeting = new Variable('Hello');
+let greeting = reactive('Hello');
 new Span(greeting);
 ```
 And for input elements, the `content` of the element is the value of the input. This makes it easy to setup bi-direction bindings from inputs to variables. For example:
 ```javascript
-let a = new Variable();
+let a = reactive();
 new TextInput(a);
 ```
 The variable `a` will be mapped to this new input. This means that any changes made to `a` will cause the input to be updated, and any changes that the user makes to the input will update the variable (two-way binding).
@@ -611,7 +650,7 @@ let MyLink = Anchor({
 		return 'Link to ' + (yield this.path)
 	}
 })
-let alkali = new Variable('alkali')
+let alkali = reactive('alkali')
 new MyLink({
 	domain: 'github.com', // these can be variables or static values
 	owner: 'kriszyp',
@@ -834,13 +873,13 @@ For example, we could create a simple variable:
 
 	var Variable = require('alkali/Variable');
 
-	var greeting = new Variable('Hi');
+	var greeting = reactive('Hi');
 
 And then define an updater:
 
 	import { Renderer } from 'alkali'
 
-	var greeting = new Variable('Hi');
+	var greeting = reactive('Hi');
 	new Renderer({
 		variable: myNumber,
 		element: someElement,
@@ -860,7 +899,7 @@ If your variables use promises, alkali will wait for the promise to resolve befo
 The plain JavaScript objects in a variable can be observed by the variable for changes. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observeObject` method on a variable. For example:
 
 	var myObject = {name: 'simple property'};
-	var myVariable = new Variable(myObject);
+	var myVariable = reactive(myObject);
 	// actively observe this object
 	myVariable.observeObject();
 	var nameProperty = myVariable.property('name');
@@ -883,7 +922,7 @@ double.reverse = function(output, inputs) {
 	// in reverse, we divide the value by 2
 	inputs[0].put(output.valueOf() / 2)
 }
-let aNumber = new Variable(4)
+let aNumber = reactive(4)
 let doubled = aNumber.to(double)
 doubled.valueOf() // -> returns 8
 doubled.put(20) // change the output, this will feed back up, and change the original variable
@@ -900,7 +939,7 @@ The computations (and invalidations) can be all be executed with an optional con
 Alkali variables that contain objects default to using copy-on-write semantics that protects object immutability. Whenever you `set` a property on a variable containing an object, a new copy of the object will be created and assigned the provide property value, leaving the original object untouched. For example:
 ```javascript
 let obj = {foo: 1}
-let v = new Variable(obj)
+let v = reactive(obj)
 v.set('foo', 2)
 v.valueOf() -> {foo: 2}
 obj.foo -> 1
@@ -908,7 +947,7 @@ obj.foo -> 1
 This behavior can be altered by setting the `isWritable` flag to false on a variable:
 ```javascript
 let obj = {foo: 1}
-let v = new Variable(obj)
+let v = reactive(obj)
 v.isWritable = false
 v.set('foo', 2)
 obj.foo -> 2
@@ -916,8 +955,9 @@ obj.foo -> 2
 
 Alkali variables can be assigned (with `put`) a value that is another variable. When this happens the first variable will receive the value of the assigned variable, and reflect any changes of the assigned or linked variable. The linked variable acts as an "upstream" source, and changes will propagate down. In a default assignment, changes will *not* propagate upstream, changes to the downstream variable will not affect the source. Again, a new copied object will be created to contain the changes of a downstream variable. For example:
 ```javascript
-let sourceVariable = new Variable({foo: 1})
-let containingVariable = new Variable(sourceVariable)
+let sourceVariable = reactive({foo: 1})
+let containingVariable = reactive()
+containingVariable.put(sourceVariable)
 sourceVariable.set('foo', 2) // this will propagate down to containingVariable
 containingVariable.set('foo', 3) // this will not affect the sourceVariable
 containingVariable.get('foo') -> 3
@@ -926,11 +966,10 @@ sourceVariable.get('foo') -> 2
 
 ## Variable Proxying
 
-However, there may be situations where you want to explicitly define a variable as a proxy, such that changes propagate to the source, as well as to the proxying variable. This can be done by using the `is` method to assign the variable:
+However, there may be situations where you want to explicitly define a variable as a proxy, such that changes propagate to the source, as well as to the proxying variable. This can be done by using the `is` method to assign the variable, or simply passing into the `reactive` function:
 ```javascript
-let sourceVariable = new Variable({foo: 1})
-let containingVariable = new Variable()
-containingVariable.is(sourceVariable)
+let sourceVariable = reactive({foo: 1})
+let containingVariable = reactive(sourceVariable)
 containingVariable.set('foo', 3) // this *will* affect the sourceVariable
 sourceVariable.get('foo') -> 3
 containingVariable.put({foo: 4}) // this will also affect the sourceVariable
@@ -942,7 +981,7 @@ Note that when returning a variable from `to` variable transform, the resulting 
 
 Alkali includes a variable Copy constructor, that allows you to maintain a copy of an object from another variable. Variable copies are very useful in situations where you want to reactively create a working copy of any object to edit and change, and potentially later save those changes back to the original object. For example, you may want to select an object to open in a form, and allow changes to be made in form. By using a working copy, the form edits can automatically be mapped to the object, but not committed back to the original object until later:
 
-	var selectedObject = new Variable(); // this will be set to the currently selected object
+	var selectedObject = reactive(); // this will be set to the currently selected object
 	var workingCopy = new Copy(selectedObject); // holds a copy of each object contained in selectedObject
 	var myForm = new MyForm({
 		variable: workingCopy // we can pass this to a form, with changing the original object
@@ -979,6 +1018,16 @@ The following methods are also available on variables (but mostly used internall
 
 This is called to indicate that the variable has been updated. This is typically called between dependent variables, but you can also call this to indicate that an object in a variable has been modified.
 
+### `notifies(listener: { updated: (updateEvent: Event) => any })`
+
+This can be used to listen for alkali update events. There are several differen types of events. The event type is indicated by the `type` property:
+* `"replaced"` - This indicates that the value of the variable was completely replaced with a new value. Tt should be considered an entirely new value. No incremental description is provided
+* `"property"` - This indicates that a property of the variabl's object was changed, and the property change is described in the `propertyEvent` event. A `key` property will indicate which property was changed.
+* `"added"` - This indicates a value was added to the variable's set, map, or collection. The value will be in the `value` property. Unless it was a set, a `key` property will also be included.
+* `"removed"` - This indicates a value was removed from the variable's set, map, or collection. The value will be in the `value` property. Unless it was a set, a `key` property will also be included.
+* `"entry"` - This indicates that an entry in the map, set, or collection was updated. The update event for that value/object will be in the `entryEvent` property.
+* `"spliced"` - This indicates that an array was modified. The event can include a `start`, `deleteCount`, and `items` properties to indicate the array items that were deleted and/or added.
+
 ### `apply(instance, functionVariable)`
 
 This allows you to execute a function that is the value of a variable, with arguments that come from other variables, (and an instance variable) returning a new variable representing the return value of that function call. The returned variable's valueOf will return the return value of the function's execution. If the this variable, or the instance variable, or any of the argument variables are updated, than the returned variable will update. The function can be re-executed with the changed values on the next call to valueOf.
@@ -989,12 +1038,12 @@ This will cause the variable to act as a direct proxy for the source variable, a
 
 ### `whileResolving(valueUntilResolved?, useLastValue: boolean?)`
 Returns a new variable that is sourced from `this` variable and when the source
-returns asynchronously (an upstream promise), this will immediately return 
+returns asynchronously (an upstream promise), this will immediately return
 the `valueUntilResolved` until the `this` variable is resolved (and which point
 it will update and return that source value). If `useLastValue` is true, once the
 variable has been resolved, the last resolved value will be used until the
 next resolution. If no arguments are provided, will default to using the
-last resolved value (with `undefined` returned until the first resolution). 
+last resolved value (with `undefined` returned until the first resolution).
 
 ### `Variable.proxy(source)`
 
