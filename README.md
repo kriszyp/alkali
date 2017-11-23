@@ -278,7 +278,7 @@ let MyVariable = Variable({
 ```
 
 ## Variable Collections ('VCollection')
-Variable collections are a class that provides `Set` like interface, with a map-like implementation for storing values based on their id/primary-key, and provide `Array`'s iterative methods to easily access the data like an array. This is an excellent general purpose class for working with collections of objects, that have an identity.
+Variable collections are a class that extends `VArray` and implements the `Set` interface with a key-based interaction, for retrieving values based on their id/primary-key, ensuring unique keys, and provide `Array`'s iterative methods to continue to access the data as an array. This is an excellent general purpose class for working with collections of objects, that have an identity.
 
 In addition, any time you create a new variable class (with `Variable.with`, `Variable`, or extending with `class` syntax), this class has its own implicit, default collection that can be accessed from the static `collection` property, and instances can be added to and removed from it. The idiomatic way to create a model class with alkali is to create a variable class and then using it's collection to manage and interact with the set of instances. For example:
 ```
@@ -286,7 +286,13 @@ let MyVariable = Variable.with({
 	name: VString,
 	age: VNumber
 });
-let john = MyVariable.collection.add({ name: "John", age: 17})
+let john = MyVariable.collection.push({ name: "John", age: 17})
+```
+
+Furthermore, for convenience in using this idiomatic pattern, the array methods are directly available as static methods on the model class:
+```
+MyVariable.push({ name: "John", age: 17})
+let filtered = MyVariable.filter(person => person.age > 15)
 ```
 
 ### Primitive Typed Variables
@@ -1081,6 +1087,18 @@ Alkali includes several operator functions for combining variables with operator
 * `and(a, b)` - Returns a variable corresponding to a && b
 * `or(a, b)` - Returns a variable corresponding to a || b
 * `round(a, decimals)` - Returns a variable corresponding to rounded a, optionally to provided decimal points
+
+## Other Alkali Functions and Properties
+
+### `delayUpdate(variable, until)`
+This can be used to delay the update or rendering from a variable that has been updated. For example:
+```
+let v = reactive(3)
+let v2 = v.to(reallyExpensive)
+new Div(v2)
+delayUpdate(v, new Promise((resolve) => setTimeout(resolve, 1000)))
+v.put(5)
+```
 
 ## Which Listener To Use?
 

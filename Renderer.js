@@ -72,15 +72,15 @@
 						}*/
 					})
 				} else {
-				// do this only once, until we render again
+					// do this only once, until we render again
 					this.invalidated = true
 				}
 				if (this.deferredRender) {
 					this.deferredRender.isCanceled = true
 					this.deferredRender = null
 				}
-				var renderer = this
-				requestAnimationFrame(function() {
+				var renderer = this;
+				(updateEvent.visited.enqueueUpdate || requestAnimationFrame)(function() {
 					if (renderer.invalidated === true) {
 						renderer.updateRendering(renderer.alwaysUpdate, renderer.element)
 					} else {
@@ -390,7 +390,7 @@
 	TextRenderer.prototype.type = 'TextRenderer'
 	TextRenderer.prototype.updated = function (updateEvent, context) {
 		if (this.builtList) {
-			if (updateEvent.type === 'refresh') {
+			if (updateEvent.type === 'replaced') {
 				this.builtList = false
 				this.omitValueOf = false
 			} else {
@@ -433,7 +433,7 @@
 	ListRenderer.prototype = Object.create(ElementRenderer.prototype)
 	ListRenderer.prototype.updated = function (updateEvent, context) {
 		if (this.builtList) {
-			if (updateEvent.type === 'refresh') {
+			if (updateEvent.type === 'replaced') {
 				this.builtList = false
 				this.omitValueOf = false
 			} else {
@@ -478,20 +478,20 @@
 					for (var i = 0, l = childElements.length; i < l; i++) {
 						thisElement.removeChild(childElements[i])
 					}
-					renderer.renderUpdate()
+					renderer.updateElement(thisElement)
 				} else {
-					var index = update.startingIndex
+					var index = update.start
 					for (var i = 0; i < update.deleteCount; i++) {
-						thisElement.removeChild(childElements[update.startingIndex])
+						thisElement.removeChild(childElements[update.start + i])
 					}
-					childElements.splice(update.startingIndex, update.deleteCount)
+					childElements.splice(update.start, update.deleteCount)
 					for (var i = 0; i < update.items.length; i++) {
 						var value = update.items[i]
-						var nextChild = childElements[i + update.startingIndex]
+						var nextChild = childElements[i + update.start]
 						var newElement = Renderer.append(thisElement, eachItem(value))
 						if (nextChild) {
 							thisElement.insertBefore(newElement, nextChild)
-							childElements.splice(i + update.startingIndex, 0, newElement)
+							childElements.splice(i + update.start, 0, newElement)
 						} else {
 							childElements.push(newElement)
 						}

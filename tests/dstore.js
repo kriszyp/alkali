@@ -40,15 +40,15 @@ define(function(require) {
 			assert.strictEqual(count.valueOf(), 3)
 			store.add({id: 4, name: 'four'})
 			assert.strictEqual(count.valueOf(), 4)
-			assert.strictEqual(lastCountUpdate.type, 'refresh')
+			assert.strictEqual(lastCountUpdate.type, 'replaced')
 			lastCountUpdate = null
 			store.remove(2)
 			assert.strictEqual(count.valueOf(), 3)
-			assert.strictEqual(lastCountUpdate.type, 'refresh')
+			assert.strictEqual(lastCountUpdate.type, 'replaced')
 			lastCountUpdate = null
 			store.put({id: 4, name: 'FOUR'})
 			assert.strictEqual(count.valueOf(), 3)
-			assert.strictEqual(lastCountUpdate.type, 'refresh')
+			assert.strictEqual(lastCountUpdate.type, 'replaced')
 		})
 		test('resolveDStoreAsyncPromise', function() {
 			var store = new Memory({

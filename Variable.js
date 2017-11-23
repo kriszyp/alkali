@@ -219,11 +219,13 @@
 	}
 	PropertyChangeEvent.prototype.type = 'property'
 
-	function SplicedEvent(start, deleteCount, items) {
+	function SplicedEvent(modifier, items, removed, start, deleteCount) {
 		this.visited = new Set()
+		this.modifier = modifier
+		this.items = items
+		this.removed = removed
 		this.start = start
 		this.deleteCount = deleteCount
-		this.items = items
 	}
 	SplicedEvent.prototype.type = 'spliced'
 	function EntryEvent(key, value, entryEvent) {
@@ -234,7 +236,7 @@
 	}
 	EntryEvent.prototype.type = 'entry'
 	EntryEvent.prototype.doesAffect = function(subject) {
-		return this.value.constructor.for(subject).id == this.value.id
+		return this.value.constructor.for(subject).id.valueOf() == this.value.id.valueOf()
 	}
 
 	function DeletedEvent(key, value) {
@@ -899,7 +901,6 @@
 			}
 		},
 		put: function(value, event) {
-			var variable = this
 			if (this.parent) {
 				return this._changeValue(RequestChange, value, event)
 			}
@@ -909,7 +910,7 @@
 			}
 			if (oldValue && oldValue.put &&
 					// if it is set to fixed, we see we can put in the current variable
-					(variable.fixed || !(value && value.put))) {
+					(this.fixed || !(value && value.put))) {
 				try {
 					return oldValue.put(value)
 				} catch (error) {
@@ -921,12 +922,12 @@
 			if (value && value.then && !value.notifies) {
 				value = assignPromise(this, value)
 			} else {
-				variable.value = value
+				this.value = value
 			}
 			event = event || new ReplacedEvent()
 			event.oldValue = oldValue
-			event.target = variable
-			variable.updated(event, variable)
+			event.target = this
+			this.updated(event, this)
 			return value
 		},
 		get: function(key) {
@@ -1361,15 +1362,23 @@
 				: []
 			return callback.call(variable, newArray, function(startingIndex, deleteCount, items) {
 				if (startingIndex < 0) {
-					startingIndex = array.length + startingIndex
+					startingIndex = newArray.length + startingIndex
 				}
-				var results = array.splice.apply(array, [startingIndex, deleteCount].concat(items))
-				var event = new SplicedEvent(startingIndex, deleteCount, items)
+				if (startingIndex === newArray.length) {
+					var atEnd = true
+				}
+				var spliceArgs = [startingIndex, deleteCount]
+				spliceArgs.push.apply(spliceArgs, items)
+				var results = newArray.splice.apply(newArray, spliceArgs)
+				var event = new SplicedEvent(variable, items, results, startingIndex, deleteCount)
+				if (atEnd) {
+					event.atEnd = true
+				}
 				var addedCount = items.length
 				// adjust the key positions of any index properties after splice
 				if (addedCount > 0) {
 					var arrayPosition
-					for (var i = arrayLength - addedCount; i > startingIndex;) {
+					for (var i = newArray.length - addedCount; i > startingIndex;) {
 						var arrayPosition = variable[--i]
 						if (arrayPosition) {
 							variable[i] = undefined
@@ -1852,14 +1861,14 @@
 		},
 		splice: function(start, deleteCount) {
 			var args = arguments
-			return arrayToModify(this, function(array) {
+			return arrayToModify(this, function(array, doSplice) {
 				return doSplice(start, deleteCount, [].slice.call(args, 2))
 			})
 		},
 		push: function() {
 			var args = arguments
 			return arrayToModify(this, function(array, doSplice) {
-				return when(doSplice(this, array.length, 0, args), function(results) {
+				return when(doSplice(array.length, 0, [].slice.call(args)), function(results) {
 					return array.length
 				})
 			})
@@ -1867,21 +1876,21 @@
 		unshift: function() {
 			var args = arguments
 			return arrayToModify(this, function(array, doSplice) {
-				return when(doSplice(this, 0, 0, args), function(results) {
+				return when(doSplice(0, 0, [].slice.call(args)), function(results) {
 					return array.length
 				})
 			})
 		},
 		pop: function() {
 			return arrayToModify(this, function(array, doSplice) {
-				return when(doSplice(this, array.length - 1, 1, []), function(results) {
+				return when(doSplice(array.length - 1, 1, []), function(results) {
 					return results[0]
 				})
 			})
 		},
 		shift: function() {
 			return arrayToModify(this, function(array, doSplice) {
-				return when(doSplice(this, 0, 1, []), function(results) {
+				return when(doSplice(0, 1, []), function(results) {
 					return results[0]
 				})
 			})
@@ -1921,35 +1930,15 @@
 		return ArrayClass
 	}
 
-	function toArray(keyValue) {
-		return function(set) {
-			var newArray = []
-			if (set.forEach) {
-				set.forEach(keyValue ?
-					function(key, item) {
-						newArray.push(item)
-					} :
-					function(item) {
-						newArray.push(item)
-					})
-			}
-			var sortFunction = this.sortFunction
-			if (sortFunction) {
-				if (this.reversed) {
-					var originalSortFunction = sortFunction
-					sortFunction = function(a, b) {
-						return sortFunction(b, a)
-					}
-				}
-				newArray.sort(sortFunction)
-			} else if (this.reversed) {
-				newArray.reverse()
-			}
-			return newArray
+	function setToArray(set) {
+		var newArray = []
+		if (set.forEach) {
+			set.forEach(function(item) {
+				newArray.push(item)
+			})
 		}
+		return newArray
 	}
-	var setToArray = toArray()
-	var mapToArray = toArray(true)
 
 	var getValue
 	var GeneratorVariable = lang.compose(Transform, function ReactiveGenerator(generator){
@@ -2188,6 +2177,15 @@
 		}
 		return method
 	}
+	function delayUpdate(variable, promise) {
+		var originalUpdated = variable.updated
+		variable.updated = function() {
+			var event = originalUpdated.apply(this, arguments)
+			event.visited.enqueueUpdate = function(update) {
+				promise.then(update)
+			}
+		}
+	}
 
 	var defaultContext = {
 		name: 'Default context',
@@ -2384,11 +2382,11 @@
 	}
 
 	function VString(value) {
-		return makeSubVar(this, (typeof value === 'object' || value == null) ? value : String(value), VString)
+		return makeSubVar(this, (typeof value === 'object' || value === undefined) ? value : String(value), VString)
 	}
 
 	function VNumber(value) {
-		return makeSubVar(this, typeof value === 'object' ? value : Number(value), VNumber)
+		return makeSubVar(this, (typeof value === 'object' || value === undefined) ? value : Number(value), VNumber)
 	}
 
 	VString = Variable.with({
@@ -2432,67 +2430,49 @@
 		}
 	})
 
-	function VCollection(value) {
-		var SubClass = makeSubVar(this, value, VCollection)
-		if (SubClass) {
-			return SubClass
-		}
-		this._instanceMap = new lang.Map()
-	}
-	VCollection = VSet.with({
+	var VCollection = VArray.with({
 		getId: function(instance) {
 			return instance.id
 		},
+		_indexOfById(id) {
+			var array = this.value || []
+			for (var i = 0, l = array.length; i < l; i++) {
+				if (this.getId(array[i]) == id) {
+					return i
+				}
+			}
+			return -1
+		},
 		for: function(id) {
-			var instance = new this.collectionOf().is(this._instanceMap.get(id))
+			var i = this._indexOfById(id)
+			var instance = new this.collectionOf().is(this.value && this.value[i] || {})
 			instance.id = id
 			return instance
 		},
 		add: function(value) {
 			let id = this.getId(value)
-			this._instanceMap.set(id, value)
-			let instance = this.for(id)
-			this.updated(new AddedEvent(id, instance))
-			return instance
-		},
-		put: function(value) {
-			this._instanceMap.set(this.getId(value), value)
-			return this.for(id)
+			if (this._indexOfById(id) === -1) {
+				this.push(value)
+			}
 		},
 		delete: function(instanceOrId) {
 			var id = typeof instanceOrId == 'object' ? this.getId(instanceOrId) : instanceOrId
-			var previousValue = this._instanceMap.get(id)
-			var Class = this.collectionOf
-			var event = new DeletedEvent(id, previousValue)
-			this._instanceMap.delete(id)
-			this.updated(event)
+			var removeIndex = this._indexOfById(instanceOrId)
+			if (removeIndex > -1) {
+				this.splice(removeIndex, 1)
+			}
+			return this
 		},
 		clear: function() {
-			this._instanceMap.clear()
-			this.updated()
+			this.is([])
 		},
 		forEach: function(callback) {
 			var collection = this
 			Array.from(this._instanceMap.keys()).forEach(function(id) {
 				callback(collection.for(id))
 			})
-		},
-		sort: function(compareFunction) {
-			return this.array.sort(compareFunction)
-		},
-		reverse: function() {
-			return this.array.reverse()
-		},
-		valueOf: function() {
-			return Array.from(this._instanceMap ? this._instanceMap.values() : [])
-		}
-	}, VCollection)
-	Object.defineProperty(VCollection.prototype, 'array', {
-		get: function() {
-			return this._array || (this._array = this.to(mapToArray).as(VArray))
 		}
 	})
-
 
 	function VDate(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : new Date(value), VDate)
@@ -2535,6 +2515,7 @@
 		NotifyingContext: NotifyingContext,
 		all: all,
 		react: react,
+		delayUpdate: delayUpdate,
 		objectUpdated: objectUpdated,
 		NOT_MODIFIED: NOT_MODIFIED
 	}
@@ -2589,9 +2570,8 @@
 		var IterativeResults = lang.compose(returns ? returns.as(IterativeMethod) : IterativeMethod, constructor, properties)
 		IterativeResults.prototype.method || (IterativeResults.prototype.method = method)
 		Object.defineProperty(IterativeResults.prototype, 'isIterable', {value: true});
-		definedOn = definedOn || [VArray, VCollection];
-		(definedOn[0])[method] = (definedOn[0]).prototype[method] =
-		(definedOn[1] || false)[method] = (definedOn[1] ? definedOn[1].prototype : false)[method] = function() {
+		definedOn = definedOn || VArray;
+		definedOn[method] = definedOn.prototype[method] = function() {
 			var results = new IterativeResults(this)
 			results.source = this
 			results.arguments = arguments
@@ -2610,24 +2590,11 @@
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
 			if (event.type === 'spliced') {
-				if (event.actions) {
-					for (var i = 0, l = event.actions.length; i < l; i++) {
-						var action = event.actions[i]
-						if (action.oldValue) {
-							var index = contextualizedVariable.cachedValue.indexOf(event.oldValue)
-							if (index > -1) {
-								contextualizedVariable.splice(index, 1)
-							}
-						}
-						if (action.value) {
-							if ([event.value].filter(this.arguments[0]).length > 0) {
-								contextualizedVariable.push(event.value)
-							}
-						}
-					}
-				}
-			} else if (event.type === 'update') {
-				var object = event.parent.valueOf()
+				return Variable.prototype.updated.call(this,
+					new SplicedEvent(this, event.items.filter(this.arguments[0]), event.removed.filter(this.arguments[0])),
+					by, isDownstream)
+			} else if (event.type === 'entry') {
+				var object = event.value.valueOf()
 				var index = contextualizedVariable.cachedValue.indexOf(object)
 				var matches = [object].filter(this.arguments[0]).length > 0
 				if (index > -1) {
@@ -2649,7 +2616,7 @@
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		}
-	}, VArray, [VArray])
+	}, VArray)
 	defineIterativeFunction('map', function Mapped(source) {
 		this._isStrictArray = source._isStrictArray
 	}, {
@@ -2676,8 +2643,8 @@
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
 			if (event.type === 'spliced') {
-				this.splice.apply(this, [event.start, event.deleteCount].concat(event.items))
-			} else if (event.type === 'entry') {
+				this.splice.apply(this, [event.start, event.deleteCount].concat(event.items.map(this.arguments[0])))
+			} else if (event.type === 'property') {
 				if (this.getCollectionOf()) {
 					return // if it has typed items, we don't need to propagate update events, since they will be handled by the variable item.
 				}
@@ -2697,11 +2664,16 @@
 				} else {
 					return Transform.prototype.updated.call(this, event, by, isDownstream)
 				}
+			} else if (event.type === 'entry') {
+				if (this.getCollectionOf()) {
+					return // if it has typed items, we don't need to propagate update events, since they will be handled by the variable item.
+				}
+				// TODO: find the element
 			} else {
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		}
-	}, VArray, [VArray])
+	}, VArray)
 	defineIterativeFunction('reduce', function Reduced() {})
 	defineIterativeFunction('reduceRight', function Reduced() {})
 	defineIterativeFunction('some', function Aggregated() {}, {}, VBoolean)
@@ -2759,7 +2731,7 @@
 			return index
 		}
 	})
-
+/*
 
 	defineIterativeFunction('filter', function FilteredCollection(source) {
 		if (source.collectionOf) {
@@ -2784,7 +2756,7 @@
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		}
-	}, VCollection, [VCollection])
+	}, VCollection, VCollection)
 	defineIterativeFunction('map', function MappedCollection(source) {
 		this._isStrictArray = source._isStrictArray
 	}, {
@@ -2801,8 +2773,8 @@
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		}
-	}, VCollection, [VCollection])
-
+	}, VCollection, VCollection)
+*/
 	var getGeneratorDescriptor = Variable.getGeneratorDescriptor = function(value) {
 		var variables
 		return {
