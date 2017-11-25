@@ -1289,6 +1289,8 @@
 	}
 
 	function makePreBoundVariable(variable) {
+		// once the variable has been bound for the whole collection, we don't want to
+		// create a listener for each instance
 		return {
 			variable: variable,
 			then(callback, errorHandler) {
@@ -1302,13 +1304,13 @@
 	function bindElementClass(Element, options) {
 		var applyOnCreate = getApplySet(Element)
 		var preBoundProperties = {}
+		var propertyHandlers = Element.prototype._propertyHandlers
 		for (var key in applyOnCreate) {
 			var value = applyOnCreate[key]
-			// TODO: Create single instances of all these functions
-			if (value && value.notifies) {
+			if (value && value.notifies && propertyHandlers[key] === true) {
 				new PropertyRenderer({
 					name: key,
-					variable: value,
+					variable: value.collection || value,
 					getElements: function() {
 						if (options.uniqueTag) {
 							return document.getElementsByTagName(BoundElement.tagName)
@@ -1348,7 +1350,7 @@
 						}
 						return getElementInstances(BoundElement, options.parent)
 					}, // TODO: find main text node
-					variable: content,
+					variable: content.collection || content,
 					position: 0
 				})
 				preBoundProperties.content = makePreBoundVariable(content)

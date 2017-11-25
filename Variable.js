@@ -2264,6 +2264,14 @@
 			return new this(value)
 		}
 	}
+	Variable.notifies = function(target) {
+		var instance = instanceForContext(this, context)
+		instance.notifies(target)
+		return instance
+	}
+	Variable.stopNotifies = function(target) {
+		this.defaultInstance.stopNotifies(target)
+	}
 	Variable.getCollectionOf = function () {
 		return this.collectionOf
 	}
@@ -2273,7 +2281,7 @@
 	Variable._Transform = ContextualTransform;
 
 	// delegate to the variable's collection
-	['add', 'delete', 'clear', 'filter', 'map', 'forEach', 'notifies', 'stopNotifies'].forEach(function(name) {
+	['add', 'delete', 'clear', 'filter', 'map', 'forEach'].forEach(function(name) {
 		Variable[name] = function() {
 			return this.collection[name].apply(this.collection, arguments)
 		}
