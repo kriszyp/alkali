@@ -5,6 +5,7 @@
 
 	var Transform = VariableExports.Transform
 	var Variable = VariableExports.Variable
+	var changeValue = VariableExports._changeValue
 	var VArray = VariableExports.VArray
 	var isGenerator = lang.isGenerator
 	var ObjectTransform = lang.compose(Transform, function ObjectTransform(source, transform, sources) {
@@ -129,7 +130,7 @@
 		},
 		set: function(target, key, value) {
 			var property = target[key]
-			property.parent ? property._changeValue(3, value) : property.put(value)
+			property.parent ? changeValue(property, 3, value) : property.put(value)
 		},
 		prop: function(Type) {
 			return function(prototype, key) {

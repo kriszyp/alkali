@@ -552,84 +552,6 @@
 			this._isWritable = isWritable
 		},
 		_isWritable: true,
-		_changeValue: function(type, newValue, event) {
-			var key = this.key
-			var parent = this.parent
-			if (!parent) {
-				return this.put(newValue, event)
-			}
-			var variable = this
-			var object = parent.getValue ? parent.getValue(true) : parent.value
-			if (object != null) {
-				if (typeof object != 'object') {
-					// if the parent is not an object, we can't set anything (that will be retained)
-					var error = new Error('Can not set property on non-object')
-					error.deniedPut = true
-					throw error
-				}
-				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-				if (oldValue === newValue && typeof newValue != 'object') {
-					// no actual change to make
-					return noChange
-				}
-			}
-			if (object && typeof object.set === 'function') {
-				object.set(key, newValue, event)
-			} else {
-				if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
-					// if a put and the property value is a variable, assign it to that.
-					return oldValue.put(newValue, event)
-				} else {
-					if (newValue && newValue.then && !newValue.notifies) {
-						// wait for it to resolve and then assign
-						return newValue.then(function(newValue) {
-							return variable._changeValue(type, newValue, event)
-						})
-					} else {
-						// copy, if this is a copy-on-write variable
-						// nothing there yet, create an object to hold the new property
-						var newObject = object == null
-							? typeof key == 'number' ? [] : {}
-							: parent.isWritable
-								? lang.copy(
-									object.constructor === Object
-									?	{}
-									:	object.constructor === Array
-										?	[]
-										: Object.create(Object.getPrototypeOf(object)), object)
-								: object
-						newObject[key] = newValue
-					}
-					// or set the setter/getter
-				}
-				event = event || new ReplacedEvent()
-				var parentEvent = new PropertyChangeEvent(key, event, this)
-				parentEvent.oldValue = oldValue
-				parentEvent.target = variable
-				return when(newObject === object ?
-						parent.updated(parentEvent, this) :
-						parent.put(newObject, parentEvent), function() {
-					variable.updated(event, variable)
-				})
-			}
-			variable.updated(event, variable)
-
-			// now notify any object listeners
-			var listeners = propertyListenersMap.get(object)
-			// we need to do it before the other listeners, so we can update it before
-			// we trigger a full clobbering of the object
-			if (listeners) {
-				listeners = listeners.slice(0)
-				for (var i = 0, l = listeners.length; i < l; i++) {
-					var listener = listeners[i]
-					if (listener !== parent) {
-						// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
-						listener.updated(event)
-					}
-				}
-			}
-			return newValue
-		},
 
 		_propertyChange: function(propertyName, object, type) {
 			if (this.onPropertyChange) {
@@ -902,7 +824,7 @@
 		},
 		put: function(value, event) {
 			if (this.parent) {
-				return this._changeValue(RequestChange, value, event)
+				return changeValue(this, RequestChange, value, event)
 			}
 			var oldValue = this.getValue ? this.getValue() : this.value
 			if (oldValue === value && typeof value != 'object') {
@@ -950,7 +872,7 @@
 		},
 		set: function(key, value, event) {
 			// TODO: create an optimized route when the property doesn't exist yet
-			this.property(key)._changeValue(RequestSet, value, event)
+			changeValue(this.property(key), RequestSet, value, event)
 		},
 		undefine: function(key) {
 			this.set(key, undefined)
@@ -1233,6 +1155,85 @@
 		}
 	}
 
+	function changeValue(variable, type, newValue, event) {
+		var key = variable.key
+		var parent = variable.parent
+		if (!parent) {
+			return variable.put(newValue, event)
+		}
+		var object = parent.getValue ? parent.getValue(true) : parent.value
+		if (object != null) {
+			if (typeof object != 'object') {
+				// if the parent is not an object, we can't set anything (that will be retained)
+				var error = new Error('Can not set property on non-object')
+				error.deniedPut = true
+				throw error
+			}
+			var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
+			if (oldValue === newValue && typeof newValue != 'object') {
+				// no actual change to make
+				return noChange
+			}
+		}
+		if (object && typeof object.set === 'function') {
+			object.set(key, newValue, event)
+		} else {
+			if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
+				// if a put and the property value is a variable, assign it to that.
+				return oldValue.put(newValue, event)
+			} else {
+				if (newValue && newValue.then && !newValue.notifies) {
+					// wait for it to resolve and then assign
+					return newValue.then(function(newValue) {
+						return changeValue(variable, type, newValue, event)
+					})
+				} else {
+					// copy, if this is a copy-on-write variable
+					// nothing there yet, create an object to hold the new property
+					var newObject = object == null
+						? typeof key == 'number' ? [] : {}
+						: parent.isWritable
+							? lang.copy(
+								object.constructor === Object
+								?	{}
+								:	object.constructor === Array
+									?	[]
+									: Object.create(Object.getPrototypeOf(object)), object)
+							: object
+					newObject[key] = newValue
+				}
+				// or set the setter/getter
+			}
+			event = event || new ReplacedEvent()
+			var parentEvent = new PropertyChangeEvent(key, event, variable)
+			parentEvent.oldValue = oldValue
+			parentEvent.target = variable
+			return when(newObject === object ?
+					parent.updated(parentEvent, variable) :
+					parent.put(newObject, parentEvent), function() {
+				variable.updated(event, variable)
+			})
+		}
+		variable.updated(event, variable)
+
+		// now notify any object listeners
+		var listeners = propertyListenersMap.get(object)
+		// we need to do it before the other listeners, so we can update it before
+		// we trigger a full clobbering of the object
+		if (listeners) {
+			listeners = listeners.slice(0)
+			for (var i = 0, l = listeners.length; i < l; i++) {
+				var listener = listeners[i]
+				if (listener !== parent) {
+					// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
+					listener.updated(event)
+				}
+			}
+		}
+		return newValue
+	}
+
+
 	// a variable inheritance change goes through its own prototype, so classes/constructor
 	// can be used as variables as well
 	for (var key in VariablePrototype) {
@@ -1307,7 +1308,7 @@
 								return property
 							},
 							set: function(value) {
-								this[key]._changeValue(RequestSet, value)
+								changeValue(this[key], RequestSet, value)
 							},
 							enumerable: true
 						}
@@ -2582,7 +2583,8 @@
 		react: react,
 		delayUpdate: delayUpdate,
 		objectUpdated: objectUpdated,
-		NOT_MODIFIED: NOT_MODIFIED
+		NOT_MODIFIED: NOT_MODIFIED,
+		_changeValue: changeValue
 	}
 	Object.defineProperty(exports, 'currentContext', {
 		get: function() {

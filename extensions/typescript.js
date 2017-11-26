@@ -1,5 +1,5 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-  define(['../Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
+  define(['../Variable'], factory) } else if (typeof module === 'object' && module.exports) {
   module.exports = factory(require('../Variable')) // Node
 }}(this, function (VariableExports) {
 
@@ -24,7 +24,7 @@ return {
       },
       set: function(value) {
         var property = this[key]
-        property.parent ? property._changeValue(null, 4, value) : property.put(value)
+        property.parent ? VariableExports._changeValue(property, null, 4, value) : property.put(value)
       },
       enumerable: true
     })
