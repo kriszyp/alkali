@@ -1266,12 +1266,16 @@
 			prototype = ExtendedVariable.prototype
 		} else {
 			// extending function/constructor
-			ExtendedVariable = ExtendedVariable || function() {
-				if (this instanceof ExtendedVariable) {
-					Base.apply(this, arguments)
-				} else {
-					return ExtendedVariable.with(properties)
+			var \u03A9 = {} // purely to give a descriptive name to the extended variable
+			if (!ExtendedVariable) {
+				\u03A9[this.name] = ExtendedVariable || function() {
+					if (this instanceof ExtendedVariable) {
+						Base.apply(this, arguments)
+					} else {
+						return ExtendedVariable.with(properties)
+					}
 				}
+				ExtendedVariable = \u03A9[this.name]
 			}
 			prototype = ExtendedVariable.prototype = Object.create(this.prototype)
 			prototype.constructor = ExtendedVariable
@@ -1368,9 +1372,21 @@
 					var atEnd = true
 				}
 				var spliceArgs = [startingIndex, deleteCount]
+				var collectionOf = variable.collectionOf
+				if (collectionOf) {
+					if (variable._isArraySynced) {
+						var typedItems = items.map(function(item) {
+							return item instanceof collectionOf ? item : collectionOf.from(item)
+						})
+						var typedResults = [].splice.apply(variable, spliceArgs.concat(typedItems))
+					}
+					items = items.map(function(item) {
+						return item instanceof collectionOf ? item.valueOf() : item
+					})
+				}
 				spliceArgs.push.apply(spliceArgs, items)
 				var results = newArray.splice.apply(newArray, spliceArgs)
-				var event = new SplicedEvent(variable, items, results, startingIndex, deleteCount)
+				var event = new SplicedEvent(variable, typedItems || items, typedResults || results, startingIndex, deleteCount)
 				if (atEnd) {
 					event.atEnd = true
 				}
@@ -1840,21 +1856,40 @@
 	var VArray = Variable.VArray = lang.compose(Variable, function VArray(value) {
 		return makeSubVar(this, value, VArray)
 	}, {
-		_isStrictArray: true,
-		/* TODO: at some point, we might add support for length, but need to make it be dependent/notified by array changes
-		get length() {
-			if (typeof this !== 'function') {
-				Object.defineProperty(this, 'length', {
-					configurable: true
-				})
-				return this.property('length')
+		_typedArray: function(allowPromise) {
+			var value = Variable.prototype.valueOf.call(this, allowPromise)
+			var collectionOf = this.collectionOf
+			if (this._isArraySynced) {
+				return collectionOf ? this : value
 			}
-		},
-		set length(length) {
-			// allow overriding
-			Object.defineProperty(this, 'length', {
-				value: length
+			var varray = this
+			return when(value, function(array) {
+				varray._isArraySynced = true
+				if (!array) {
+					varray.value = []
+					return varray
+				}
+				if (!(array instanceof Array)) {
+					array = [array]
+				}
+				if (collectionOf) {
+					// TODO: eventually we may want to do this even more lazily for slice operations
+					[].push.apply(varray, array.map(function(item) {
+						return item instanceof collectionOf ? item : collectionOf.from(item)
+					}))
+					return varray
+				} else {
+					return array
+				}
 			})
+		},/*
+		is: function(array) {
+			this._isArrayTyped = false
+			return Variable.prototype.is(array)
+		},
+		put: function(array, event) {
+			this._isArrayTyped = false
+			return Variable.prototype.put(array, event)
 		},*/
 		property: function(key, PropertyClass) {
 			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
@@ -1921,6 +1956,28 @@
 			})
 		}
 	})
+	/*Object.defineProperty(VArray.prototype, 'length', {
+		get: function() {
+			if (typeof this !== 'function') {
+				var properties = this._properties || (this._properties = {})
+				if (!properties.length) {
+					var length = properties.length = new VNumber()
+					length.key = 'length'
+					length.parent = this
+					Object.defineProperty(this, 'length', {
+						configurable: true,
+						value: length
+					})
+					return length
+				}
+			}
+		},
+		configurable: true/*
+		set length(length) {
+			// allow overriding
+			this.value.length = length
+		},
+	})*/
 	VArray.of = function(collectionOf) {
 		var ArrayClass = VArray({collectionOf: collectionOf})
 		if (this !== VArray) {
@@ -2281,7 +2338,7 @@
 	Variable._Transform = ContextualTransform;
 
 	// delegate to the variable's collection
-	['add', 'delete', 'clear', 'filter', 'map', 'forEach'].forEach(function(name) {
+	['add', 'delete', 'clear', 'filter', 'map', 'forEach', '_typedArray'].forEach(function(name) {
 		Variable[name] = function() {
 			return this.collection[name].apply(this.collection, arguments)
 		}
@@ -2541,21 +2598,11 @@
 	}, {
 		transform: function(array) {
 			var method = this.method
-			var isStrictArray = this.source && this.source._isStrictArray
-			if (array && array.forEach) {
-				// already an array
-				//array = this._mappedItems(array)
-			} else if (isStrictArray) {
-				array = []
-			} else {
-				// if not an array convert to an array
-				array = [array]
-			}
 			if (typeof method === 'string') {
 				// apply method
-				return array[method].apply(array, this.arguments)
+				return [][method].apply(this.source._typedArray(), this.arguments)
 			} else {
-				return method(array, this.arguments)
+				return method(this.source._typedArray(), this.arguments)
 			}
 		},
 		_mappedItems: function(array) {
@@ -2570,8 +2617,7 @@
 
 		getCollectionOf: function(){
 			return this.source.getCollectionOf()
-		},
-		_isStrictArray: true
+		}
 	})
 
 	function defineIterativeFunction(method, constructor, properties, returns, definedOn) {
@@ -2626,25 +2672,7 @@
 		}
 	}, VArray)
 	defineIterativeFunction('map', function Mapped(source) {
-		this._isStrictArray = source._isStrictArray
 	}, {
-		transform: function(array) {
-			var isStrictArray = this.source && this.source._isStrictArray
-			var mapFunction = this.arguments[0]
-			if (array && array.map) {
-				var source = this.source
-				var collectionOf = source && source.collectionOf
-				return array.map(collectionOf ? function(item, i) {
-					return mapFunction(source.property(i), i)
-				} : mapFunction)
-			} else if (!isStrictArray) {
-				if (method === 'map'){
-					// fast path, and special behavior for map
-					return mapFunction(array)
-				}
-			}
-			return IterativeMethod.prototype.transform.call(this, array)
-		},
 		updated: function(event, by, isDownstream) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Variable.prototype.updated.call(this, event, by)
