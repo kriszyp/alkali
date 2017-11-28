@@ -1600,9 +1600,9 @@
 							if (parentContext) {
 								parentContext.setVersion(version)
 							}
-							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
 							variable.cachedVersion = version
 							variable.cachedValue = result
+							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
 						}/* else {
 							console.log('ready state different than when the variable trasnform started ', variable, variable.readyState, readyState)
 						}*/
