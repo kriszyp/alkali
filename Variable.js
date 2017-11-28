@@ -1375,12 +1375,11 @@
 				var spliceArgs = [startingIndex, deleteCount]
 				var collectionOf = variable.collectionOf
 				if (collectionOf) {
-					if (variable._isArraySynced) {
-						var typedItems = items.map(function(item) {
-							return item instanceof collectionOf ? item : collectionOf.from(item)
-						})
-						var typedResults = [].splice.apply(variable, spliceArgs.concat(typedItems))
-					}
+					var typedArray = variable._getTypedArray()
+					var typedItems = items.map(function(item) {
+						return item instanceof collectionOf ? item : collectionOf.from(item)
+					})
+					var typedResults = typedArray.splice.apply(typedArray, spliceArgs.concat(typedItems))
 					items = items.map(function(item) {
 						return item instanceof collectionOf ? item.valueOf() : item
 					})
@@ -1857,28 +1856,25 @@
 	var VArray = Variable.VArray = lang.compose(Variable, function VArray(value) {
 		return makeSubVar(this, value, VArray)
 	}, {
-		_typedArray: function(allowPromise) {
+		_getTypedArray: function(allowPromise) {
 			var value = Variable.prototype.valueOf.call(this, allowPromise)
 			var collectionOf = this.collectionOf
-			if (this._isArraySynced) {
-				return collectionOf ? this : value
+			if (this._typedArray) {
+				return collectionOf ? this._typedArray : value
 			}
 			var varray = this
 			return when(value, function(array) {
-				varray._isArraySynced = true
 				if (!array) {
-					varray.value = []
-					return varray
+					return []
 				}
 				if (!(array instanceof Array)) {
 					array = [array]
 				}
 				if (collectionOf) {
 					// TODO: eventually we may want to do this even more lazily for slice operations
-					[].push.apply(varray, array.map(function(item) {
+					return varray._typedArray = array.map(function(item) {
 						return item instanceof collectionOf ? item : collectionOf.from(item)
-					}))
-					return varray
+					})
 				} else {
 					return array
 				}
@@ -2339,7 +2335,7 @@
 	Variable._Transform = ContextualTransform;
 
 	// delegate to the variable's collection
-	['add', 'delete', 'clear', 'filter', 'map', 'forEach', '_typedArray'].forEach(function(name) {
+	['add', 'delete', 'clear', 'filter', 'map', 'forEach', '_getTypedArray'].forEach(function(name) {
 		Variable[name] = function() {
 			return this.collection[name].apply(this.collection, arguments)
 		}
@@ -2602,9 +2598,9 @@
 			var method = this.method
 			if (typeof method === 'string') {
 				// apply method
-				return [][method].apply(this.source._typedArray(), this.arguments)
+				return [][method].apply(this.source._getTypedArray(), this.arguments)
 			} else {
-				return method(this.source._typedArray(), this.arguments)
+				return method(this.source._getTypedArray(), this.arguments)
 			}
 		},
 		_mappedItems: function(array) {
@@ -2650,7 +2646,7 @@
 					new SplicedEvent(this, event.items.filter(this.arguments[0]), event.removed.filter(this.arguments[0])),
 					by, isDownstream)
 			} else if (event.type === 'entry') {
-				var object = event.value.valueOf()
+				var object = event.value
 				var index = contextualizedVariable.cachedValue.indexOf(object)
 				var matches = [object].filter(this.arguments[0]).length > 0
 				if (index > -1) {
