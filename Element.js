@@ -1635,7 +1635,7 @@
 			var element = this.subject
 			var distinctive = true
 			;(this.generics || (this.generics = [])).push(Variable)
-			do {
+			while (element) {
 				if (this.distinctSubject === element) {
 					distinctive = false
 				}
@@ -1654,7 +1654,8 @@
 						return specifiedInstance
 					}
 				}
-			} while ((element = element.parentNode || presumptiveParentMap.get(element)))
+				element = element.parentNode || presumptiveParentMap.get(element)
+			}
 			// else if no specific context is found, return default instance
 			return Variable.defaultInstance
 		},

@@ -113,6 +113,7 @@ define(function(require) {
 			variable.put(3)
 			assert.isFalse(invalidated);
 		})
+
 		test('property access', function() {
 			var object = {
 				a: 1,
@@ -1030,6 +1031,51 @@ define(function(require) {
 			assert.strictEqual(greaterThanFour.valueOf().length, 2)
 			arrayVariable.push(1)
 			assert.strictEqual(greaterThanFour.valueOf().length, 2)
+		})
+
+		test('splice and filter', function() {
+			var strings = new VArray(['foo', 'bar', 'baz'])
+			var startsWithB = strings.filter(function(v) {
+				return v[0] === 'b'
+			})
+
+			var updateCount = 0
+			assert.deepEqual(valueOfAndNotify(startsWithB, function() {
+				updateCount++
+			}), ['bar', 'baz'])
+			strings.splice(1, 1)
+
+			strings.valueOf()
+			// -> ['foo', 'baz']
+
+			assert.deepEqual(startsWithB.valueOf(), ['baz'])
+			assert.equal(updateCount, 1)
+		})
+
+		test('transform and cast', function() {
+			var a = new Variable({ num: 1 })
+			var Tripler = Variable.with({
+				triple: function() {
+					return this.put({ num: this.valueOf().num * 3})
+				}
+			})
+			var transformCount = 0
+			var b = a.to(function(obj) {
+				transformCount++
+				return new Tripler(obj)
+			}).as(Tripler)
+			assert.equal(valueOfAndNotify(b, function() {
+			}).num, 1)
+			assert.equal(transformCount, 1)
+			b.triple()
+			assert.equal(b.valueOf().num, 3)
+			assert.equal(transformCount, 1) // no need to retransform, we are only change the contents of the variable that was returned
+			b.triple()
+			assert.equal(b.valueOf().num, 9)
+			assert.equal(transformCount, 1) // no need to retransform, we are only change the contents of the variable that was returned
+			a.set('num', 5)
+			assert.equal(b.valueOf().num, 5)
+			assert.equal(transformCount, 2)
 		})
 
 		test('mapReduceArray', function() {

@@ -1666,9 +1666,9 @@
 							if (parentContext) {
 								parentContext.setVersion(version)
 							}
-							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
 							variable.cachedVersion = version
 							variable.cachedValue = result
+							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
 						}/* else {
 							console.log('ready state different than when the variable trasnform started ', variable, variable.readyState, readyState)
 						}*/
@@ -1737,7 +1737,7 @@
 		},
 		put: function(value, event) {
 			var call = this
-			return when(this.valueOf(true), function(originalValue) {
+			return whenStrict(this.getValue(), function(originalValue) {
 				if (originalValue === value && typeof value != 'object') {
 					return noChange
 				}
