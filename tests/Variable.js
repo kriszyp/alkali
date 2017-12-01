@@ -623,7 +623,7 @@ define(function(require) {
 			outer.put(false)
 			assert.deepEqual(derived.valueOf(), [false, [8,10,12]])
 		})
-		test('mapWithArray', function() {
+		test('toWithArray', function() {
 			var values = [0,1,2,3,4,5]
 			var all = new Variable(values)
 			var odd = all.to(function(arr) {
@@ -1417,13 +1417,51 @@ define(function(require) {
 				id: VNumber
 			})
 			MyVar.add(new MyVar({name: 'one', id: 1}))
-			let filtered = MyVar.filter((item) => item.name != 'exclude')
-			filtered.forEach(function() {
+			MyVar.add(new MyVar({name: 'two', id: 2}))
+			MyVar.add(new MyVar({name: 'three', id: 3}))
 
+			var filtered = MyVar.filter((item) => item.name.slice(0, 1) != 't')
+			var count = 0
+			filtered.forEach(function(instance) {
+				assert.isTrue(instance instanceof MyVar)
+				count++
 			})
-			MyVar.add({name: 'two', id: 2})
+			var updateCount = 0
+			filtered.notifies({ updated: function() {
+				updateCount++
+			}})
+			assert.equal(count, 1)
+			assert.equal(filtered.slice(0).length, 1)
+			count = 0
+			MyVar.forEach(function(instance) {
+				assert.isTrue(instance instanceof MyVar)
+				count++
+			})
+			assert.equal(count, 3)
+			assert.equal(MyVar.slice(0).length, 3)
+
+			MyVar.push({name: 'four', id: 4})
+			assert.equal(MyVar.slice(0).length, 4)
+			assert.equal(filtered.slice(0).length, 2)
+
+			MyVar.push({name: 'ten', id: 10})
+			assert.equal(MyVar.slice(0).length, 5)
+			assert.equal(filtered.slice(0).length, 2)
+
+			filtered.sort(function(a, b) {
+				return a.name > b.name ? 1 : -1
+			})
+			assert.equal(filtered.slice(0).length, 2)
+			assert.equal(filtered.slice(0)[0].id.valueOf(), 4)
+			assert.equal(filtered.slice(0)[1].id.valueOf(), 1)
+
 			MyVar.delete(2)
+			assert.equal(MyVar.slice(0).length, 4)
+			assert.equal(filtered.slice(0).length, 2)
+
 			MyVar.clear()
+			assert.equal(MyVar.slice(0).length, 0)
+			assert.equal(filtered.slice(0).length, 0)
 		})
 	})
 	console.log('registered tests')

@@ -206,8 +206,8 @@
 		}
 	}
 
-	function ReplacedEvent() {
-		this.visited = new Set()
+	function ReplacedEvent(triggerEvent) {
+		this.visited = triggerEvent ? triggerEvent.visited : new Set()
 	}
 	ReplacedEvent.prototype.type = 'replaced'
 
@@ -1267,16 +1267,14 @@
 			prototype = ExtendedVariable.prototype
 		} else {
 			// extending function/constructor
-			var \u03A9 = {} // purely to give a descriptive name to the extended variable
 			if (!ExtendedVariable) {
-				\u03A9[this.name] = ExtendedVariable || function() {
+				ExtendedVariable = function() {
 					if (this instanceof ExtendedVariable) {
 						Base.apply(this, arguments)
 					} else {
 						return ExtendedVariable.with(properties)
 					}
 				}
-				ExtendedVariable = \u03A9[this.name]
 			}
 			prototype = ExtendedVariable.prototype = Object.create(this.prototype)
 			prototype.constructor = ExtendedVariable
@@ -1362,6 +1360,10 @@
 
 	function arrayToModify(variable, callback) {
 		return when(variable.cachedValue || variable.valueOf(true), function(array) {
+			if (variable._untypedArray) {
+				// if there is an untyped, the typed array is distinct
+				var typedArray = variable._typedArray
+			}
 			var newArray = array ?
 				variable.isWritable ? array.slice(0) : array
 				: []
@@ -1373,20 +1375,18 @@
 					var atEnd = true
 				}
 				var spliceArgs = [startingIndex, deleteCount]
+				var results = newArray.splice.apply(newArray, spliceArgs.concat(items))
 				var collectionOf = variable.collectionOf
-				if (collectionOf) {
-					var typedArray = variable._getTypedArray()
-					var typedItems = items.map(function(item) {
-						return item instanceof collectionOf ? item : collectionOf.from(item)
-					})
-					var typedResults = typedArray.splice.apply(typedArray, spliceArgs.concat(typedItems))
+				if (typedArray && collectionOf) {
+					// create variable casted items
 					items = items.map(function(item) {
-						return item instanceof collectionOf ? item.valueOf() : item
+						item = item instanceof collectionOf ? item : collectionOf.from(item)
+						item.parent = variable
+						return item
 					})
+					results = typedArray.slice(startingIndex, deleteCount + startingIndex)
 				}
-				spliceArgs.push.apply(spliceArgs, items)
-				var results = newArray.splice.apply(newArray, spliceArgs)
-				var event = new SplicedEvent(variable, typedItems || items, typedResults || results, startingIndex, deleteCount)
+				var event = new SplicedEvent(variable, items, results, startingIndex, deleteCount)
 				if (atEnd) {
 					event.atEnd = true
 				}
@@ -1406,6 +1406,11 @@
 				return when(newArray === array ? // if we are just modifying the original array
 						variable.updated(event, variable) : // then just send out an updated event
 						variable.put(newArray, event), function() { // otherwise put in the new array
+					if (typedArray) {
+						// do this afterwards once we have confirmed that it completed successfully
+						variable._untypedArray = newArray
+						results = typedArray.splice.apply(typedArray, spliceArgs.concat(items))
+					}
 					variable.cachedVersion++ // update the cached version, so any version checking will know it has changed
 					return results
 				})
@@ -1705,7 +1710,7 @@
 				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 					if (argument === by) {
 						// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
-						updateEvent = new ReplacedEvent()
+						updateEvent = new ReplacedEvent(updateEvent)
 						continue
 					}
 				}
@@ -1853,43 +1858,27 @@
 		}
 	})
 
-	var VArray = Variable.VArray = lang.compose(Variable, function VArray(value) {
+	var VArray = lang.compose(Variable, function VArray(value) {
 		return makeSubVar(this, value, VArray)
 	}, {
-		_getTypedArray: function(allowPromise) {
+		valueOf: function(allowPromise) {
 			var value = Variable.prototype.valueOf.call(this, allowPromise)
-			var collectionOf = this.collectionOf
-			if (this._typedArray) {
-				return collectionOf ? this._typedArray : value
-			}
 			var varray = this
 			return when(value, function(array) {
 				if (!array) {
 					return []
 				}
-				if (!(array instanceof Array)) {
-					array = [array]
+				if (varray.sortFunction && varray._sortedArray != array) {
+					// we have a sort function, and a new incoming array, need to resort
+					var reversed = varray.reversed
+					varray.sortFunction = null // null this so we don't reenter here
+					array = varray.sort(varray.sortFunction)
+					if (reversed) {
+						varray.reversed()
+					}
 				}
-				if (collectionOf) {
-					// TODO: eventually we may want to do this even more lazily for slice operations
-					return varray._typedArray = array.map(function(item) {
-						return item instanceof collectionOf ? item : collectionOf.from(item)
-					})
-				} else {
-					return array
-				}
+				return array
 			})
-		},/*
-		is: function(array) {
-			this._isArrayTyped = false
-			return Variable.prototype.is(array)
-		},
-		put: function(array, event) {
-			this._isArrayTyped = false
-			return Variable.prototype.put(array, event)
-		},*/
-		property: function(key, PropertyClass) {
-			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
 		},
 		splice: function(start, deleteCount) {
 			var args = arguments
@@ -1929,21 +1918,23 @@
 		},
 		sort: function(compareFunction) {
 			var variable = this
-			return this.then(function(array) {
+			return when(this.valueOf(true), function(array) {
 				array.sort(compareFunction)
 				if (variable.source) {
 					variable.sortFunction = compareFunction
+					variable._sortedArray = array
 					if (variable.reversed) {
 						variable.reversed = false
 					}
 				}
 				variable.updated() // this is treated as an in-place update with no upstream impact
+				variable.cachedVersion = variable.version
 				return array
 			})
 		},
 		reverse: function() {
 			var variable = this
-			return this.then(function(array) {
+			return when(this.valueOf(true), function(array) {
 				array.reverse()
 				if (variable.source) {
 					variable.reversed = !variable.reversed
@@ -1951,6 +1942,39 @@
 				variable.updated() // this is treated as an in-place update with no upstream impact
 				return array
 			})
+		},
+		slice: function(start, end) {
+			return when(this.valueOf(true), function(array) {
+				return array.slice(start, end)
+			})
+		},
+		indexOf(idOrValue) {
+			// TODO: After a certain threshold of accesses we should build an index for O(1) time access
+			var array = this.valueOf()
+			return array.indexOf(idOrValue)
+		},
+		// id-based methods:
+		for: function(idOrValue) {
+			var i = this.indexOf(value)
+			var instance = new this.collectionOf().is(this.value && this.value[i] || {})
+			instance.idOrValue = idOrValue
+			return instance
+		},
+		// Set methods:
+		add: function(value) {
+			if (this.indexOf(value) === -1) {
+				this.push(value)
+			}
+		},
+		delete: function(instanceOrId) {
+			var removeIndex = this.indexOf(instanceOrId)
+			if (removeIndex > -1) {
+				this.splice(removeIndex, 1)
+			}
+			return this
+		},
+		clear: function() {
+			this.is([])
 		}
 	})
 	/*Object.defineProperty(VArray.prototype, 'length', {
@@ -1976,7 +2000,7 @@
 		},
 	})*/
 	VArray.of = function(collectionOf) {
-		var ArrayClass = VArray({collectionOf: collectionOf})
+		var ArrayClass = VCollection({collectionOf: collectionOf})
 		if (this !== VArray) {
 			// new operator
 			return new ArrayClass()
@@ -2335,7 +2359,7 @@
 	Variable._Transform = ContextualTransform;
 
 	// delegate to the variable's collection
-	['add', 'delete', 'clear', 'filter', 'map', 'forEach', '_getTypedArray'].forEach(function(name) {
+	['add', 'delete', 'clear', 'filter', 'map', 'forEach', 'slice', 'push', 'splice', 'pop', 'shift', 'unshift'].forEach(function(name) {
 		Variable[name] = function() {
 			return this.collection[name].apply(this.collection, arguments)
 		}
@@ -2492,47 +2516,76 @@
 		}
 	})
 
-	var VCollection = VArray.with({
-		getId: function(instance) {
-			return instance.id
-		},
-		_indexOfById(id) {
-			var array = this.value || []
-			for (var i = 0, l = array.length; i < l; i++) {
-				if (this.getId(array[i]) == id) {
-					return i
+	var VCollection = lang.compose(VArray, function VCollection(value) {
+		return makeSubVar(this, value, VCollection)
+	}, {
+		valueOf: function(allowPromise) {
+			// skip past VArray valueOf, since it is redundant
+			var value = Variable.prototype.valueOf.call(this, allowPromise)
+			var varray = this
+			return when(value, function(array) {
+				var collectionOf = varray.collectionOf
+				if (!array) {
+					return []
 				}
-			}
-			return -1
-		},
-		for: function(id) {
-			var i = this._indexOfById(id)
-			var instance = new this.collectionOf().is(this.value && this.value[i] || {})
-			instance.id = id
-			return instance
-		},
-		add: function(value) {
-			let id = this.getId(value)
-			if (this._indexOfById(id) === -1) {
-				this.push(value)
-			}
-		},
-		delete: function(instanceOrId) {
-			var id = typeof instanceOrId == 'object' ? this.getId(instanceOrId) : instanceOrId
-			var removeIndex = this._indexOfById(instanceOrId)
-			if (removeIndex > -1) {
-				this.splice(removeIndex, 1)
-			}
-			return this
-		},
-		clear: function() {
-			this.is([])
-		},
-		forEach: function(callback) {
-			var collection = this
-			Array.from(this._instanceMap.keys()).forEach(function(id) {
-				callback(collection.for(id))
+				if (!varray._typedArray || ((varray._untypedArray || varray._typedArray) !== array)) {
+					// TODO: eventually we may want to do this even more lazily for slice operations
+					var convertedItems
+					varray._typedArray = array.map(function(item) {
+						if (!(item instanceof collectionOf)) {
+							convertedItems = true
+							item = collectionOf.from(item)
+							if (!item.parent) {
+								// set the parent; we may eventually put a check in place here to make sure we aren't
+								// reparenting, but this could legimately be a different parent if the array originates
+								// from another "source" variable that drives this.
+								item.parent = varray
+							}
+						}
+						return item
+					})
+					if (convertedItems || varray._untypedArray) {
+						// items were converted, store the original array
+						varray._untypedArray = array
+					} else {
+						varray._typedArray = array // no need for the second array
+					}
+				}
+				if (varray.sortFunction && varray._sortedArray != varray._typedArray) {
+					// we have a sort function, and a new incoming array, need to resort
+					var reversed = varray.reversed
+					varray.sortFunction = null // null this so we don't reenter here
+					array = varray.sort(variable.sortFunction)
+					if (reversed) {
+						varray.reversed()
+					}
+					return array
+				}
+				return varray._typedArray
 			})
+		},
+		property: function(key, PropertyClass) {
+			if (this._typedArray) {
+				var entry = this._typedArray[key]
+				entry.key = key
+				return entry
+			}
+			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
+		},
+		indexOf: function(idOrValue) {
+			var array = this.valueOf()
+			var collectionOf = this.collectionOf
+			if (collectionOf.prototype.getId) {
+				var id = idOrValue && idOrValue.getId ? idOrValue.getId() : idOrValue
+				for (var i = 0, l = array.length; i < l; i++) {
+					if (array[i].getId() == id) {
+						return i
+					}
+				}
+				return -1
+			} else {
+				return array.indexOf(idOrValue)
+			}
 		}
 	})
 
@@ -2598,9 +2651,9 @@
 			var method = this.method
 			if (typeof method === 'string') {
 				// apply method
-				return [][method].apply(this.source._getTypedArray(), this.arguments)
+				return [][method].apply(array, this.arguments)
 			} else {
-				return method(this.source._getTypedArray(), this.arguments)
+				return method(array, this.arguments)
 			}
 		},
 		_mappedItems: function(array) {
@@ -2611,6 +2664,11 @@
 				wrapped.collection = source
 				return wrapped
 			}) : array
+		},
+		slice: function(start, end) {
+			return when(this.valueOf(true), function(array) {
+				return array.slice(start, end)
+			})
 		},
 
 		getCollectionOf: function(){
@@ -2632,41 +2690,79 @@
 	}
 
 	defineIterativeFunction('filter', function Filtered(source) {
-		if (source.collectionOf) {
-			this.collectionOf = source.collectionOf
-		}
 	}, {
 		updated: function(event, by, isDownstream) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Transform.prototype.updated.call(this, event, by)
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
-			if (event.type === 'spliced') {
-				return Variable.prototype.updated.call(this,
-					new SplicedEvent(this, event.items.filter(this.arguments[0]), event.removed.filter(this.arguments[0])),
-					by, isDownstream)
+			if (event.type === 'spliced') { // if we don't have unique items in the array, we can't match indices
+				var toAdd = event.items.filter(this.arguments[0])
+				var toRemove = event.removed.filter(this.arguments[0])
+				var start, deleteCount
+				if (toRemove.length > 1) {
+					// bail and consider it a full refresh
+					return Transform.prototype.updated.call(this, new ReplacedEvent(event))
+				} else if (toRemove.length == 1) {
+					// removing one
+					if (!toRemove[0].parent) {
+						// if we are not dealing with unique variables, we bail
+						return Transform.prototype.updated.call(this, new ReplacedEvent(event))
+					}
+					start = contextualizedVariable.cachedValue.indexOf(toRemove[0])
+					deleteCount = 1
+				} else {
+					start = event.atEnd ? contextualizedVariable.cachedValue.length : 0
+					deleteCount = 0
+				}
+				arrayToModify(contextualizedVariable, function(array, doSplice) {
+					doSplice(start, deleteCount, toAdd)
+				})
 			} else if (event.type === 'entry') {
 				var object = event.value
 				var index = contextualizedVariable.cachedValue.indexOf(object)
 				var matches = [object].filter(this.arguments[0]).length > 0
 				if (index > -1) {
 					if (matches) {
-						return new PropertyChangeEvent(index, event, contextualizedVariable.cachedValue,
-							// might need to do something with this
-							object)
+						return Variable.prototype.updated.call(this, event, by, isDownstream)
 					} else {
-						contextualizedVariable.splice(index, 1)
+						arrayToModify(contextualizedVariable, function(array, doSplice) {
+							doSplice(index, 1, [])
+						})
 					}
 				}	else {
 					if (matches) {
-						contextualizedVariable.push(object)
+						arrayToModify(contextualizedVariable, function(array, doSplice) {
+							doSplice(array.length, 0, [object])
+						})
 					}
-					// else nothing mactches
+					// else nothing matches
 				}
 				return
 			} else {
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
+		},
+		// just delegate directly to the source for these methods
+		push: function(value) {
+			return this.source.push.apply(this.source, arguments)
+		},
+		unshift: function(value) {
+			return this.source.unshift.apply(this.source, arguments)
+		},
+		// these rely on data from this array to compute the additions/removals to the source
+		pop: function(value) {
+			return when(this.valueOf(), function(array) {
+				return array.length && this.source.remove(array[array.length - 1])
+			})
+		},
+		shift: function(value) {
+			return when(this.valueOf(), function(array) {
+				return array.length && this.source.remove(array[0])
+			})
+		},
+		splice: function(value) {
+			throw new Error('Not supported yet')
 		}
 	}, VArray)
 	defineIterativeFunction('map', function Mapped(source) {
@@ -2712,7 +2808,6 @@
 	defineIterativeFunction('reduceRight', function Reduced() {})
 	defineIterativeFunction('some', function Aggregated() {}, {}, VBoolean)
 	defineIterativeFunction('every', function Aggregated() {}, {}, VBoolean)
-	defineIterativeFunction('slice', function Aggregated() {}, {}, VArray)
 	defineIterativeFunction('keyBy', function UniqueIndex(source, args) {}, {
 		property: VMap.prototype.property,
 		method: function(array, args) {
@@ -2765,50 +2860,7 @@
 			return index
 		}
 	})
-/*
 
-	defineIterativeFunction('filter', function FilteredCollection(source) {
-		if (source.collectionOf) {
-			this.collectionOf = source.collectionOf
-		}
-	}, {
-		updated: function(event, by, isDownstream) {
-			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
-				return Transform.prototype.updated.call(this, event, by)
-			}
-
-			var contextualizedVariable = context && context.getContextualized(this) || this
-			if (event.type === 'added') {
-				if (!this.arguments[0].call(this, event.value.valueOf())) {
-					return event
-				}
-			} else if (event.type === 'removed') {
-				if (!this.arguments[0].call(this, event.previousValue)) {
-					return event
-				}
-			} else {
-				return Transform.prototype.updated.call(this, event, by, isDownstream)
-			}
-		}
-	}, VCollection, VCollection)
-	defineIterativeFunction('map', function MappedCollection(source) {
-		this._isStrictArray = source._isStrictArray
-	}, {
-		updated: function(event, by, isDownstream) {
-			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
-				return Variable.prototype.updated.call(this, event, by)
-			}
-			var contextualizedVariable = context && context.getContextualized(this) || this
-			if (event.type === 'added') {
-				event = new AddedEvent(event.key, this.arguments[0].call(this, event.value.valueOf()))
-			} else if (event.type === 'removed') {
-				event = new RemovedEvent(event.key, this.arguments[0].call(this, event.previousValue))
-			} else {
-				return Transform.prototype.updated.call(this, event, by, isDownstream)
-			}
-		}
-	}, VCollection, VCollection)
-*/
 	var getGeneratorDescriptor = Variable.getGeneratorDescriptor = function(value) {
 		var variables
 		return {

@@ -154,7 +154,7 @@ declare namespace alkali {
     new (properties: U): Variable<U>
   }
 
-  export class VArray<T = {}> extends Variable<Array<T>> {
+  export class VArray<T = {}> extends Variable<Array<T>> implements Set<T> {
     constructor(value?: Array<T> | Promise<Array<T>> | Variable<Array<T>>)
     /**
     * Return a VArray with the map applied

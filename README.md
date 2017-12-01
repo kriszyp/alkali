@@ -235,7 +235,9 @@ for (let letter of lettersAfterB) {
 }
 ```
 
-In addition, `keyBy` and `groupBy` methods are also available:
+In addition, VArray's implements most `Set` methods, and supports key-based interaction, for retrieving and removing values based on their id/primary-key. If entries in the array can be uniquely identified, support for this can be added by implementing a `getId(entry)` method.
+
+`keyBy` and `groupBy` methods are also available:
 `keyBy(getKey(element, emit(key, value))?, getValue(element)?)` - This will index the values in array using the provided key retrieval, `getKey`, which can be a string to indicate a property, or a function to retrieve the key from the element. The `getKey` receives the `element` and can return the appropriate key. It also has an `emit` function that can optionally be used to add additional entries to the index. If omitted, value itself will be the key. In addition `getValue` can also provided to retrieve the value, if something other than the original array element is desired. This will return a Map variable, which can be used to retrieve values by id.
 
 `groupBy(getKey(element, emit), ?, getValue(element)?)` - This behaves the same as `keyBy` but can be used when multiple elements may share the same key. This will put all the elements for a given in an array under the key. The returned Map variable will have array values.
@@ -277,10 +279,8 @@ let MyVariable = Variable({
 });
 ```
 
-## Variable Collections ('VCollection')
-Variable collections are a class that extends `VArray` and implements the `Set` interface with a key-based interaction, for retrieving values based on their id/primary-key, ensuring unique keys, and provide `Array`'s iterative methods to continue to access the data as an array. This is an excellent general purpose class for working with collections of objects, that have an identity.
-
-In addition, any time you create a new variable class (with `Variable.with`, `Variable`, or extending with `class` syntax), this class has its own implicit, default collection that can be accessed from the static `collection` property, and instances can be added to and removed from it. The idiomatic way to create a model class with alkali is to create a variable class and then using it's collection to manage and interact with the set of instances. For example:
+## Variable `collection`s
+In addition, any time you create a new variable class (with `Variable.with`, `Variable`, or extending with `class` syntax), this class has its own implicit, default collection (and instance of `VArray.of(Class)`) that can be accessed from the static `collection` property, and instances can be added to and removed from it. The idiomatic way to create a model class with alkali is to create a variable class and then using it's collection to manage and interact with the set of instances. For example:
 ```
 let MyVariable = Variable.with({
 	name: VString,
