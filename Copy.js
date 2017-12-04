@@ -1,9 +1,9 @@
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-	define(['./util/lang', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {        
+	define(['./util/lang', './Variable'], factory) } else if (typeof module === 'object' && module.exports) {
   module.exports = factory(require('./util/lang'), require('./Variable')) // Node
 }}(this, function (lang, VariableExports) {
 	var Variable = VariableExports.Variable
-	
+
 	function deepCopy(source, target, derivativeMap) {
 		if (source && typeof source == 'object') {
 			if (source instanceof Array) {
@@ -60,11 +60,13 @@
 		},
 		save: function() {
 			// copy back to the original object
-			var original = this.copiedFrom.valueOf()
-			var newCopiedFrom = deepCopy(this.valueOf(), original)
 			if (this.copiedFrom.put) { // copiedFrom doesn't have to be a variable, it can be a plain object
-				// assign it now
-				this.copiedFrom.put(newCopiedFrom)
+				// just assign it now
+				this.copiedFrom.put(this.valueOf())
+			} else {
+				// copy back into the original object
+				var original = this.copiedFrom.valueOf()
+				var newCopiedFrom = deepCopy(this.valueOf(), original)
 			}
 			this.isDirty.put(false)
 			this.onSave && this.onSave()

@@ -120,11 +120,13 @@ declare namespace alkali {
     static all<T>(...inputs: Array<Variable<T>>): Variable<Array<T>>
     static all(...inputs: Array<Variable<any>>): Variable<Array<any>>
 
-    static with<V, Props>(this: V, properties: {[P in keyof Props]: new (...args: any[]) => Props[P]}): {
+    static with<V, Props>(this: V, properties: {[P in keyof Props]: Props[P]}): {
         new (...args: any[]): V & Props
     } & V & Props
 
     static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
+
+    static [Symbol.hasVar]<U>(this: U): U
 
     schema: Variable
     validation: Variable
@@ -234,6 +236,7 @@ declare namespace alkali {
   export function reactive<T, K, V>(map: Map<K, V>): VMap<K, V>
   export function reactive<T, V>(set: Set<V>): VSet<V>
   export function reactive<T>(initialValue: T): Reacts<T>
+  export function reactive(): Variable
 
   /**
   * Decorator function to be used for marking properties, classes, methods as reactive
@@ -886,4 +889,16 @@ declare module 'alkali' {
 
 declare module 'alkali/extensions/typescript' {
     export function reactive(target: any, key: string)
+}
+interface SymbolConstructor {
+  hasVar: symbol
+}
+interface String {
+  [Symbol.hasVar]: alkali.Vstring
+}
+interface Number {
+  [Symbol.hasVar]: alkali.Vnumber
+}
+interface Boolean {
+  [Symbol.hasVar]: alkali.Vboolean
 }

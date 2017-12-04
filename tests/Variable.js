@@ -1413,8 +1413,8 @@ define(function(require) {
 
 		test('Class as a collection', function() {
 			var MyVar = Variable.with({
-				name: VString,
-				id: VNumber
+				name: '',
+				id: 0
 			})
 			MyVar.add(new MyVar({name: 'one', id: 1}))
 			MyVar.add(new MyVar({name: 'two', id: 2}))
