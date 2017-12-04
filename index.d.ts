@@ -6,7 +6,11 @@ declare namespace alkali {
 
   class UpdateEvent {
     visited: Set<Variable>
+    type: ('replaced' | 'property' | 'added' | 'removed' | 'entry' | 'spliced')
+    child?: UpdateEvent
   }
+
+
 
   export class Variable<T = {}> implements Promise<T> {
     /**
@@ -71,6 +75,11 @@ declare namespace alkali {
     */
     updated(event?: UpdateEvent): UpdateEvent
     /**
+    * Listen to the variable, and receive notification of update events
+    * @param listener The listener object that will be called with data events. This will be called synchronously/immediately as part of the event dispatching.
+    */
+    notifies(listener: { updated: (event: UpdateEvent) => any }): void
+    /**
     * Subscribe to the variable, calling the listener after changes to the variable's value.
     * @param listener The listener function that will be called after data changes. This will be called on the next micro-turn.
     */
@@ -111,8 +120,13 @@ declare namespace alkali {
     static all<T>(...inputs: Array<Variable<T>>): Variable<Array<T>>
     static all(...inputs: Array<Variable<any>>): Variable<Array<any>>
 
-    static with<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
+    static with<V, Props>(this: V, properties: {[P in keyof Props]: Props[P]}): {
+        new (...args: any[]): V & Props
+    } & V & Props
+
     static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
+
+    static [Symbol.hasVar]<U>(this: U): U
 
     schema: Variable
     validation: Variable
@@ -142,7 +156,7 @@ declare namespace alkali {
     new (properties: U): Variable<U>
   }
 
-  export class VArray<T = {}> extends Variable<Array<T>> {
+  export class VArray<T = {}> extends Variable<Array<T>> implements Set<T> {
     constructor(value?: Array<T> | Promise<Array<T>> | Variable<Array<T>>)
     /**
     * Return a VArray with the map applied
@@ -215,13 +229,14 @@ declare namespace alkali {
     constructor(source: any, transform: (...v) => T, sources: any[])
   }
 
-  export function reactive(value: string): Vstring
-  export function reactive(value: number): Vnumber
-  export function reactive(value: boolean): Boolean & VBoolean
-  export function reactive<T>(value: T[]): VArray<T>
-  export function reactive<T>(value: Map<K, V>): VMap<K, V>
-  export function reactive<T>(value: Set<V>): VSet<V>
-  export function reactive<T>(value: T): Reacts<T>
+  export function reactive(initialValue: string): Vstring
+  export function reactive(initialValue: number): Vnumber
+  export function reactive(initialValue: boolean): Boolean & VBoolean
+  export function reactive<T>(initialValue: T[]): VArray<T>
+  export function reactive<T, K, V>(map: Map<K, V>): VMap<K, V>
+  export function reactive<T, V>(set: Set<V>): VSet<V>
+  export function reactive<T>(initialValue: T): Reacts<T>
+  export function reactive(): Variable
 
   /**
   * Decorator function to be used for marking properties, classes, methods as reactive
@@ -874,4 +889,16 @@ declare module 'alkali' {
 
 declare module 'alkali/extensions/typescript' {
     export function reactive(target: any, key: string)
+}
+interface SymbolConstructor {
+  hasVar: symbol
+}
+interface String {
+  [Symbol.hasVar]: alkali.Vstring
+}
+interface Number {
+  [Symbol.hasVar]: alkali.Vnumber
+}
+interface Boolean {
+  [Symbol.hasVar]: alkali.Vboolean
 }

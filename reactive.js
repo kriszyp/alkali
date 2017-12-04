@@ -5,6 +5,7 @@
 
 	var Transform = VariableExports.Transform
 	var Variable = VariableExports.Variable
+	var changeValue = VariableExports._changeValue
 	var VArray = VariableExports.VArray
 	var isGenerator = lang.isGenerator
 	var ObjectTransform = lang.compose(Transform, function ObjectTransform(source, transform, sources) {
@@ -37,6 +38,7 @@
 	function reactive(value) {
 		return fromValue(value)
 	}
+	VariableExports.reactive = reactive
 	function fromValue(value, isProperty, deferObject) {
 
 		// get the type for primitives or known constructors (or null)
@@ -53,22 +55,31 @@
 			objectVar = new Variable()
 		} else {
 			objectVar = new Variable(value)
-			objectVar.fixed = true
+			if (value && typeof value == 'object') {
+				// by default, if given an object (or variable or array), treat it as fixed
+				objectVar.fixed = true
+			}
+		}
+		if (value.then) {
+			// incoming promise or variable, just as a proxy
+			return objectVar
 		}
 		for (var key in value) {
-			var propertyValue = value[key]
-			var propertyVariable = fromValue(propertyValue, true, true)
-			if (propertyVariable) {
-				propertyVariable.key = key
-				propertyVariable.parent = objectVar
-				if (objectVar[key] === undefined) {
-					objectVar[key] = propertyVariable
+			if (value.hasOwnProperty(key)) {
+				var propertyValue = value[key]
+				var propertyVariable = fromValue(propertyValue, true, true)
+				if (propertyVariable) {
+					propertyVariable.key = key
+					propertyVariable.parent = objectVar
+					if (objectVar[key] === undefined) {
+						objectVar[key] = propertyVariable
+					} else {
+						(objectVar._properties || (objectVar._properties = {}))[key] = propertyVariable
+					}
 				} else {
-					(objectVar._properties || (objectVar._properties = {}))[key] = propertyVariable
+					// deferred, use getter/setter
+					defineValueProperty(objectVar, key, value)
 				}
-			} else {
-				// deferred, use getter/setter
-				defineValueProperty(objectVar, key, value)
 			}
 		}
 		return objectVar
@@ -126,7 +137,7 @@
 		},
 		set: function(target, key, value) {
 			var property = target[key]
-			property.parent ? property._changeValue(3, value) : property.put(value)
+			property.parent ? changeValue(property, 3, value) : property.put(value)
 		},
 		prop: function(Type) {
 			return function(prototype, key) {
@@ -199,10 +210,12 @@
 				}
 			}
 			var typedObject = {}
+			var hasKeys
 			for (var key in Type) {
 				typedObject[key] = getType(Type[key])
+				hasKeys = true
 			}
-			return Variable.with(typedObject)
+			return hasKeys ? Variable.with(typedObject) : Variable
 		}
 		return Type
 	}

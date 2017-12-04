@@ -177,7 +177,11 @@
 			var child = children[i]
 			var childNode
 			if (child != null) { // we just skip nulls and undefined, helps make it easier to write conditional element logic
-				if (typeof child === 'function') {
+				if (child.notifies) {
+					// a variable
+					var ref = child.isIterable ? fragment : parent
+					fragment.appendChild(childNode = variableAsContent(ref, child))
+				} else if (typeof child === 'function') {
 					// an element constructor
 					currentParent = parent
 					childNode = new child()
@@ -185,10 +189,6 @@
 					if (child.isContentNode) {
 						container.contentNode = childNode
 					}
-				} else if (child.notifies) {
-					// a variable
-					var ref = child.isIterable ? fragment : parent
-					fragment.appendChild(childNode = variableAsContent(ref, child))
 				} else if (typeof child == 'object') {
 					if (child instanceof Array) {
 						// array of sub-children
@@ -342,6 +342,9 @@
 			} else {
 				styleObjectHandler(element, value, key)
 			}
+		},
+		_item: function(element, value) {
+			setForClass(element, value.constructor, value)
 		}
 	}
 
@@ -1010,7 +1013,10 @@
 		if (!Element.with) {
 			Element.with = withProperties
 		}
-		return selector ? Element.with(selector) : Element.with()
+		return bindElementClass(Element, {
+			selector: selector,
+			uniqueTag: true
+		})
 	}
 
 	var Element = setupElement(typeof HTMLElement !== 'undefined' ? HTMLElement : function() {})
@@ -1282,6 +1288,102 @@
 		return ExtendedElement
 	}
 
+	function makePreBoundVariable(variable) {
+		// once the variable has been bound for the whole collection, we don't want to
+		// create a listener for each instance
+		return {
+			variable: variable,
+			then(callback, errorHandler) {
+				return this.variable.then(callback, errorHandler)
+			},
+			notifies: function() {} // noop in this case
+		}
+	}
+
+	Element.bindElementClass = bindElementClass
+	function bindElementClass(Element, options) {
+		var applyOnCreate = getApplySet(Element)
+		var preBoundProperties = {}
+		var propertyHandlers = Element.prototype._propertyHandlers
+		for (var key in applyOnCreate) {
+			var value = applyOnCreate[key]
+			if (value && value.notifies && propertyHandlers[key] === true) {
+				new PropertyRenderer({
+					name: key,
+					variable: value.collection || value,
+					getElements: function() {
+						if (options.uniqueTag) {
+							return document.getElementsByTagName(BoundElement.tagName)
+						}
+						return getElementInstances(BoundElement, options.parent)
+					}
+				})
+				preBoundProperties[key] = makePreBoundVariable(value)
+			}
+		}
+
+		if (Element.children) {
+			var newChildren = []
+			for (var i = 0; i < Element.children.length; i++) {
+				var child = Element.children[i]
+				if (child) {
+					if (child.notifies) {
+						throw new Error('Variables can not be used as child nodes in generalized/bound classes, consider wrapping with a span')
+					}
+					if (typeof child === 'function') {
+						child = bindElementClass(child, {
+							parent: options.parent
+						})
+					}
+				}
+				newChildren[i] = child
+			}
+			preBoundProperties.children = newChildren
+		}
+		var content = applyOnCreate.content
+		if (content) {
+			if (content.notifies) {
+				var renderer = new TextRenderer({
+					getElements: function() {
+						if (options.uniqueTag) {
+							return document.getElementsByTagName(BoundElement.tagName)
+						}
+						return getElementInstances(BoundElement, options.parent)
+					}, // TODO: find main text node
+					variable: content.collection || content,
+					position: 0
+				})
+				preBoundProperties.content = makePreBoundVariable(content)
+			} else if (content instanceof Array) {
+				preBoundProperties.content = content.map(function(child) {
+					if (child.notifies) {
+						// TODO: Maybe we can support this with position
+						throw new Error('Variables can not be used as child nodes in generalized/bound classes, consider wrapping with a span')
+					}
+					if (typeof child === 'function') {
+						child = bindElementClass(child, {
+							parent: options.parent
+						})
+					}
+					return child
+				})
+			}
+		}
+		var BoundElement = options.selector ? Element.with(options.selector, preBoundProperties) : Element.with(preBoundProperties)
+		return BoundElement
+	}
+
+	function getElementInstances(Element, parent) {
+		var selector = Element.tagName
+		var className = Element._applyOnCreate.className
+		if (className) {
+			selector += className
+		}
+		return [].filter.call((parent || document).querySelectorAll(selector), function(element) {
+			return element.constructor === Element
+		})
+	}
+
 	function forTarget(target) {
 		return target.constructor.getForClass(target, this)
 	}
@@ -1325,6 +1427,18 @@
 			}
 			return instance
 		}
+	}
+
+	function setForClass(element, Target, instance) {
+		var From = element.constructor
+		var ownedClasses = From.ownedClasses || (From.ownedClasses = new lang.WeakMap())
+		var instanceMap = ownedClasses.get(Target)
+		if (!instanceMap) {
+			ownedClasses.set(Target, instanceMap = new lang.WeakMap())
+		}
+		var ownedInstances = element.ownedInstances || (element.ownedInstances = new lang.WeakMap())
+		ownedInstances.set(Target, instance)
+		instanceMap.set(element, instance)
 	}
 
 	function propertyForElement(key) {

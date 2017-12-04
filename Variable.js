@@ -206,33 +206,53 @@
 		}
 	}
 
-	function RefreshEvent() {
-		this.visited = new Set()
+	function ReplacedEvent(triggerEvent) {
+		this.visited = triggerEvent ? triggerEvent.visited : new Set()
 	}
-	RefreshEvent.prototype.type = 'refresh'
+	ReplacedEvent.prototype.type = 'replaced'
 
-	function PropertyChangeEvent(key, childEvent, parent) {
+	function PropertyChangeEvent(key, propertyEvent, parent) {
 		this.key = key
-		this.childEvent = childEvent
+		this.propertyEvent = propertyEvent
 		this.parent = parent
-		this.visited = childEvent.visited
+		this.visited = propertyEvent.visited
 	}
-	PropertyChangeEvent.prototype.type = 'update'
+	PropertyChangeEvent.prototype.type = 'property'
 
-	function ArrayEvent(args) {
+	function SplicedEvent(modifier, items, removed, start, deleteCount) {
 		this.visited = new Set()
-		for (var key in args) {
-			this[key] = args[key]
-		}
+		this.modifier = modifier
+		this.items = items
+		this.removed = removed
+		this.start = start
+		this.deleteCount = deleteCount
 	}
-	ArrayEvent.prototype.type = 'array-update'
-	function DeleteEvent(args) {
-		this.visited = new Set()
-		for (var key in args) {
-			this[key] = args[key]
-		}
+	SplicedEvent.prototype.type = 'spliced'
+	function EntryEvent(key, value, entryEvent) {
+		this.entryEvent = entryEvent
+		this.visited = entryEvent.visited
+		this.key = key
+		this.value = value
 	}
-	DeleteEvent.prototype.type = 'delete'
+	EntryEvent.prototype.type = 'entry'
+	EntryEvent.prototype.doesAffect = function(subject) {
+		return this.value.constructor.for(subject).id.valueOf() == this.value.id.valueOf()
+	}
+
+	function DeletedEvent(key, value) {
+		this.key = key
+		this.value = value
+	}
+	DeletedEvent.prototype.type = 'deleted'
+
+	function AddedEvent(key, value) {
+		this.key = key
+		this.value = value
+	}
+	AddedEvent.prototype.type = 'added'
+	AddedEvent.prototype.doesAffect = function() {
+		return false
+	}
 
 	function forPropertyNotifyingValues(variable, properties, callback) {
 		if (variable === properties) {
@@ -532,90 +552,12 @@
 			this._isWritable = isWritable
 		},
 		_isWritable: true,
-		_changeValue: function(type, newValue, event) {
-			var key = this.key
-			var parent = this.parent
-			if (!parent) {
-				return this.put(newValue, event)
-			}
-			var variable = this
-			var object = parent.getValue ? parent.getValue(true) : parent.value
-			if (object != null) {
-				if (typeof object != 'object') {
-					// if the parent is not an object, we can't set anything (that will be retained)
-					var error = new Error('Can not set property on non-object')
-					error.deniedPut = true
-					throw error
-				}
-				var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
-				if (oldValue === newValue && typeof newValue != 'object') {
-					// no actual change to make
-					return noChange
-				}
-			}
-			if (object && typeof object.set === 'function') {
-				object.set(key, newValue, event)
-			} else {
-				if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
-					// if a put and the property value is a variable, assign it to that.
-					return oldValue.put(newValue, event)
-				} else {
-					if (newValue && newValue.then && !newValue.notifies) {
-						// wait for it to resolve and then assign
-						return newValue.then(function(newValue) {
-							return variable._changeValue(type, newValue, event)
-						})
-					} else {
-						// copy, if this is a copy-on-write variable
-						// nothing there yet, create an object to hold the new property
-						var newObject = object == null
-							? typeof key == 'number' ? [] : {}
-							: parent.isWritable
-								? lang.copy(
-									object.constructor === Object
-									?	{}
-									:	object.constructor === Array
-										?	[]
-										: Object.create(Object.getPrototypeOf(object)), object)
-								: object
-						newObject[key] = newValue
-					}
-					// or set the setter/getter
-				}
-				event = event || new RefreshEvent()
-				var parentEvent = new PropertyChangeEvent(key, event, this)
-				parentEvent.oldValue = oldValue
-				parentEvent.target = variable
-				return when(newObject === object ?
-						parent.updated(parentEvent, this) :
-						parent.put(newObject, parentEvent), function() {
-					variable.updated(event, variable)
-				})
-			}
-			variable.updated(event, variable)
-
-			// now notify any object listeners
-			var listeners = propertyListenersMap.get(object)
-			// we need to do it before the other listeners, so we can update it before
-			// we trigger a full clobbering of the object
-			if (listeners) {
-				listeners = listeners.slice(0)
-				for (var i = 0, l = listeners.length; i < l; i++) {
-					var listener = listeners[i]
-					if (listener !== parent) {
-						// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
-						listener.updated(event)
-					}
-				}
-			}
-			return newValue
-		},
 
 		_propertyChange: function(propertyName, object, type) {
 			if (this.onPropertyChange) {
 				this.onPropertyChange(propertyName, object)
 			}
-			this.updated(new PropertyChangeEvent(propertyName, new RefreshEvent(), this))
+			this.updated(new PropertyChangeEvent(propertyName, new ReplacedEvent(), this))
 		},
 		eachKey: function(callback) {
 			for (var i in this._properties) {
@@ -657,14 +599,14 @@
 				}
 				sources.push(contextualized)
 			})
-			if (contextualizes) {
+/*			if (contextualizes) {
 				var contextualized = new ContextualizedVariable()
 				//context.instanceMap.set(this, contextualized)
 				contextualized.sources = sources
 				contextualized.init()
 				return contextualized
 			}
-
+*/
 			if (this.listeningToObject === null) {
 				// we were previously listening to an object, but it needs to be restored
 				// calling valueOf will cause the listening object to be restored
@@ -725,7 +667,7 @@
 
 		updated: function(updateEvent, by, isDownstream) {
 			if (!updateEvent) {
-				updateEvent = new RefreshEvent()
+				updateEvent = new ReplacedEvent()
 				updateEvent.source = this
 			}
 			if (updateEvent.visited.has(this)){
@@ -770,7 +712,7 @@
 					if ((updateEvent instanceof PropertyChangeEvent) &&
 							dependent.parent) {
 						if (dependent.key === updateEvent.key) {
-							dependent.updated(updateEvent.childEvent, variable)
+							dependent.updated(updateEvent.propertyEvent, variable)
 						}
 					} else {
 						dependent.updated(updateEvent, variable, true)
@@ -781,8 +723,10 @@
 				if (this.returnedVariable && this.fixed) {
 					this.returnedVariable.updated(updateEvent, this)
 				}
-				if (this.constructor.collection) {
-					this.constructor.collection.updated(updateEvent, this)
+				var Class = this.constructor
+				var variable = this
+				if (Class.collection) {
+					Class.collection.updated(new EntryEvent(this.id, this, updateEvent))
 				}
 			}
 			if (this.parent) {
@@ -879,9 +823,8 @@
 			}
 		},
 		put: function(value, event) {
-			var variable = this
 			if (this.parent) {
-				return this._changeValue(RequestChange, value, event)
+				return changeValue(this, RequestChange, value, event)
 			}
 			var oldValue = this.getValue ? this.getValue() : this.value
 			if (oldValue === value && typeof value != 'object') {
@@ -889,7 +832,7 @@
 			}
 			if (oldValue && oldValue.put &&
 					// if it is set to fixed, we see we can put in the current variable
-					(variable.fixed || !(value && value.put))) {
+					(this.fixed || !(value && value.put))) {
 				try {
 					return oldValue.put(value)
 				} catch (error) {
@@ -901,12 +844,12 @@
 			if (value && value.then && !value.notifies) {
 				value = assignPromise(this, value)
 			} else {
-				variable.value = value
+				this.value = value
 			}
-			event = event || new RefreshEvent()
+			event = event || new ReplacedEvent()
 			event.oldValue = oldValue
-			event.target = variable
-			variable.updated(event, variable)
+			event.target = this
+			this.updated(event, this)
 			return value
 		},
 		get: function(key) {
@@ -929,7 +872,7 @@
 		},
 		set: function(key, value, event) {
 			// TODO: create an optimized route when the property doesn't exist yet
-			this.property(key)._changeValue(RequestSet, value, event)
+			changeValue(this.property(key), RequestSet, value, event)
 		},
 		undefine: function(key) {
 			this.set(key, undefined)
@@ -939,7 +882,7 @@
 				var parent = this.parent
 				var key = this.key
 				var object = (parent.getValue ? parent.getValue(true) : parent.value)
-				var parentEvent = new PropertyChangeEvent(key, event || new RefreshEvent(), parent)
+				var parentEvent = new PropertyChangeEvent(key, event || new ReplacedEvent(), parent)
 				if (object) {
 					object[key] = newValue
 					this.updated(parentEvent, this)
@@ -953,7 +896,7 @@
 			this.fixed = true
 
 			this.value = newValue
-			this.updated(new RefreshEvent(), this)
+			this.updated(new ReplacedEvent(), this)
 			return this
 		},
 		proxy: function(proxiedVariable) {
@@ -1212,6 +1155,85 @@
 		}
 	}
 
+	function changeValue(variable, type, newValue, event) {
+		var key = variable.key
+		var parent = variable.parent
+		if (!parent) {
+			return variable.put(newValue, event)
+		}
+		var object = parent.getValue ? parent.getValue(true) : parent.value
+		if (object != null) {
+			if (typeof object != 'object') {
+				// if the parent is not an object, we can't set anything (that will be retained)
+				var error = new Error('Can not set property on non-object')
+				error.deniedPut = true
+				throw error
+			}
+			var oldValue = typeof object.get === 'function' ? object.get(key) : object[key]
+			if (oldValue === newValue && typeof newValue != 'object') {
+				// no actual change to make
+				return noChange
+			}
+		}
+		if (object && typeof object.set === 'function') {
+			object.set(key, newValue, event)
+		} else {
+			if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
+				// if a put and the property value is a variable, assign it to that.
+				return oldValue.put(newValue, event)
+			} else {
+				if (newValue && newValue.then && !newValue.notifies) {
+					// wait for it to resolve and then assign
+					return newValue.then(function(newValue) {
+						return changeValue(variable, type, newValue, event)
+					})
+				} else {
+					// copy, if this is a copy-on-write variable
+					// nothing there yet, create an object to hold the new property
+					var newObject = object == null
+						? typeof key == 'number' ? [] : {}
+						: parent.isWritable
+							? lang.copy(
+								object.constructor === Object
+								?	{}
+								:	object.constructor === Array
+									?	[]
+									: Object.create(Object.getPrototypeOf(object)), object)
+							: object
+					newObject[key] = newValue
+				}
+				// or set the setter/getter
+			}
+			event = event || new ReplacedEvent()
+			var parentEvent = new PropertyChangeEvent(key, event, variable)
+			parentEvent.oldValue = oldValue
+			parentEvent.target = variable
+			return when(newObject === object ?
+					parent.updated(parentEvent, variable) :
+					parent.put(newObject, parentEvent), function() {
+				variable.updated(event, variable)
+			})
+		}
+		variable.updated(event, variable)
+
+		// now notify any object listeners
+		var listeners = propertyListenersMap.get(object)
+		// we need to do it before the other listeners, so we can update it before
+		// we trigger a full clobbering of the object
+		if (listeners) {
+			listeners = listeners.slice(0)
+			for (var i = 0, l = listeners.length; i < l; i++) {
+				var listener = listeners[i]
+				if (listener !== parent) {
+					// now go ahead and actually trigger the other listeners (but make sure we don't do the parent again)
+					listener.updated(event)
+				}
+			}
+		}
+		return newValue
+	}
+
+
 	// a variable inheritance change goes through its own prototype, so classes/constructor
 	// can be used as variables as well
 	for (var key in VariablePrototype) {
@@ -1245,11 +1267,13 @@
 			prototype = ExtendedVariable.prototype
 		} else {
 			// extending function/constructor
-			ExtendedVariable = ExtendedVariable || function() {
-				if (this instanceof ExtendedVariable) {
-					Base.apply(this, arguments)
-				} else {
-					return ExtendedVariable.with(properties)
+			if (!ExtendedVariable) {
+				ExtendedVariable = function() {
+					if (this instanceof ExtendedVariable) {
+						Base.apply(this, arguments)
+					} else {
+						return ExtendedVariable.with(properties)
+					}
 				}
 			}
 			prototype = ExtendedVariable.prototype = Object.create(this.prototype)
@@ -1260,13 +1284,43 @@
 	}
 	Variable.assign = function(properties) {
 		var prototype = this.prototype
+		function toType(value) {
+			if (typeof value === 'object') {
+				if (value instanceof Array) {
+					return value[0] ? VArray.of(toType(value[0])) : VArray
+				} else {
+					return Variable.with(value)
+				}
+			} else if (typeof value === 'string') { // primitive values
+				return VString(value)
+			} else if (typeof value === 'number') {
+				return VNumber(value)
+			} else if (typeof value === 'boolean') {
+				return VBoolean(value)
+			} else {
+				return Variable
+			}
+		}
+		if (typeof properties !== 'object') {
+			this.prototype.default = properties
+			return this
+		}
 		for (var key in properties) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
 			var value = descriptor.value
+			if (typeof value !== 'function') {
+				value = toType(value)
+				if (value.prototype.default !== undefined) {
+					if (!prototype.hasOwnProperty('default')){
+						prototype.default = prototype.default ? Object.create(prototype.default) : {}
+					}
+					prototype.default[key] = value.prototype.default
+				}
+			}
 			if (typeof value === 'function' && key !== 'collectionOf') {
 				if (value.notifies) {
 					// variable class
-					descriptor = (function(key, Class) {
+					function getDescriptor(key, Class) {
 						return {
 							get: function() {
 								var property = (this._properties || (this._properties = {}))[key]
@@ -1282,15 +1336,15 @@
 								return property
 							},
 							set: function(value) {
-								this[key]._changeValue(RequestSet, value)
+								changeValue(this[key], RequestSet, value)
 							},
 							enumerable: true
 						}
-					})(key, value)
-					if (value === Variable) {
-						value = Variable() // create own instance
 					}
-					value.isPropertyClass = true
+					var descriptor = getDescriptor(key, value)
+					Object.defineProperty(prototype, key, descriptor)
+					Object.defineProperty(this, key, descriptor)
+					continue
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)
 				} else if (value.defineAs) {
@@ -1301,8 +1355,12 @@
 			}
 			Object.defineProperty(prototype, key, descriptor)
 			if (value !== undefined) {
-				// TODO: If there is a getter/setter here, use defineProperty
-				this[key] = value
+				if (key in this) {
+					Object.defineProperty(this, key, { value: value, configurable: true, enumerable: true })
+				} else {
+					this[key] = value
+				}
+				prototype.default
 			} else {
 				// getter/setter
 				Object.defineProperty(this, key, descriptor)
@@ -1332,17 +1390,59 @@
 
 
 	function arrayToModify(variable, callback) {
-		// TODO: switch this to allow promises
 		return when(variable.cachedValue || variable.valueOf(true), function(array) {
+			// if there is a typed array
+			var typedArray = variable._getTypedArray()
 			var newArray = array ?
 				variable.isWritable ? array.slice(0) : array
 				: []
-			var results = callback.call(variable, newArray)
-			return when(newArray === array ? // if we are just modifying the original array
-					variable.updated(results[1], variable) : // then just send out an updated event
-					variable.put(newArray, results[1]), function() { // otherwise put in the new array
-				variable.cachedVersion++ // update the cached version, so any version checking will know it has changed
-				return results[0]
+			return callback.call(variable, newArray, function(startingIndex, deleteCount, items) {
+				if (startingIndex < 0) {
+					startingIndex = newArray.length + startingIndex
+				}
+				if (startingIndex === newArray.length) {
+					var atEnd = true
+				}
+				var spliceArgs = [startingIndex, deleteCount]
+				var results = newArray.splice.apply(newArray, spliceArgs.concat(items))
+				var collectionOf = variable.collectionOf
+				if (typedArray && collectionOf) {
+					// create variable casted items
+					items = items.map(function(item) {
+						item = item instanceof collectionOf ? item : collectionOf.from(item)
+						item.parent = variable
+						return item
+					})
+					results = typedArray.slice(startingIndex, deleteCount + startingIndex)
+				}
+				var event = new SplicedEvent(variable, items, results, startingIndex, deleteCount)
+				if (atEnd) {
+					event.atEnd = true
+				}
+				var addedCount = items.length
+				// adjust the key positions of any index properties after splice
+				if (addedCount > 0) {
+					var arrayPosition
+					for (var i = newArray.length - addedCount; i > startingIndex;) {
+						var arrayPosition = variable[--i]
+						if (arrayPosition) {
+							variable[i] = undefined
+							arrayPosition.key += addedCount
+							variable[arrayPosition.key] = arrayPosition
+						}
+					}
+				}
+				return when(newArray === array ? // if we are just modifying the original array
+						variable.updated(event, variable) : // then just send out an updated event
+						variable.put(newArray, event), function() { // otherwise put in the new array
+					if (typedArray) {
+						// do this afterwards once we have confirmed that it completed successfully
+						variable._untypedArray = newArray
+						results = typedArray.splice.apply(typedArray, spliceArgs.concat(items))
+					}
+					variable.cachedVersion++ // update the cached version, so any version checking will know it has changed
+					return results
+				})
 			})
 		})
 	}
@@ -1351,7 +1451,7 @@
 		var addedCount = added.length
 		// adjust the key positions of any index properties after splice
 		if (addedCount > 0) {
-			event = event || new ArrayEvent({
+			event = event || new SplicedEvent({
 				modifier: variable,
 				actions: []
 			})
@@ -1380,7 +1480,7 @@
 		var i = startingIndex + removalCount
 		var arrayPosition
 		if (removalCount > 0) {
-			var event = new ArrayEvent({
+			var event = new SplicedEvent({
 				modifier: variable,
 				actions: []
 			})
@@ -1600,9 +1700,9 @@
 							if (parentContext) {
 								parentContext.setVersion(version)
 							}
-							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
 							variable.cachedVersion = version
 							variable.cachedValue = result
+							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) ? 'up-to-date' : '' // mark it as up-to-date now
 						}/* else {
 							console.log('ready state different than when the variable trasnform started ', variable, variable.readyState, readyState)
 						}*/
@@ -1639,7 +1739,7 @@
 				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 					if (argument === by) {
 						// if one of the args was updated, we need to do a full refresh (we can't compute differential events without knowledge of how the mapping function works)
-						updateEvent = new RefreshEvent()
+						updateEvent = new ReplacedEvent(updateEvent)
 						continue
 					}
 				}
@@ -1657,7 +1757,7 @@
 		getUpdates: function(since) {
 			// this always issues updates, nothing incremental can flow through it
 			if (!since || since.version < getVersion()) {
-				return [new RefreshEvent()]
+				return [new ReplacedEvent()]
 			}
 		},
 
@@ -1787,73 +1887,156 @@
 		}
 	})
 
-	var VArray = Variable.VArray = lang.compose(Variable, function VArray(value) {
+	var VArray = lang.compose(Variable, function VArray(value) {
 		return makeSubVar(this, value, VArray)
 	}, {
-		_isStrictArray: true,
-		/* TODO: at some point, we might add support for length, but need to make it be dependent/notified by array changes
-		get length() {
-			if (typeof this !== 'function') {
-				Object.defineProperty(this, 'length', {
-					configurable: true
-				})
-				return this.property('length')
-			}
-		},
-		set length(length) {
-			// allow overriding
-			Object.defineProperty(this, 'length', {
-				value: length
-			})
-		},*/
-		property: function(key, PropertyClass) {
-			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
-		},
-		splice: function(startingIndex, removalCount) {
-			var args = arguments
-			return arrayToModify(this, function(array) {
-				if (startingIndex < 0) {
-					startingIndex = array.length + startingIndex
+		valueOf: function(allowPromise) {
+			var value = Variable.prototype.valueOf.call(this, allowPromise)
+			var varray = this
+			return when(value, function(array) {
+				if (!array) {
+					return array
 				}
-				var results = array.splice.apply(array, args)
-				var event = removedAt(this, results, startingIndex, removalCount, array.length)
-				event = insertedAt(this, [].slice.call(args, 2), startingIndex, array.length, event)
-				return [results, event]
+				if (varray.sortFunction && varray._sortedArray != array) {
+					// we have a sort function, and a new incoming array, need to resort
+					var reversed = varray.reversed
+					varray.sortFunction = null // null this so we don't reenter here
+					array = varray.sort(varray.sortFunction)
+					if (reversed) {
+						varray.reversed()
+					}
+				}
+				return array
+			})
+		},
+		_getTypedArray(orUntyped) {
+			// no typing to do in an untyped varray
+			return orUntyped && when(this.valueOf(true), function(array) {
+				return array || []
+			})
+		},
+		splice: function(start, deleteCount) {
+			var args = arguments
+			return arrayToModify(this, function(array, doSplice) {
+				return doSplice(start, deleteCount, [].slice.call(args, 2))
 			})
 		},
 		push: function() {
 			var args = arguments
-			return arrayToModify(this, function(array) {
-				var results = array.push.apply(array, args)
-				var event = insertedAt(this, args, array.length - args.length, array.length)
-				return [results, event]
+			return arrayToModify(this, function(array, doSplice) {
+				return when(doSplice(array.length, 0, [].slice.call(args)), function(results) {
+					return array.length
+				})
 			})
 		},
 		unshift: function() {
 			var args = arguments
-			return arrayToModify(this, function(array) {
-				var results = array.unshift.apply(array, args)
-				var event = insertedAt(this, args, 0, array.length)
-				return [results, event]
+			return arrayToModify(this, function(array, doSplice) {
+				return when(doSplice(0, 0, [].slice.call(args)), function(results) {
+					return array.length
+				})
 			})
 		},
 		pop: function() {
-			return arrayToModify(this, function(array) {
-				var results = array.pop()
-				var event = removedAt(this, [results], array.length, 1)
-				return [results, event]
+			return arrayToModify(this, function(array, doSplice) {
+				return when(doSplice(array.length - 1, 1, []), function(results) {
+					return results[0]
+				})
 			})
 		},
 		shift: function() {
-			return arrayToModify(this, function(array) {
-				var results = array.shift()
-				var event = removedAt(this, [results], 0, 1, array.length)
-				return [results, event]
+			return arrayToModify(this, function(array, doSplice) {
+				return when(doSplice(0, 1, []), function(results) {
+					return results[0]
+				})
 			})
+		},
+		sort: function(compareFunction) {
+			var variable = this
+			return when(this._getTypedArray(true), function(array) {
+				array.sort(compareFunction)
+				if (variable.source) {
+					variable.sortFunction = compareFunction
+					variable._sortedArray = array
+					if (variable.reversed) {
+						variable.reversed = false
+					}
+				}
+				variable.updated() // this is treated as an in-place update with no upstream impact
+				variable.cachedVersion = variable.version
+				return array
+			})
+		},
+		reverse: function() {
+			var variable = this
+			return when(this._getTypedArray(true), function(array) {
+				array.reverse()
+				if (variable.source) {
+					variable.reversed = !variable.reversed
+				}
+				variable.updated() // this is treated as an in-place update with no upstream impact
+				return array
+			})
+		},
+		slice: function(start, end) {
+			return when(this.valueOf(true), function(array) {
+				return array.slice(start, end)
+			})
+		},
+		indexOf(idOrValue) {
+			// TODO: After a certain threshold of accesses we should build an index for O(1) time access
+			var array = this._getTypedArray(true)
+			return array.indexOf(idOrValue)
+		},
+		// id-based methods:
+		for: function(idOrValue) {
+			var i = this.indexOf(idOrValue)
+			var array = this.valueOf()
+			var instance = new this.collectionOf.from(array[i] || {})
+			instance.id = idOrValue
+			return instance
+		},
+		// Set methods:
+		add: function(value) {
+			if (this.indexOf(value) === -1) {
+				this.push(value)
+			}
+		},
+		delete: function(instanceOrId) {
+			var removeIndex = this.indexOf(instanceOrId)
+			if (removeIndex > -1) {
+				this.splice(removeIndex, 1)
+			}
+			return this
+		},
+		clear: function() {
+			this.is([])
 		}
 	})
+	/*Object.defineProperty(VArray.prototype, 'length', {
+		get: function() {
+			if (typeof this !== 'function') {
+				var properties = this._properties || (this._properties = {})
+				if (!properties.length) {
+					var length = properties.length = new VNumber()
+					length.key = 'length'
+					length.parent = this
+					Object.defineProperty(this, 'length', {
+						configurable: true,
+						value: length
+					})
+					return length
+				}
+			}
+		},
+		configurable: true/*
+		set length(length) {
+			// allow overriding
+			this.value.length = length
+		},
+	})*/
 	VArray.of = function(collectionOf) {
-		var ArrayClass = VArray({collectionOf: collectionOf})
+		var ArrayClass = VCollection({collectionOf: collectionOf})
 		if (this !== VArray) {
 			// new operator
 			return new ArrayClass()
@@ -1861,16 +2044,10 @@
 		return ArrayClass
 	}
 
-	function toArray(array) {
-		if (!array) {
-			return []
-		}
-		if (array.length > -1) {
-			return array
-		}
+	function setToArray(set) {
 		var newArray = []
-		if (array.forEach) {
-			array.forEach(function(item) {
+		if (set.forEach) {
+			set.forEach(function(item) {
 				newArray.push(item)
 			})
 		}
@@ -2114,6 +2291,15 @@
 		}
 		return method
 	}
+	function delayUpdate(variable, promise) {
+		var originalUpdated = variable.updated
+		variable.updated = function() {
+			var event = originalUpdated.apply(this, arguments)
+			event.visited.enqueueUpdate = function(update) {
+				promise.then(update)
+			}
+		}
+	}
 
 	var defaultContext = {
 		name: 'Default context',
@@ -2149,9 +2335,9 @@
 		// contextualized valueOf
 		return instanceForContext(this, context).then(callback, errback)
 	}
-	Variable.getValue = function() {
+	Variable.getValue = function(forChild) {
 		// contextualized getValue
-		return instanceForContext(this, context)
+		return instanceForContext(this, context).getValue(forChild)
 	}
 	Variable.put = function(value) {
 		// contextualized setValue
@@ -2159,14 +2345,18 @@
 	}
 	Variable.for = function(subject) {
 		if (subject != null) {
-			if (subject.target && !subject.constructor.getForClass) {
-				// makes HTML events work
-				subject = subject.target
-			}
-			var instance
-			instance = new Context(subject).specify(this)
-			if (instance && !instance.subject) {
-				instance.subject = subject
+			if (typeof subject == 'object') {
+				if (subject.target && !subject.constructor.getForClass) {
+					// makes HTML events work
+					subject = subject.target
+				}
+				var instance
+				instance = new Context(subject).specify(this)
+				if (instance && !instance.subject) {
+					instance.subject = subject
+				}
+			} else {
+				return this.collection.for(subject)
 			}
 			// TODO: Do we have a global context that we set on defaultInstance?
 			return instance || this.defaultInstance
@@ -2202,7 +2392,19 @@
 	Variable.updated = function(updateEvent, by) {
 		return instanceForContext(this, context).updated(updateEvent, by)
 	}
-	Variable._Transform = ContextualTransform
+	Variable._Transform = ContextualTransform;
+
+	// delegate to the variable's collection
+	['add', 'delete', 'clear', 'filter', 'map', 'forEach', 'slice', 'push', 'splice', 'pop', 'shift', 'unshift'].forEach(function(name) {
+		Variable[name] = function() {
+			return this.collection[name].apply(this.collection, arguments)
+		}
+	})
+	// create a new variable with a default value
+	Variable.default = function(value) {
+		return Variable.with({default: value})
+	}
+
 	var proxyHandler = {
 		get: function(target, name) {
 			var value = target[name]
@@ -2245,10 +2447,10 @@
 	})
 	Object.defineProperty(Variable, 'collection', {
 		get: function() {
-			return this._collection
+			return this.hasOwnProperty('_collection') ? this._collection : (this.collection = new VCollection())
 		},
 		set: function(Collection) {
-			if (this._collection != Collection) {
+			if (!this.hasOwnProperty('_collection') || this._collection != Collection) {
 				this._collection = Collection
 				Collection.collectionOf = this
 			}
@@ -2302,11 +2504,11 @@
 	}
 
 	function VString(value) {
-		return makeSubVar(this, (typeof value === 'object' || value == null) ? value : String(value), VString)
+		return makeSubVar(this, (typeof value === 'object' || value === undefined) ? value : String(value), VString)
 	}
 
 	function VNumber(value) {
-		return makeSubVar(this, typeof value === 'object' ? value : Number(value), VNumber)
+		return makeSubVar(this, (typeof value === 'object' || value === undefined) ? value : Number(value), VNumber)
 	}
 
 	VString = Variable.with({
@@ -2319,8 +2521,8 @@
 		substr: VFunction.returns(VString),
 		slice: VFunction.returns(VString),
 		toUpperCase: VFunction.returns(VString),
-		toLowerCase: VFunction.returns(VString),
-		length: VNumber
+		toLowerCase: VFunction.returns(VString)
+		//length: VNumber
 	}, VString)
 
 	VNumber = Variable.with({
@@ -2346,7 +2548,80 @@
 	}, VSet)
 	Object.defineProperty(VSet.prototype, 'array', {
 		get: function() {
-			return this._array || (this._array = this.to(toArray).as(VArray))
+			return this._array || (this._array = this.to(setToArray).as(VArray))
+		}
+	})
+
+	var VCollection = lang.compose(VArray, function VCollection(value) {
+		return makeSubVar(this, value, VCollection)
+	}, {
+		_getTypedArray: function(orUntyped) {
+			// skip past VArray valueOf, since it is redundant
+			var value = Variable.prototype.valueOf.call(this, true)
+			var varray = this
+			return when(value, function(array) {
+				var collectionOf = varray.collectionOf
+				if (!array) {
+					return []
+				}
+				if (!varray._typedArray || ((varray._untypedArray || varray._typedArray) !== array)) {
+					// TODO: eventually we may want to do this even more lazily for slice operations
+					var convertedItems
+					varray._typedArray = array.map(function(item) {
+						if (!(item instanceof collectionOf)) {
+							convertedItems = true
+							item = collectionOf === Variable ? exports.reactive(item) : collectionOf.from(item)
+							if (!item.parent) {
+								// set the parent; we may eventually put a check in place here to make sure we aren't
+								// reparenting, but this could legimately be a different parent if the array originates
+								// from another "source" variable that drives this.
+								item.parent = varray
+							}
+						}
+						return item
+					})
+					if (convertedItems || varray._untypedArray) {
+						// items were converted, store the original array
+						varray._untypedArray = array
+					} else {
+						varray._typedArray = array // no need for the second array
+					}
+				}
+				if (varray.sortFunction && varray._sortedArray != varray._typedArray) {
+					// we have a sort function, and a new incoming array, need to resort
+					var reversed = varray.reversed
+					varray.sortFunction = null // null this so we don't reenter here
+					array = varray.sort(variable.sortFunction)
+					if (reversed) {
+						varray.reversed()
+					}
+					return array
+				}
+				return (orUntyped || varray._untypedArray) && varray._typedArray
+			})
+		},
+		property: function(key, PropertyClass) {
+			if (this._typedArray) {
+				var entry = this._typedArray[key]
+				entry.key = key
+				return entry
+			}
+			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
+		},
+		indexOf: function(idOrValue) {
+			var array = this._getTypedArray(true)
+			var collectionOf = this.collectionOf
+			if (collectionOf.prototype.getId) {
+				var id = idOrValue && idOrValue.getId ? idOrValue.getId() : idOrValue
+				for (var i = 0, l = array.length; i < l; i++) {
+					if (array[i].getId() == id) {
+						return i
+					}
+				}
+				return -1
+			} else {
+				return array.indexOf(idOrValue)
+			}
 		}
 	})
 
@@ -2369,6 +2644,7 @@
 			return this.then()
 		},
 	})
+
 	var exports = {
 		__esModule: true,
 		Variable: Variable,
@@ -2390,8 +2666,10 @@
 		NotifyingContext: NotifyingContext,
 		all: all,
 		react: react,
+		delayUpdate: delayUpdate,
 		objectUpdated: objectUpdated,
-		NOT_MODIFIED: NOT_MODIFIED
+		NOT_MODIFIED: NOT_MODIFIED,
+		_changeValue: changeValue
 	}
 	Object.defineProperty(exports, 'currentContext', {
 		get: function() {
@@ -2399,29 +2677,21 @@
 		}
 	})
 
-	var IterativeMethod = lang.compose(Transform, function(source, method, args) {
-		this.source = source
-		// source.interestWithin = true
-		this.method = method
-		this.arguments = args
+	var IterativeMethod = lang.compose(Transform, function(source, method) {
 	}, {
 		transform: function(array) {
-			var method = this.method
-			var isStrictArray = this.source && this.source._isStrictArray
-			if (array && array.forEach) {
-				// already an array
-				//array = this._mappedItems(array)
-			} else if (isStrictArray) {
+			if (!array) {
 				array = []
 			} else {
-				// if not an array convert to an array
-				array = [array]
+				array = this.source._getTypedArray(true)
 			}
+
+			var method = this.method
 			if (typeof method === 'string') {
 				// apply method
-				return array[method].apply(array, this.arguments)
+				return [][method].call(array, this.source1.valueOf())
 			} else {
-				return method(array, this.arguments)
+				return method(array, [this.source1.valueOf(), this.source2])
 			}
 		},
 		_mappedItems: function(array) {
@@ -2433,112 +2703,120 @@
 				return wrapped
 			}) : array
 		},
+		slice: function(start, end) {
+			return when(this.valueOf(true), function(array) {
+				return array.slice(start, end)
+			})
+		},
 
 		getCollectionOf: function(){
 			return this.source.getCollectionOf()
-		},
-		_isStrictArray: true
+		}
 	})
 
-	function defineArrayMethod(method, constructor, properties, returns) {
+	function defineIterativeFunction(method, constructor, properties, returns, definedOn) {
 		var IterativeResults = lang.compose(returns ? returns.as(IterativeMethod) : IterativeMethod, constructor, properties)
 		IterativeResults.prototype.method || (IterativeResults.prototype.method = method)
 		Object.defineProperty(IterativeResults.prototype, 'isIterable', {value: true});
-		VArray[method] = VArray.prototype[method] = function() {
+		definedOn = definedOn || VArray;
+		definedOn[method] = definedOn.prototype[method] = function(iteratee, arg2) {
 			var results = new IterativeResults(this)
 			results.source = this
-			results.arguments = arguments
+			results.source1 = iteratee
+			if (arg2) {
+				results.source2 = arg2
+			}
 			return results
 		}
 	}
 
-	defineArrayMethod('filter', function Filtered() {}, {
+	defineIterativeFunction('filter', function Filtered(source) {
+	}, {
 		updated: function(event, by, isDownstream) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Transform.prototype.updated.call(this, event, by)
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
-			if (event.type === 'array-update') {
-				for (var i = 0, l = event.actions.length; i < l; i++) {
-					var action = event.actions[i]
-					if (action.oldValue) {
-						var index = contextualizedVariable.cachedValue.indexOf(action.oldValue)
-						if (index > -1) {
-							contextualizedVariable.splice(index, 1)
-						}
+			var filterFunction = this.source1.valueOf()
+			if (event.type === 'spliced') { // if we don't have unique items in the array, we can't match indices
+				var toAdd = event.items.filter(filterFunction)
+				var toRemove = event.removed.filter(filterFunction)
+				var start, deleteCount
+				if (toRemove.length > 1) {
+					// bail and consider it a full refresh
+					return Transform.prototype.updated.call(this, new ReplacedEvent(event))
+				} else if (toRemove.length == 1) {
+					// removing one
+					if (!toRemove[0].parent) {
+						// if we are not dealing with unique variables, we bail
+						return Transform.prototype.updated.call(this, new ReplacedEvent(event))
 					}
-					if (action.value) {
-						if ([action.value].filter(this.arguments[0]).length > 0) {
-							contextualizedVariable.push(action.value)
-						}
-					}
+					start = contextualizedVariable.cachedValue.indexOf(toRemove[0])
+					deleteCount = 1
+				} else {
+					start = event.atEnd ? contextualizedVariable.cachedValue.length : 0
+					deleteCount = 0
 				}
-			} else if (event.type === 'update') {
-				var object = event.parent.valueOf()
+				arrayToModify(contextualizedVariable, function(array, doSplice) {
+					doSplice(start, deleteCount, toAdd)
+				})
+			} else if (event.type === 'entry') {
+				var object = event.value
 				var index = contextualizedVariable.cachedValue.indexOf(object)
-				var matches = [object].filter(this.arguments[0]).length > 0
+				var matches = [object].filter(filterFunction).length > 0
 				if (index > -1) {
 					if (matches) {
-						return new PropertyChangeEvent(index, event, contextualizedVariable.cachedValue,
-							// might need to do something with this
-							object)
+						return Variable.prototype.updated.call(this, event, by, isDownstream)
 					} else {
-						contextualizedVariable.splice(index, 1)
+						arrayToModify(contextualizedVariable, function(array, doSplice) {
+							doSplice(index, 1, [])
+						})
 					}
 				}	else {
 					if (matches) {
-						contextualizedVariable.push(object)
+						arrayToModify(contextualizedVariable, function(array, doSplice) {
+							doSplice(array.length, 0, [object])
+						})
 					}
-					// else nothing mactches
+					// else nothing matches
 				}
 				return
 			} else {
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
+		},
+		// just delegate directly to the source for these methods
+		push: function(value) {
+			return this.source.push.apply(this.source, arguments)
+		},
+		unshift: function(value) {
+			return this.source.unshift.apply(this.source, arguments)
+		},
+		// these rely on data from this array to compute the additions/removals to the source
+		pop: function(value) {
+			return when(this.valueOf(), function(array) {
+				return array.length && this.source.remove(array[array.length - 1])
+			})
+		},
+		shift: function(value) {
+			return when(this.valueOf(), function(array) {
+				return array.length && this.source.remove(array[0])
+			})
+		},
+		splice: function(value) {
+			throw new Error('Not supported yet')
 		}
 	}, VArray)
-	defineArrayMethod('map', function Mapped(source) {
-		this._isStrictArray = source._isStrictArray
+	defineIterativeFunction('map', function Mapped(source) {
 	}, {
-		transform: function(array) {
-			var isStrictArray = this.source && this.source._isStrictArray
-			var mapFunction = this.arguments[0]
-			if (array && array.map) {
-				var source = this.source
-				var collectionOf = source && source.collectionOf
-				return array.map(collectionOf ? function(item, i) {
-					return mapFunction(source.property(i), i)
-				} : mapFunction)
-			} else if (!isStrictArray) {
-				if (method === 'map'){
-					// fast path, and special behavior for map
-					return mapFunction(array)
-				}
-			}
-			return IterativeMethod.prototype.transform.call(this, array)
-		},
 		updated: function(event, by, isDownstream) {
 			if (!event || event.modifier === this || (event.modifier && event.modifier.constructor === this)) {
 				return Variable.prototype.updated.call(this, event, by)
 			}
 			var contextualizedVariable = context && context.getContextualized(this) || this
-			if (event.type === 'array-update') {
-				for (var i = 0, l = event.actions.length; i < l; i++) {
-					var action = event.actions[i]
-					if (action.previousIndex > -1) {
-						contextualizedVariable.splice(action.previousIndex, 1)
-					}
-					if (action.value) {
-						var array = contextualizedVariable.cachedValue
-						contextualizedVariable.push(this.arguments[0].call(this.arguments[1], this.source.property(array && array.length)))
-					}
-				}
-/*			if (event.type === 'delete') {
-				contextualizedVariable.splice(event.previousIndex, 1)
-			} else if (event.type === 'add') {
-				var array = contextualizedVariable.cachedValue
-				contextualizedVariable.push(this.arguments[0].call(this.arguments[1], this.source.property(array && array.length)))*/
-			} else if (event.type === 'update') {
+			if (event.type === 'spliced') {
+				this.splice.apply(this, [event.start, event.deleteCount].concat(event.items.map(this.source1.valueOf())))
+			} else if (event.type === 'property') {
 				if (this.getCollectionOf()) {
 					return // if it has typed items, we don't need to propagate update events, since they will be handled by the variable item.
 				}
@@ -2554,21 +2832,25 @@
 					index = array && array.map && array.indexOf(object)
 				}
 				if (index > -1) {
-					contextualizedVariable.splice(index, 1, this.arguments[0].call(this.arguments[1], this.source.property(index)))
+					contextualizedVariable.splice(index, 1, this.source1.valueOf().call(this.source2, this.source.property(index)))
 				} else {
 					return Transform.prototype.updated.call(this, event, by, isDownstream)
 				}
+			} else if (event.type === 'entry') {
+				if (this.getCollectionOf()) {
+					return // if it has typed items, we don't need to propagate update events, since they will be handled by the variable item.
+				}
+				// TODO: find the element
 			} else {
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		}
 	}, VArray)
-	defineArrayMethod('reduce', function Reduced() {})
-	defineArrayMethod('reduceRight', function Reduced() {})
-	defineArrayMethod('some', function Aggregated() {}, {}, VBoolean)
-	defineArrayMethod('every', function Aggregated() {}, {}, VBoolean)
-	defineArrayMethod('slice', function Aggregated() {}, {}, VArray)
-	defineArrayMethod('keyBy', function UniqueIndex(source, args) {}, {
+	defineIterativeFunction('reduce', function Reduced() {})
+	defineIterativeFunction('reduceRight', function Reduced() {})
+	defineIterativeFunction('some', function Aggregated() {}, {}, VBoolean)
+	defineIterativeFunction('every', function Aggregated() {}, {}, VBoolean)
+	defineIterativeFunction('keyBy', function UniqueIndex(source, args) {}, {
 		property: VMap.prototype.property,
 		method: function(array, args) {
 			var index = new Map()
@@ -2591,7 +2873,7 @@
 		}
 	})
 
-	defineArrayMethod('groupBy', function UniqueIndex(source, args) {}, {
+	defineIterativeFunction('groupBy', function UniqueIndex(source, args) {}, {
 		property: VMap.prototype.property,
 		method: function(array, args) {
 			var index = new Map()

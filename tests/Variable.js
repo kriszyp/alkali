@@ -113,6 +113,7 @@ define(function(require) {
 			variable.put(3)
 			assert.isFalse(invalidated);
 		})
+
 		test('property access', function() {
 			var object = {
 				a: 1,
@@ -622,7 +623,7 @@ define(function(require) {
 			outer.put(false)
 			assert.deepEqual(derived.valueOf(), [false, [8,10,12]])
 		})
-		test('mapWithArray', function() {
+		test('toWithArray', function() {
 			var values = [0,1,2,3,4,5]
 			var all = new Variable(values)
 			var odd = all.to(function(arr) {
@@ -932,21 +933,22 @@ define(function(require) {
 			assert.strictEqual(sum.valueOf(), 12)
 			array.push(8)
 			assert.strictEqual(sum.valueOf(), 20)
-			assert.strictEqual(lastUpdate.type, 'array-update')
-			assert.strictEqual(lastUpdate.actions[0].index, 3)
-			assert.strictEqual(lastUpdate.actions[0].value, 8)
+			assert.strictEqual(lastUpdate.type, 'spliced')
+			assert.strictEqual(lastUpdate.start, 3)
+			assert.strictEqual(lastUpdate.items[0], 8)
 			array.pop()
-			assert.strictEqual(lastUpdate.type, 'array-update')
-			assert.strictEqual(lastUpdate.actions[0].previousIndex, 3)
-			assert.isUndefined(lastUpdate.actions[0].value)
+			assert.strictEqual(lastUpdate.type, 'spliced')
+			assert.strictEqual(lastUpdate.start, 3)
+			assert.strictEqual(lastUpdate.deleteCount, 1)
+			assert.strictEqual(lastUpdate.removed[0], 8)
 			array.unshift(0)
-			assert.strictEqual(lastUpdate.type, 'array-update')
-			assert.strictEqual(lastUpdate.actions[0].index, 0)
-			assert.strictEqual(lastUpdate.actions[0].value, 0)
+			assert.strictEqual(lastUpdate.type, 'spliced')
+			assert.strictEqual(lastUpdate.start, 0)
+			assert.strictEqual(lastUpdate.items[0], 0)
 			array.shift()
-			assert.strictEqual(lastUpdate.type, 'array-update')
-			assert.strictEqual(lastUpdate.actions[0].previousIndex, 0)
-			assert.isUndefined(lastUpdate.actions[0].value)
+			assert.strictEqual(lastUpdate.type, 'spliced')
+			assert.strictEqual(lastUpdate.start, 0)
+			assert.strictEqual(lastUpdate.removed[0], 0)
 		})
 
 		test('nestedVariableProperty', function() {
@@ -1407,6 +1409,59 @@ define(function(require) {
 			vp.put('new value')
 			assert.equal(vp.valueOf(), 'new value')
 			assert.equal(defaultObject.v, 'default')
+		})
+
+		test('Class as a collection', function() {
+			var MyVar = Variable.with({
+				name: '',
+				id: 0
+			})
+			MyVar.add(new MyVar({name: 'one', id: 1}))
+			MyVar.add(new MyVar({name: 'two', id: 2}))
+			MyVar.add(new MyVar({name: 'three', id: 3}))
+
+			var filtered = MyVar.filter((item) => item.name.slice(0, 1) != 't')
+			var count = 0
+			filtered.forEach(function(instance) {
+				assert.isTrue(instance instanceof MyVar)
+				count++
+			})
+			var updateCount = 0
+			filtered.notifies({ updated: function() {
+				updateCount++
+			}})
+			assert.equal(count, 1)
+			assert.equal(filtered.slice(0).length, 1)
+			count = 0
+			MyVar.forEach(function(instance) {
+				assert.isTrue(instance instanceof MyVar)
+				count++
+			})
+			assert.equal(count, 3)
+			assert.equal(MyVar.slice(0).length, 3)
+
+			MyVar.push({name: 'four', id: 4})
+			assert.equal(MyVar.slice(0).length, 4)
+			assert.equal(filtered.slice(0).length, 2)
+
+			MyVar.push({name: 'ten', id: 10})
+			assert.equal(MyVar.slice(0).length, 5)
+			assert.equal(filtered.slice(0).length, 2)
+
+			filtered.sort(function(a, b) {
+				return a.name > b.name ? 1 : -1
+			})
+			assert.equal(filtered.slice(0).length, 2)
+			assert.equal(filtered.slice(0)[0].id.valueOf(), 4)
+			assert.equal(filtered.slice(0)[1].id.valueOf(), 1)
+
+			MyVar.delete(2)
+			assert.equal(MyVar.slice(0).length, 4)
+			assert.equal(filtered.slice(0).length, 2)
+
+			MyVar.clear()
+			assert.equal(MyVar.slice(0).length, 0)
+			assert.equal(filtered.slice(0).length, 0)
 		})
 	})
 	console.log('registered tests')
