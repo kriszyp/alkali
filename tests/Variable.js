@@ -859,8 +859,8 @@ define(function(require) {
 				b: 'foo'
 			}
 			var TypedVariable = Variable({
-				a: Variable({type: 'number'}),
-				b: Variable({type: 'string', required: true})
+				a: VNumber(),
+				b: VString({required: true})
 			})
 			var variable = new TypedVariable(object)
 			var derived = new Variable()
@@ -886,7 +886,7 @@ define(function(require) {
 				a: 1
 			}
 			var TypedVariable = Variable({
-				a: Variable({type: 'number', min: 0, max: 5}),
+				a: VNumber({min: 0, max: 5}),
 				validate: function(target, schema) {
 					if (target < schema.min || target > schema.max) {
 						return ['out of range']

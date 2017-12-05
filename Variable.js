@@ -1278,7 +1278,7 @@
 		for (var key in properties) {
 			var descriptor = Object.getOwnPropertyDescriptor(properties, key)
 			var value = descriptor.value
-			if (typeof value !== 'function') {
+			if (typeof value !== 'function' && !this.isPrimitive) {
 				value = toType(value)
 				if (value.prototype.default !== undefined) {
 					if (!prototype.hasOwnProperty('default')){
@@ -2499,6 +2499,8 @@
 		toLowerCase: VFunction.returns(VString)
 		//length: VNumber
 	}, VString)
+	VString.prototype.type = 'string'
+	VString.isPrimitive = true
 
 	VNumber = Variable.with({
 		toFixed: VFunction.returns(VString),
@@ -2506,11 +2508,15 @@
 		toPrecision: VFunction.returns(VString),
 		toLocaleString: VFunction.returns(VString)
 	}, VNumber)
+	VNumber.prototype.type = 'number'
+	VNumber.isPrimitive = true
 
 	function VBoolean(value) {
 		return makeSubVar(this, typeof value === 'object' ? value : Boolean(value), VBoolean)
 	}
 	VBoolean = Variable.with({}, VBoolean)
+	VBoolean.prototype.type = 'boolean'
+	VBoolean.isPrimitive = true
 
 	function VSet(value) {
 		return makeSubVar(this, value instanceof Array ? new lang.Set(value) : value, VSet)
