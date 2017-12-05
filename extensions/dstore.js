@@ -27,6 +27,9 @@ define(['../util/lang', '../Variable'], function(lang, VariableExports){
 				}
 			}
 			return value
+		},
+		forEach: function(callback) {
+			this.valueOf().forEach(callback)
 		}
 	})
 

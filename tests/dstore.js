@@ -58,8 +58,8 @@ define(function(require) {
 					{id: 3, name: 'three'}
 				]
 			})
-			//var storeVar = new DstoreVariable(store)
-			var storeVar = new Variable(store)
+			var storeVar = new DstoreVariable(store)
+			//var storeVar = new Variable(store)
 			var result = []
 			storeVar.forEach(function(item){
 				result.push({i: item.id, n: item.name})

@@ -937,36 +937,6 @@
 		toString: function() {
 			return String(this.valueOf())
 		},
-		forEach: function(callbackOrItemClass, callback) {
-			// iterate through current value of variable
-			if (callbackOrItemClass.notifies) {
-				return this.forEach(function(item) {
-					var itemVariable = callbackOrItemClass.from(item)
-					callback.call(this, itemVariable)
-				}, context)
-			}
-			var collectionOf = this.collectionOf
-			if (collectionOf) {
-				var variable = this
-				return when(this.valueOf(true), function(value) {
-					if (value && value.forEach) {
-						value.forEach(function(item, index) {
-							callbackOrItemClass.call(variable, variable.property(index, collectionOf))
-						})
-					}
-				})
-			}
-			return when(this.valueOf(true), function(value) {
-				if (value && value.forEach) {
-					value.forEach(callbackOrItemClass)
-				}else{
-					for (var i in value) {
-						callbackOrItemClass.call(value, value[i], i)
-					}
-				}
-			})
-		},
-
 		to: function (transformFunction, reverse) {
 			if (typeof transformFunction !== 'function') {
 				if (typeof transformFunction === 'object') {
@@ -1913,6 +1883,11 @@
 			// no typing to do in an untyped varray
 			return orUntyped && when(this.valueOf(true), function(array) {
 				return array || []
+			})
+		},
+		forEach: function(callback, instance) {
+			return when(this._getTypedArray(true), function(array) {
+				array.forEach(callback, instance)
 			})
 		},
 		splice: function(start, deleteCount) {
