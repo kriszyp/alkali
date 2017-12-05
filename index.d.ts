@@ -121,8 +121,8 @@ declare namespace alkali {
     static all(...inputs: Array<Variable<any>>): Variable<Array<any>>
 
     static with<V, Props>(this: V, properties: {[P in keyof Props]: Props[P]}): {
-        new (...args: any[]): V & Props
-    } & V & Props
+        new (...args: any[]): V & Reacts<Props>
+    } & V & Reacts<Props>
 
     static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
 
@@ -149,7 +149,7 @@ declare namespace alkali {
     property<K extends keyof T2>(key: KeyType): VariableClass<T2[K]>
   }
 
-  export type Reacts<T> = T & Variable<T>
+  export type Reacts<T> = {[P in keyof T]?: Reacts<T[P]>} & Variable<T>
 
   interface VC<U> {
     <T>(properties: T): T & U & VC<T & U>
