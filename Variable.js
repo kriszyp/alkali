@@ -1870,8 +1870,9 @@
 				if (varray.sortFunction && varray._sortedArray != array) {
 					// we have a sort function, and a new incoming array, need to resort
 					var reversed = varray.reversed
+					var sortFunction = varray.sortFunction
 					varray.sortFunction = null // null this so we don't reenter here
-					array = varray.sort(varray.sortFunction)
+					array = varray.sort(sortFunction)
 					if (reversed) {
 						varray.reversed()
 					}
@@ -1965,6 +1966,9 @@
 		},
 		// id-based methods:
 		for: function(idOrValue) {
+			if (this.source) {
+				return this.source.for(idOrValue)
+			}
 			var i = this.indexOf(idOrValue)
 			var array = this.valueOf()
 			var instance = new this.collectionOf.from(array[i] || {})
@@ -2374,6 +2378,8 @@
 		Variable[name] = function() {
 			return this.collection[name].apply(this.collection, arguments)
 		}
+		// preserve array functionality on static methods of VArray
+		VArray[name] = VArray.prototype[name]
 	})
 	// create a new variable with a default value
 	Variable.default = function(value) {
@@ -2571,8 +2577,9 @@
 				if (varray.sortFunction && varray._sortedArray != varray._typedArray) {
 					// we have a sort function, and a new incoming array, need to resort
 					var reversed = varray.reversed
+					var sortFunction = varray.sortFunction
 					varray.sortFunction = null // null this so we don't reenter here
-					array = varray.sort(variable.sortFunction)
+					array = varray.sort(sortFunction)
 					if (reversed) {
 						varray.reversed()
 					}

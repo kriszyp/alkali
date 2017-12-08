@@ -1165,6 +1165,7 @@ define(function(require) {
 			assert.strictEqual(TestVariable.property('a').for(subject1).valueOf(), 1)
 			assert.strictEqual(TestVariable.property('a').for(subject2).valueOf(), 2)
 		})
+		/* May not continue to support this, or needs more work
 		test('contextualizedFilter', function() {
 			var TestVariable = VArray()
 			var TestSubject = VArray()
@@ -1192,7 +1193,7 @@ define(function(require) {
 			assert.strictEqual(greaterThanFour.for(subject2).valueOf().length, 1)
 			TestVariable.for(subject1).push(1)
 			assert.strictEqual(greaterThanFour.for(subject1).valueOf().length, 2)
-		})
+		}) */
 		test('emptyKey', function() {
 			var v = new Variable({})
 			var updated
