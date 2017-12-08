@@ -790,6 +790,7 @@
 		} else {
 			Element.create = create
 			Element.with = withProperties
+			Element.defineElement = defineElement
 			Element.for = forTarget
 			Element.property = propertyForElement
 			Element.getForClass = getForClass
@@ -989,8 +990,13 @@
 
 	function defineElement(tagSelector, Element) {
 		if (!Element) {
-			// allow optional first param
-			return tagSelector.with()
+			if (typeof tagSelector === 'string') {
+				// allow calling as target
+				Element = this
+			} else {
+				// allow optional first param
+				return tagSelector.with()
+			}
 		}
 		var extendElement = Element.tagName
 		var selector = tagSelector.match(/[\.\#].+/)

@@ -126,8 +126,6 @@ declare namespace alkali {
 
     static assign<U>(properties: {[P in keyof U]: { new(): U[P] }}): VariableClass<U>
 
-    static [Symbol.hasVar]<U>(this: U): U
-
     schema: Variable
     validation: Variable
 
@@ -339,11 +337,11 @@ declare namespace alkali {
   type Vstyle = Vstring | Vnumber | Vboolean
 
   /**
-  * Registers an element with the given tag name, returning a callable, newable constructor for the element
+  * @Deprecated Registers an element with the given tag name, returning a callable, newable constructor for the element
   **/
   export function defineElement<T extends Element>(tagSelect: string, Element: { new(...params: {}[]): T}): ElementClass<T>
   /**
-  * Returns a callable, newable constructor for the element
+  * @Deprecated Returns a callable, newable constructor for the element
   **/
   export function defineElement<T extends Element>(Element: { new(...params: {}[]): T}): ElementClass<T>
 
@@ -353,7 +351,9 @@ declare namespace alkali {
 
   type OptionalElementProperties<T> = {
     [P in keyof T]?: T[P]
-  } | BaseElementProperties
+  } | BaseElementProperties | {
+    [key: string]: any
+  }
 
   interface BaseElementProperties {
     content?: ElementChild
@@ -719,21 +719,22 @@ declare namespace alkali {
   export interface ElementClass<Element> {
     new (selector?: string): Element
     new (content: ElementChild): Element
-    new (properties: OptionalElementProperties<Element>, content?: ElementChild): Element
+    new<T> (properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): Element & T
     new (selector: string, content: ElementChild): Element
-    new (selector: string, properties: OptionalElementProperties<Element>, content?: ElementChild): Element
+    new<T> (selector: string, properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): Element & T
     (selector?: string): ElementClass<Element>
     (content: ElementChild): ElementClass<Element>
-    (properties: OptionalElementProperties<Element>, content?: ElementChild): ElementClass<Element>
+    <T>(properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): ElementClass<Element & T>
     (selector: string, content: ElementChild, properties?: OptionalElementProperties<Element>): ElementClass<Element>
-    (selector: string, properties: OptionalElementProperties<Element>, content?: ElementChild): ElementClass<Element>
+    <T>(selector: string, properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): ElementClass<Element & T>
     create(selector?: string): Element
     create(content: ElementChild): Element
     create(properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     create(selector: string, content: ElementChild): Element
     create(selector: string, properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     with(content: ElementChild): ElementClass<Element>
-    with(properties: OptionalElementProperties<Element>, content?: ElementChild): ElementClass<Element>
+    with<T>(properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): ElementClass<Element & T>
+    defineElement<T extends Element>(this: { new(...params: {}[]): T}, tagSelect?: string): ElementClass<T>
     property(key): VariableClass<any>
     children: Array<ElementChild>
   }
@@ -889,16 +890,4 @@ declare module 'alkali' {
 
 declare module 'alkali/extensions/typescript' {
     export function reactive(target: any, key: string)
-}
-interface SymbolConstructor {
-  hasVar: symbol
-}
-interface String {
-  [Symbol.hasVar]: alkali.Vstring
-}
-interface Number {
-  [Symbol.hasVar]: alkali.Vnumber
-}
-interface Boolean {
-  [Symbol.hasVar]: alkali.Vboolean
 }
