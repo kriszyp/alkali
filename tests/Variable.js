@@ -1133,12 +1133,27 @@ define(function(require) {
 			assert.strictEqual(mapOperations, 6)
 		})
 
-		test ('preserve array type with filter', function() {
+		test('preserve array type with filter', function() {
 			var Foo = Variable.with({ foo: '' })
 			Foo.collection.is([{ foo: 'test', isntInstance: true }])
 			assert.isTrue(Foo.collection.filter(function(instance) {
 				return instance.put // make sure we got an instance
 			}).valueOf()[0].isntInstance)
+		})
+
+		test('add during transform', function() {
+			var Foo = Variable.with({ foo: '' })
+			Foo.collection.is([{ id: 1 }])
+			var transformed = Foo.collection.to(function(collection) {
+				let newCollection = collection.slice(0)
+				if (collection.length == 1) {
+					Foo.add({ id: 2 })
+				}
+				return newCollection
+			})
+			assert.equal(transformed.valueOf().length, 1)
+			assert.equal(transformed.valueOf().length, 2)
+			assert.equal(transformed.valueOf().length, 2)
 		})
 
 		test('someArray', function() {
