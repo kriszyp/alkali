@@ -21,6 +21,13 @@
 			return 'Marker for not-modified response'
 		},
 	}
+	var GET_TYPED_ARRAY = {
+		getTyped: true
+	}
+	var GET_TYPED_OR_UNTYPED_ARRAY = {
+		getTyped: true,
+		allowUntyped: true
+	}
 
 	var propertyListenersMap = new lang.WeakMap(null, 'propertyListenersMap')
 	var isStructureChecked = new lang.WeakMap()
@@ -830,15 +837,19 @@
 			if (oldValue === value && typeof value != 'object') {
 				return noChange
 			}
-			if (oldValue && oldValue.put &&
-					// if it is set to fixed, we see we can put in the current variable
-					(this.fixed || !(value && value.put))) {
-				try {
-					return oldValue.put(value)
-				} catch (error) {
-					if (!error.deniedPut) {
-						throw error
-					}// else if the put was denied, continue on and set the value on this variable
+			if (oldValue && oldValue.put) {
+				// if it is set to fixed, we see we can put in the current variable
+				if (this.fixed || !(value && value.put)) {
+					try {
+						return oldValue.put(value)
+					} catch (error) {
+						if (!error.deniedPut) {
+							throw error
+						}// else if the put was denied, continue on and set the value on this variable
+					}
+				} else {
+					// preserve a reference to the original variable so we can `save()` back into it
+					this.copiedFrom = oldValue
 				}
 			}
 			if (value && value.then && !value.notifies) {
@@ -921,8 +932,13 @@
 			// for ES7 observable compatibility
 			this.put(value)
 		},
-		setValue: function(value) {
-			return this.value = value
+		save: function() {
+			if (this.copiedFrom) {
+				this.copiedFrom.put(this.valueOf())
+				return true
+			} else {
+				return false
+			}
 		},
 		onValue: function(listener) {
 			return this.subscribe(function(event) {
@@ -1104,7 +1120,7 @@
 			})
 		},
 		getCollectionOf: function() {
-			return this.returnedVariable && this.returnedVariable.collectionOf || this.constructor.collectionOf
+			return this.collectionOf || this.returnedVariable && this.returnedVariable.collectionOf || this.constructor.collectionOf
 		},
 		_sN: function(name) {
 			// for compilers to set a name
@@ -1362,7 +1378,7 @@
 	function arrayToModify(variable, callback) {
 		return when(variable.cachedValue || variable.valueOf(true), function(array) {
 			// if there is a typed array
-			var typedArray = variable._getTypedArray()
+			var typedArray = variable.valueOf(GET_TYPED_ARRAY)
 			var newArray = array ?
 				variable.isWritable ? array.slice(0) : array
 				: []
@@ -1476,7 +1492,7 @@
 
 	if (typeof Symbol !== 'undefined') {
 		Variable.prototype[Symbol.iterator] = function() {
-			var iterator = this.valueOf()[Symbol.iterator]()
+			var iterator = this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)[Symbol.iterator]()
 			var variable = this
 			var collectionOf = this.collectionOf
 			if (collectionOf) {
@@ -1589,7 +1605,7 @@
 				}
 				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 					if (argument) {
-						var result = argument.valueOf(true)
+						var result = argument.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
 						if (result && result.then) {
 							remaining++
 							if (i === 0) {
@@ -1791,7 +1807,14 @@
 						variable.cachedVersion = variable.version
 					}
 				}, function (error) {
+					// we have to go into an error state so the subsequent request can throw
 					console.error('Variable resolution failed', error)
+					if (version === variable.version) {
+						Variable.prototype.updated.call(variable)
+						variable.cachedVersion = variable.version
+						variable.cachedValue = 'Error occurred: ' + error
+						variable.readyState = 'up-to-date'
+					}
 				})
 				return this.useLastValue && 'cachedValue' in this ? this.cachedValue : this.default
 			}
@@ -1860,11 +1883,19 @@
 	var VArray = lang.compose(Variable, function VArray(value) {
 		return makeSubVar(this, value, VArray)
 	}, {
-		valueOf: function(allowPromise) {
-			var value = Variable.prototype.valueOf.call(this, allowPromise)
+		valueOf: function(mode) {
+			var value = Variable.prototype.valueOf.call(this, mode)
 			var varray = this
 			return when(value, function(array) {
-				if (!array) {
+				if (mode && mode.getTyped) {
+					if (mode.allowUntyped) {
+						if (!array) {
+							return []
+						}
+					} else {
+						return // untyped not allowed
+					}
+				} else if (!array) {
 					return array
 				}
 				if (varray.sortFunction && varray._sortedArray != array) {
@@ -1880,14 +1911,8 @@
 				return array
 			})
 		},
-		_getTypedArray(orUntyped) {
-			// no typing to do in an untyped varray
-			return orUntyped && when(this.valueOf(true), function(array) {
-				return array || []
-			})
-		},
 		forEach: function(callback, instance) {
-			return when(this._getTypedArray(true), function(array) {
+			return when(this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY), function(array) {
 				array.forEach(callback, instance)
 			})
 		},
@@ -1929,7 +1954,7 @@
 		},
 		sort: function(compareFunction) {
 			var variable = this
-			return when(this._getTypedArray(true), function(array) {
+			return when(this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY), function(array) {
 				array.sort(compareFunction)
 				if (variable.source) {
 					variable.sortFunction = compareFunction
@@ -1939,13 +1964,13 @@
 					}
 				}
 				variable.updated() // this is treated as an in-place update with no upstream impact
-				variable.cachedVersion = variable.version
+				variable.cachedVersion = variable.versionF
 				return array
 			})
 		},
 		reverse: function() {
 			var variable = this
-			return when(this._getTypedArray(true), function(array) {
+			return when(this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY), function(array) {
 				array.reverse()
 				if (variable.source) {
 					variable.reversed = !variable.reversed
@@ -1961,7 +1986,7 @@
 		},
 		indexOf(idOrValue) {
 			// TODO: After a certain threshold of accesses we should build an index for O(1) time access
-			var array = this._getTypedArray(true)
+			var array = this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
 			return array.indexOf(idOrValue)
 		},
 		// id-based methods:
@@ -2542,15 +2567,19 @@
 	var VCollection = lang.compose(VArray, function VCollection(value) {
 		return makeSubVar(this, value, VCollection)
 	}, {
-		_getTypedArray: function(orUntyped) {
+		valueOf: function(mode) {
 			// skip past VArray valueOf, since it is redundant
-			var value = Variable.prototype.valueOf.call(this, true)
+			var value = Variable.prototype.valueOf.call(this, mode)
 			var varray = this
 			return when(value, function(array) {
-				var collectionOf = varray.collectionOf
+				if (!mode || !mode.getTyped) {
+					return array
+				}
+				var collectionOf = varray.getCollectionOf()
 				if (!array) {
 					return []
 				}
+
 				if (!varray._typedArray || ((varray._untypedArray || varray._typedArray) !== array)) {
 					// TODO: eventually we may want to do this even more lazily for slice operations
 					var convertedItems
@@ -2585,7 +2614,7 @@
 					}
 					return array
 				}
-				return (orUntyped || varray._untypedArray) && varray._typedArray
+				return (mode.allowUntyped || varray._untypedArray) && varray._typedArray
 			})
 		},
 		property: function(key, PropertyClass) {
@@ -2597,7 +2626,7 @@
 			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
 		},
 		indexOf: function(idOrValue) {
-			var array = this._getTypedArray(true)
+			var array = this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
 			var collectionOf = this.collectionOf
 			if (collectionOf.prototype.getId) {
 				var id = idOrValue && idOrValue.getId ? idOrValue.getId() : idOrValue
@@ -2668,16 +2697,12 @@
 	var IterativeMethod = lang.compose(Transform, function(source, method) {
 	}, {
 		transform: function(array) {
-			if (!array) {
-				array = []
-			} else {
-				array = this.source._getTypedArray(true)
-			}
-
 			var method = this.method
 			if (typeof method === 'string') {
 				// apply method
-				return [][method].call(array, this.source1.valueOf())
+				return this.hasOwnProperty('source2') ?
+					[][method].call(array, this.source1.valueOf(), this.source2) :
+					[][method].call(array, this.source1.valueOf())
 			} else {
 				return method(array, [this.source1.valueOf(), this.source2])
 			}
@@ -2773,6 +2798,18 @@
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		},
+		transform: function(array) {
+			var untypedArray = this.source.valueOf()
+			var results = []
+			var callback = this.source1.valueOf()
+			array.forEach(function(value, index) {
+				if (callback(value, index)) {
+					// push the original values, so we preserve underlying and typed values
+					results.push(untypedArray[index])
+				}
+			}, this.source2)
+			return results
+		},
 		// just delegate directly to the source for these methods
 		push: function(value) {
 			return this.source.push.apply(this.source, arguments)
@@ -2793,6 +2830,9 @@
 		},
 		splice: function(value) {
 			throw new Error('Not supported yet')
+		},
+		getCollectionOf: function() {
+			return this.source.getCollectionOf()
 		}
 	}, VArray)
 	defineIterativeFunction('map', function Mapped(source) {

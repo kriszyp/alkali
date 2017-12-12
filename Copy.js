@@ -43,7 +43,7 @@
 				var derivative = this.derivativeMap.get(value)
 				if (derivative == null) {
 					this.derivativeMap.set(value, derivative = deepCopy(value, undefined, this.derivativeMap))
-					this.setValue(derivative)
+					this.value = derivative
 				}
 			}
 			if(this.value === undefined) {

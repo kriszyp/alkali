@@ -1078,6 +1078,25 @@ define(function(require) {
 			assert.equal(transformCount, 2)
 		})
 
+		test('reduce collection', function() {
+			var Foo = Variable.with({})
+			var Collection = VArray.of(Foo)
+
+			var collection = new Collection([{
+			  Name: 'Kerry',
+			  Id: 1
+			}])
+
+			function reducer(map, model, index) {
+			  map.set(model.get('Id'), index)
+
+			  return map
+			}
+
+			var indexById = collection.reduce(reducer, new Map())
+			assert.equal(indexById.valueOf().get(1), 0)
+		})
+
 		test('mapReduceArray', function() {
 			var arrayVariable = new VArray([3, 5, 7])
 			var mapOperations = 0
@@ -1112,6 +1131,14 @@ define(function(require) {
 			assert.deepEqual(doubled.valueOf(), [6, 8, 18, 2])
 			assert.strictEqual(sum.valueOf(), 34)
 			assert.strictEqual(mapOperations, 6)
+		})
+
+		test ('preserve array type with filter', function() {
+			var Foo = Variable.with({ foo: '' })
+			Foo.collection.is([{ foo: 'test', isntInstance: true }])
+			assert.isTrue(Foo.collection.filter(function(instance) {
+				return instance.put // make sure we got an instance
+			}).valueOf()[0].isntInstance)
 		})
 
 		test('someArray', function() {
