@@ -1033,6 +1033,30 @@ define(function(require) {
 			assert.strictEqual(greaterThanFour.valueOf().length, 2)
 		})
 
+		test('typed array with push', function() {
+			var Foo = Variable.with({})
+			var Collection = VArray.of(Foo)
+			var collection = new Collection([])
+
+			var filteredCollection = collection.filter(model => {
+			  assert(model instanceof Foo)
+
+			  return model.get('Name')[0] === 'K'
+			})
+			assert.equal(valueOfAndNotify(filteredCollection, function() {
+			}).length, 0)
+
+			collection.push({
+			  Name: 'Kerry'
+			})
+
+			collection.push({
+			  Name: 'Kevin'
+			})
+
+			assert.equal(filteredCollection.valueOf().length, 2)
+		})
+
 		test('splice and filter', function() {
 			var strings = new VArray(['foo', 'bar', 'baz'])
 			var startsWithB = strings.filter(function(v) {

@@ -2580,12 +2580,10 @@
 					return []
 				}
 
-				if (!varray._typedArray || ((varray._untypedArray || varray._typedArray) !== array)) {
+				if (!varray._typedArray || varray._untypedArray !== array) {
 					// TODO: eventually we may want to do this even more lazily for slice operations
-					var convertedItems
 					varray._typedArray = array.map(function(item) {
 						if (!(item instanceof collectionOf)) {
-							convertedItems = true
 							item = collectionOf === Variable ? exports.reactive(item) : collectionOf.from(item)
 							if (!item.parent) {
 								// set the parent; we may eventually put a check in place here to make sure we aren't
@@ -2596,12 +2594,8 @@
 						}
 						return item
 					})
-					if (convertedItems || varray._untypedArray) {
-						// items were converted, store the original array
-						varray._untypedArray = array
-					} else {
-						varray._typedArray = array // no need for the second array
-					}
+					// items were converted, store the original array
+					varray._untypedArray = array
 				}
 				if (varray.sortFunction && varray._sortedArray != varray._typedArray) {
 					// we have a sort function, and a new incoming array, need to resort
@@ -2614,7 +2608,7 @@
 					}
 					return array
 				}
-				return (mode.allowUntyped || varray._untypedArray) && varray._typedArray
+				return varray._typedArray
 			})
 		},
 		property: function(key, PropertyClass) {
