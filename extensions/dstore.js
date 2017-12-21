@@ -1,4 +1,7 @@
-define(['../util/lang', '../Variable'], function(lang, VariableExports){
+(function (root, factory) { if (typeof define === 'function' && define.amd) {
+	define(['../util/lang', '../Variable'], factory) } else if (typeof module === 'object' && module.exports) {
+  module.exports = factory(require('../util/lang'), require('../Variable')) // Node
+}}(this, function (lang, VariableExports) {
 	var Variable = VariableExports.Variable
 	var DstoreVariable = lang.compose(Variable, function DstoreVariable(value){
 		this.value = value
@@ -36,11 +39,16 @@ define(['../util/lang', '../Variable'], function(lang, VariableExports){
 	function VArrayDstore(varray) {
 		return {
 			fetchRange: function(options) {
-				return Promise.resolve(varray.slice(options.start, options.end))
+				Promise.prototype.otherwise = Promise.prototype.catch // make otherwise available
+				let promise = Promise.resolve(varray.slice(options.start, options.end))
+				promise.totalLength = varray.then(function(array) {
+					return array.length
+				})
+				return promise
 			},
 			on: function(eventType, listener) {
 				var eventTypes = eventType.split('. ')
-				varray.notifies({
+				var subscriber = {
 					updated: function(event) {
 						if (event.type === 'entry') {
 							if (eventType.includes('update')) {
@@ -57,7 +65,13 @@ define(['../util/lang', '../Variable'], function(lang, VariableExports){
 
 						}
 					}
-				})
+				}
+				varray.notifies(subscriber)
+				return {
+					remove: function() {
+						varray.stopNotifies(subscriber)
+					}
+				}
 			},
 			track: function() {
 				return this
@@ -75,4 +89,4 @@ define(['../util/lang', '../Variable'], function(lang, VariableExports){
 		DstoreVariable: DstoreVariable,
 		VArrayDstore: VArrayDstore
 	}
-})
+}))

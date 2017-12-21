@@ -1481,7 +1481,10 @@ define(function(require) {
 		test('Class as a collection', function() {
 			var MyVar = Variable.with({
 				name: '',
-				id: 0
+				id: 0,
+				getId: function() {
+					return this.id
+				}
 			})
 			MyVar.add(new MyVar({name: 'one', id: 1}))
 			MyVar.add(new MyVar({name: 'two', id: 2}))

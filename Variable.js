@@ -553,10 +553,13 @@
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
 		get isWritable() {
-			return this.fixed ? !this.value || this.value.isWritable : this._isWritable
+			return this.fixed ? !this.value : this._isWritable
 		},
 		set isWritable(isWritable) {
 			this._isWritable = isWritable
+			if (isWritable && this.fixed) {
+				this.fixed = false
+			}
 		},
 		_isWritable: true,
 
@@ -830,7 +833,7 @@
 			}
 		},
 		put: function(value, event) {
-			if (this.parent) {
+			if (this.parent && this.key !== undefined) {
 				return changeValue(this, RequestChange, value, event)
 			}
 			var oldValue = this.getValue ? this.getValue() : this.value
@@ -847,15 +850,16 @@
 							throw error
 						}// else if the put was denied, continue on and set the value on this variable
 					}
-				} else {
-					// preserve a reference to the original variable so we can `save()` back into it
-					this.copiedFrom = oldValue
 				}
 			}
 			if (value && value.then && !value.notifies) {
 				value = assignPromise(this, value)
 			} else {
 				this.value = value
+				if (value && value.put) {
+					// preserve a reference to the original variable so we can `save()` back into it
+					this.copiedFrom = value
+				}
 			}
 			event = event || new ReplacedEvent()
 			event.oldValue = oldValue
@@ -1071,9 +1075,6 @@
 				}
 			}
 		},
-		getId: function() {
-			return this.id || (this.id = Variable.nextId++)
-		},
 		observeObject: function() {
 			var variable = this
 			return when(this.valueOf(), function(object) {
@@ -1283,6 +1284,8 @@
 				return VNumber(value)
 			} else if (typeof value === 'boolean') {
 				return VBoolean(value)
+			} else if (typeof value === 'function') {
+				return value // hopefully another type
 			} else {
 				return Variable
 			}
@@ -2453,7 +2456,12 @@
 	})
 	Object.defineProperty(Variable, 'collection', {
 		get: function() {
-			return this.hasOwnProperty('_collection') ? this._collection : (this.collection = new VCollection())
+			if (this.hasOwnProperty('_collection')) {
+				return this._collection
+			}
+			this.collection = new VCollection()
+			this.collection.fixed = true // by default a model collection does not need to replace the array each time it is changed
+			return this.collection
 		},
 		set: function(Collection) {
 			if (!this.hasOwnProperty('_collection') || this._collection != Collection) {
@@ -2582,7 +2590,7 @@
 
 				if (!varray._typedArray || varray._untypedArray !== array) {
 					// TODO: eventually we may want to do this even more lazily for slice operations
-					varray._typedArray = array.map(function(item) {
+					varray._typedArray = array.map(function(item, index) {
 						if (!(item instanceof collectionOf)) {
 							item = collectionOf === Variable ? exports.reactive(item) : collectionOf.from(item)
 							if (!item.parent) {
@@ -2590,6 +2598,9 @@
 								// reparenting, but this could legimately be a different parent if the array originates
 								// from another "source" variable that drives this.
 								item.parent = varray
+								if (varray.isWritable) {
+									item.key = index
+								}
 							}
 						}
 						return item
@@ -2611,6 +2622,12 @@
 				return varray._typedArray
 			})
 		},
+		updated: function(event) {
+			if (event.type === 'replaced') {
+				this._untypedArray = null
+			}
+			return VArray.prototype.updated.apply(this, arguments)
+		},
 		property: function(key, PropertyClass) {
 			if (this._typedArray) {
 				var entry = this._typedArray[key]
@@ -2620,18 +2637,18 @@
 			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
 		},
 		indexOf: function(idOrValue) {
-			var array = this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
+			var array = this.valueOf()
 			var collectionOf = this.collectionOf
 			if (collectionOf.prototype.getId) {
 				var id = idOrValue && idOrValue.getId ? idOrValue.getId() : idOrValue
-				for (var i = 0, l = array.length; i < l; i++) {
+				for (var i = 0, l = (array || 0).length; i < l; i++) {
 					if (array[i].getId() == id) {
 						return i
 					}
 				}
 				return -1
 			} else {
-				return array.indexOf(idOrValue)
+				return array.indexOf(idOrValue && idOrValue.valueOf())
 			}
 		}
 	})
