@@ -553,16 +553,12 @@
 			return new ContextualizedVariable(this, subject || defaultContext)
 		},
 		get isWritable() {
-			return this.fixed ? !this.value : this._isWritable
+			return this.fixed ? !this.value || this.value.isWritable : this._isWritable
 		},
 		set isWritable(isWritable) {
 			this._isWritable = isWritable
-			if (isWritable && this.fixed) {
-				this.fixed = false
-			}
 		},
 		_isWritable: true,
-
 		_propertyChange: function(propertyName, object, type) {
 			if (this.onPropertyChange) {
 				this.onPropertyChange(propertyName, object)
