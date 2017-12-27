@@ -232,8 +232,8 @@
 	var extendClass, constructOrCall
 	try {
 		// do this with an eval to avoid syntax errors in browsers that do not support class and new.target
-		extendClass = eval('(function(Base){ return class extends Base {}})\n\n//# sourceURL=alkali:///class-extend')
-		var possibleConstructOrCall = eval('"use strict";(function(BaseClass, constructHandler, callHandler, constructClass){ return function Element() { return this instanceof Element ? constructHandler ? constructHandler.apply(new.target || this.constructor, arguments) : constructClass ? Reflect.construct(BaseClass, arguments, new.target || this.constructor) : lang.functionConstruct(BaseClass, arguments, new.target || this.constructor, this) : callHandler.apply(Element, arguments) } })\n\n//# sourceURL=alkali:///construct-or-call')
+		extendClass = eval('(function(Base){ return class extends Base {}})\n\n//# sourceURL=class-extend')
+		var possibleConstructOrCall = eval('"use strict";(function(BaseClass, constructHandler, callHandler, constructClass){ return function Element() { return this instanceof Element ? constructHandler ? constructHandler.apply(new.target || this.constructor, arguments) : constructClass ? Reflect.construct(BaseClass, arguments, new.target || this.constructor) : lang.functionConstruct(BaseClass, arguments, new.target || this.constructor, this) : callHandler.apply(Element, arguments) } })\n\n//# sourceURL=construct-or-call')
 		// actually using new.target bombs in Edge, so it is basically unusable
 		new (possibleConstructOrCall(function() {}, function() {}))()
 		constructOrCall = possibleConstructOrCall

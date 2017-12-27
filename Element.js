@@ -1299,7 +1299,7 @@
 		// create a listener for each instance
 		return {
 			variable: variable,
-			then(callback, errorHandler) {
+			then: function(callback, errorHandler) {
 				return this.variable.then(callback, errorHandler)
 			},
 			notifies: function() {} // noop in this case

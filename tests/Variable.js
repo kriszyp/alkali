@@ -1038,7 +1038,7 @@ define(function(require) {
 			var Collection = VArray.of(Foo)
 			var collection = new Collection([])
 
-			var filteredCollection = collection.filter(model => {
+			var filteredCollection = collection.filter(function(model) {
 			  assert(model instanceof Foo)
 
 			  return model.get('Name')[0] === 'K'
@@ -1490,7 +1490,9 @@ define(function(require) {
 			MyVar.add(new MyVar({name: 'two', id: 2}))
 			MyVar.add(new MyVar({name: 'three', id: 3}))
 
-			var filtered = MyVar.filter((item) => item.name.slice(0, 1) != 't')
+			var filtered = MyVar.filter(function(item) {
+				return item.name.slice(0, 1) != 't'
+			})
 			var count = 0
 			filtered.forEach(function(instance) {
 				assert.isTrue(instance instanceof MyVar)

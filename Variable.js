@@ -1983,7 +1983,7 @@
 				return array.slice(start, end)
 			})
 		},
-		indexOf(idOrValue) {
+		indexOf: function(idOrValue) {
 			// TODO: After a certain threshold of accesses we should build an index for O(1) time access
 			var array = this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
 			return array.indexOf(idOrValue)
@@ -2619,7 +2619,7 @@
 			})
 		},
 		updated: function(event) {
-			if (event.type === 'replaced') {
+			if (!event || event.type === 'replaced') {
 				this._untypedArray = null
 			}
 			return VArray.prototype.updated.apply(this, arguments)

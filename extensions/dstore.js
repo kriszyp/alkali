@@ -79,7 +79,7 @@
 			sort: function(sortFunction) {
 				return new VArrayDStore(varray.sort(sortFunction))
 			},
-			getIdentity(object) {
+			getIdentity: function(object) {
 				return object.getId()
 			}
 		}
