@@ -42,7 +42,7 @@
 	function fromValue(value, isProperty, deferObject) {
 
 		// get the type for primitives or known constructors (or null)
-		let Type = typeMappings.get(typeof value) || typeMappings.get(value && value.constructor)
+		var Type = typeMappings.get(typeof value) || typeMappings.get(value && value.constructor)
 		if (Type) {
 			return new Type(isProperty ? undefined : value)
 		}

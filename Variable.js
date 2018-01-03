@@ -1988,6 +1988,9 @@
 			var array = this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
 			return array.indexOf(idOrValue)
 		},
+		includes: function(idOrValue) {
+			return this.indexOf(idOrValue) > -1
+		},
 		// id-based methods:
 		for: function(idOrValue) {
 			if (this.source) {
@@ -2531,7 +2534,10 @@
 		substr: VFunction.returns(VString),
 		slice: VFunction.returns(VString),
 		toUpperCase: VFunction.returns(VString),
-		toLowerCase: VFunction.returns(VString)
+		toLowerCase: VFunction.returns(VString),
+		toString: function() {
+			return this.valueOf() || '' // if it is null or undefined, return blank string
+		}
 		//length: VNumber
 	}, VString)
 	VString.prototype.type = 'string'
@@ -2885,6 +2891,7 @@
 	defineIterativeFunction('reduceRight', function Reduced() {})
 	defineIterativeFunction('some', function Aggregated() {}, {}, VBoolean)
 	defineIterativeFunction('every', function Aggregated() {}, {}, VBoolean)
+	defineIterativeFunction('join', function Aggregated() {}, {}, VString)
 	defineIterativeFunction('keyBy', function UniqueIndex(source, args) {}, {
 		property: VMap.prototype.property,
 		method: function(array, args) {

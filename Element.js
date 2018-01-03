@@ -165,7 +165,7 @@
 			styleSheet = styleSheetElement.sheet
 		}
 		var cssRules = styleSheet.cssRules || styleSheet.rules
-		return cssRules[styleSheet.addRule(selector, ' ', cssRules.length)]
+		return cssRules[styleSheet.insertRule(selector + ' {}', cssRules.length)]
 	}
 
 	// TODO: Need to do some more testing to see if that would improve performance:
@@ -377,6 +377,7 @@
 		a: ['target', 'download', 'ping', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media'],
 		area: ['target', 'download', 'coords', 'rel', 'hreflang', 'type', 'referrerPolicy', 'href', 'media', 'alt', 'shape'],
 		button: ['disabled', 'formAction', 'formEnctype', 'formMethod', 'formTarget', 'name', 'type', 'value', 'validationMessage'],
+		details: ['open'],
 		dialog: ['open'],
 		embed: ['src', 'type', 'name'],
 		form: ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'],
@@ -1311,6 +1312,7 @@
 		var applyOnCreate = getApplySet(Element)
 		var preBoundProperties = {}
 		var propertyHandlers = Element.prototype._propertyHandlers
+		var cssRule
 		for (var key in applyOnCreate) {
 			var value = applyOnCreate[key]
 			if (value && value.notifies && propertyHandlers[key] === true) {
@@ -1325,7 +1327,37 @@
 					}
 				})
 				preBoundProperties[key] = makePreBoundVariable(value)
+			} else if (styleDefinitions[key]) {
+				if (value && value.notifies) {
+					new StyleRenderer({
+						name: key,
+						variable: value.collection || value,
+						getElements: function() {
+							if (options.uniqueTag) {
+								return document.getElementsByTagName(BoundElement.tagName)
+							}
+							return getElementInstances(BoundElement, options.parent)
+						}
+					})
+					preBoundProperties[key] = makePreBoundVariable(value)
+				} else {
+					cssRule = cssRule || createCssRule(options.uniqueTag ? Element.tagName :
+						(Element.tagName + '.' + applyOnCreate.className))
+					styleDefinitions[key](cssRule, value, key)
+					preBoundProperties[key] = undefined
+				}
+			} else if (key === 'style' && value && !value.notifies) {
+				cssRule = cssRule || createCssRule(options.uniqueTag ? Element.tagName :
+					(Element.tagName + '.' + applyOnCreate.className))
+				for (var name in value) {
+					cssRule.style[name] = value[name]
+				}
+				preBoundProperties.style = undefined
 			}
+		}
+		if (Element._cssRule && options.uniqueTag) {
+			// make the inherited rule apply to this tag too
+			Element._cssRule.selectorText += ',' + Element.tagName
 		}
 
 		if (Element.children) {
@@ -1376,6 +1408,9 @@
 			}
 		}
 		var BoundElement = options.selector ? Element.with(options.selector, preBoundProperties) : Element.with(preBoundProperties)
+		if (cssRule) {
+			BoundElement._cssRule = cssRule
+		}
 		return BoundElement
 	}
 
@@ -1383,7 +1418,7 @@
 		var selector = Element.tagName
 		var className = Element._applyOnCreate.className
 		if (className) {
-			selector += className
+			selector += '.' + className
 		}
 		return [].filter.call((parent || document).querySelectorAll(selector), function(element) {
 			return element.constructor === Element
