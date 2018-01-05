@@ -147,6 +147,9 @@
 		stop: function() {
 			var contextualized = this.contextualized || this.variable
 			contextualized.stopNotifies(this)
+		},
+		restart: function() {
+			this.updateRendering(true)
 		}
 	}
 	Object.defineProperty(Renderer.prototype, 'subject', {

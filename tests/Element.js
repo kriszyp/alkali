@@ -913,6 +913,23 @@ define([
 				})
 			})
 		})
+		test('reattach', function() {
+			var content = new Variable('test')
+			var d = new Div(content)
+			document.body.appendChild(d)
+			return new Promise(requestAnimationFrame).then(function() {
+				document.body.removeChild(d)
+				return new Promise(requestAnimationFrame).then(function() {
+					content.put('changed')
+					return new Promise(requestAnimationFrame).then(function() {
+						document.body.appendChild(d)
+						return new Promise(requestAnimationFrame).then(function() {
+							assert.equal(d.innerHTML, 'changed')
+						})
+					})
+				})
+			})
+		})
 		test('performanceBaseline', function() {
 			var container = document.body.appendChild(document.createElement('div'))
 			for (var i = 0; i < 100; i++) {

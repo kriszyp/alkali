@@ -1539,9 +1539,10 @@
 		var renderers = target.alkaliRenderers
 		if (renderers) {
 			for (var i = 0, l = renderers.length; i < l; i++) {
-//				updaters[i].start()
+				renderers[i].restart()
 			}
 		}
+		target.needsRestart = false
 	}
 	// setup the mutation observer so we can be notified of attachments and removals
 	function elementAttached(element) {
