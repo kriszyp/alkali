@@ -2639,11 +2639,11 @@
 			return Variable.prototype.property.call(this, key, PropertyClass || typeof key === 'number' && this.collectionOf)
 		},
 		indexOf: function(idOrValue) {
-			var array = this.valueOf()
+			var array = this.valueOf() || []
 			var collectionOf = this.collectionOf
 			if (collectionOf.prototype.getId) {
 				var id = idOrValue && idOrValue.getId ? idOrValue.getId() : idOrValue
-				for (var i = 0, l = (array || 0).length; i < l; i++) {
+				for (var i = 0, l = array.length; i < l; i++) {
 					if (array[i].getId() == id) {
 						return i
 					}
