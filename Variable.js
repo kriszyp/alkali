@@ -1417,6 +1417,7 @@
 						}
 					}
 				}
+				var nextCachedVersion = ++nextVersion
 				return when(newArray === array ? // if we are just modifying the original array
 						variable.updated(event, variable) : // then just send out an updated event
 						variable.put(newArray, event), function() { // otherwise put in the new array
@@ -1425,7 +1426,7 @@
 						variable._untypedArray = newArray
 						results = typedArray.splice.apply(typedArray, spliceArgs.concat(items))
 					}
-					variable.cachedVersion++ // update the cached version, so any version checking will know it has changed
+					variable.cachedVersion = nextCachedVersion // update the cached version, so any version checking will know it has changed
 					return results
 				})
 			})

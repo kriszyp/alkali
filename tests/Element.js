@@ -914,17 +914,20 @@ define([
 			})
 		})
 		test('reattach', function() {
-			var content = new Variable('test')
-			var d = new Div(content)
+			var content = new VArray(['a', 'b'])
+			var d = new Div(content.map(function(value) {
+				return Span(value)
+			}))
 			document.body.appendChild(d)
 			return new Promise(requestAnimationFrame).then(function() {
 				document.body.removeChild(d)
 				return new Promise(requestAnimationFrame).then(function() {
-					content.put('changed')
+					content.push('c')
 					return new Promise(requestAnimationFrame).then(function() {
-						document.body.appendChild(d)
+						var d2 = document.body.appendChild(new Div())
+						d2.appendChild(d)
 						return new Promise(requestAnimationFrame).then(function() {
-							assert.equal(d.innerHTML, 'changed')
+							assert.equal(d.textContent, 'abc')
 						})
 					})
 				})

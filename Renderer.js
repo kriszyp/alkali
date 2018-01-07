@@ -147,6 +147,10 @@
 		stop: function() {
 			var contextualized = this.contextualized || this.variable
 			contextualized.stopNotifies(this)
+			if (this.builtList) {
+				this.builtList = false
+				this.omitValueOf = false
+			}
 		},
 		restart: function() {
 			this.updateRendering(true)
