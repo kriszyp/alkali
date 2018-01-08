@@ -914,6 +914,25 @@ define([
 			})
 		})
 		test('reattach', function() {
+			var content = new Variable('test')
+			var d = new Div(content)
+			document.body.appendChild(d)
+			return new Promise(requestAnimationFrame).then(function() {
+				document.body.removeChild(d)
+				return new Promise(requestAnimationFrame).then(function() {
+					content.put('changed')
+					return new Promise(requestAnimationFrame).then(function() {
+						var d2 = document.body.appendChild(new Div())
+						d2.appendChild(d)
+						return new Promise(requestAnimationFrame).then(function() {
+							assert.equal(d.innerHTML, 'changed')
+						})
+					})
+				})
+			})
+		})
+
+		test('reattach list', function() {
 			var content = new VArray(['a', 'b'])
 			var d = new Div(content.map(function(value) {
 				return Span(value)
@@ -928,6 +947,27 @@ define([
 						d2.appendChild(d)
 						return new Promise(requestAnimationFrame).then(function() {
 							assert.equal(d.textContent, 'abc')
+						})
+					})
+				})
+			})
+		})
+		test('reattach bound element class', function() {
+			var content = new Variable('test')
+			var MyDiv = Element.bindElementClass(Div('.reattaching', {
+				textContent: content
+			}))
+			var d = new MyDiv(content)
+			document.body.appendChild(d)
+			return new Promise(requestAnimationFrame).then(function() {
+				document.body.removeChild(d)
+				return new Promise(requestAnimationFrame).then(function() {
+					content.put('changed')
+					return new Promise(requestAnimationFrame).then(function() {
+						var d2 = document.body.appendChild(new Div())
+						d2.appendChild(d)
+						return new Promise(requestAnimationFrame).then(function() {
+							assert.equal(d.innerHTML, 'changed')
 						})
 					})
 				})

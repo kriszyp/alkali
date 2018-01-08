@@ -1303,12 +1303,14 @@
 			then: function(callback, errorHandler) {
 				return this.variable.then(callback, errorHandler)
 			},
-			notifies: function() {} // noop in this case
+			notifies: function() {}, // noop in this case
+			stopNotifies: function() {}
 		}
 	}
 
 	Element.bindElementClass = bindElementClass
 	function bindElementClass(Element, options) {
+		options = options || {}
 		var applyOnCreate = getApplySet(Element)
 		var preBoundProperties = {}
 		var propertyHandlers = Element.prototype._propertyHandlers
