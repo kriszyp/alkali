@@ -1057,6 +1057,20 @@ define(function(require) {
 			assert.equal(filteredCollection.valueOf().length, 2)
 		})
 
+		test('typed array updated', function() {
+			var Foo = Variable.with({})
+			var Collection = VArray.of(Foo)
+			var sourceArray = ['a']
+			var varray = new VArray(sourceArray)
+			var collection = new Collection(varray)
+			var filteredCollection = collection.filter(function(model) { return true})
+
+			assert.equal(filteredCollection.valueOf().length, 1)
+			sourceArray.push('b')
+			varray.updated()
+			assert.equal(filteredCollection.valueOf().length, 2)
+		})
+
 		test('splice and filter', function() {
 			var strings = new VArray(['foo', 'bar', 'baz'])
 			var startsWithB = strings.filter(function(v) {

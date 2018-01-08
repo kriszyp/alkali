@@ -1417,16 +1417,15 @@
 						}
 					}
 				}
-				var nextCachedVersion = ++nextVersion
 				return when(newArray === array ? // if we are just modifying the original array
 						variable.updated(event, variable) : // then just send out an updated event
 						variable.put(newArray, event), function() { // otherwise put in the new array
 					if (typedArray) {
 						// do this afterwards once we have confirmed that it completed successfully
-						variable._untypedArray = newArray
+						variable._typedVersion = variable.version
 						results = typedArray.splice.apply(typedArray, spliceArgs.concat(items))
 					}
-					variable.cachedVersion = nextCachedVersion // update the cached version, so any version checking will know it has changed
+					variable.cachedVersion = variable.version // update the cached version, so any version checking will know it has changed
 					return results
 				})
 			})
@@ -2580,9 +2579,15 @@
 	}, {
 		valueOf: function(mode) {
 			// skip past VArray valueOf, since it is redundant
+			var parentContext = context
+			var sourceContext = context = context ? context.newContext() : new Context()
 			var value = Variable.prototype.valueOf.call(this, mode)
+			sourceContext.setVersion(this.version)
 			var varray = this
 			return when(value, function(array) {
+				if (parentContext) {
+					parentContext.setVersion(sourceContext.version)
+				}
 				if (!mode || !mode.getTyped) {
 					return array
 				}
@@ -2591,7 +2596,7 @@
 					return []
 				}
 
-				if (!varray._typedArray || varray._untypedArray !== array) {
+				if (!varray._typedArray || !(varray._typedVersion >= sourceContext.version)) {
 					// TODO: eventually we may want to do this even more lazily for slice operations
 					varray._typedArray = array.map(function(item, index) {
 						if (!(item instanceof collectionOf)) {
@@ -2609,7 +2614,7 @@
 						return item
 					})
 					// items were converted, store the original array
-					varray._untypedArray = array
+					varray._typedVersion = sourceContext.version
 				}
 				if (varray.sortFunction && varray._sortedArray != varray._typedArray) {
 					// we have a sort function, and a new incoming array, need to resort
@@ -2624,12 +2629,6 @@
 				}
 				return varray._typedArray
 			})
-		},
-		updated: function(event) {
-			if (!event || event.type === 'replaced') {
-				this._untypedArray = null
-			}
-			return VArray.prototype.updated.apply(this, arguments)
 		},
 		property: function(key, PropertyClass) {
 			if (this._typedArray) {
