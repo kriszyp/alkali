@@ -2611,9 +2611,9 @@
 								// reparenting, but this could legimately be a different parent if the array originates
 								// from another "source" variable that drives this.
 								item.parent = varray
-								if (varray.isWritable) {
-									item.key = index
-								}
+							}
+							if (varray.isWritable) {
+								item.key = index
 							}
 						}
 						return item
