@@ -1405,7 +1405,6 @@
 					event.atEnd = true
 				}
 				var addedCount = items.length
-				// adjust the key positions of any index properties after splice
 				if (addedCount > 0) {
 					var arrayPosition
 					for (var i = newArray.length - addedCount; i > startingIndex;) {
@@ -1424,6 +1423,12 @@
 						// do this afterwards once we have confirmed that it completed successfully
 						variable._typedVersion = variable.version
 						results = typedArray.splice.apply(typedArray, spliceArgs.concat(items))
+						// adjust the key positions of any index properties after splice
+						if (variable.isWritable) {
+							for (var i = startingIndex; i < typedArray.length; i++) {
+								typedArray[i].key = i
+							}
+						}
 					}
 					variable.cachedVersion = variable.version // update the cached version, so any version checking will know it has changed
 					return results
