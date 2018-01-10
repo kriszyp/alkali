@@ -27,11 +27,11 @@ This will notify derived variables and bound elements. This will result in the e
 
 ## Installation
 
-Alkali can be installed with standard package managers, `npm install alkali` or `bower install alkali`, or cloned from the github. Alkali works with ES6, CommonJS, or AMD modules bundlers/loaders. Or, you can load `dist/index.js` (from the package or from [github CDN](http://rawgit.com/kriszyp/alkali/master/dist/index.js)) as a script and use the `alkali` global. Also, here is a [codepen with a basic example to start trying out Alkali](http://codepen.io/kriszyp/pen/xEEBKY?editors=1111).
+Alkali can be installed with `npm install alkali` or cloned from the github. Alkali works with ES6, CommonJS, or AMD modules bundlers/loaders. Or, you can load `dist/index.js` (from the package or from [github CDN](http://rawgit.com/kriszyp/alkali/master/dist/index.js)) as a script and use the `alkali` global. Also, here is a [codepen with a basic example to start trying out Alkali](http://codepen.io/kriszyp/pen/xEEBKY?editors=1111).
 
 # Compatibility
 
-Alkali is tested and runs on IE11+ or any other modern browser, and can also on NodeJS (without DOM generation).
+Alkali is tested and runs on IE11+ or any other modern browser, and can also on NodeJS (without DOM generation). There is some very limited support for IE9-10.
 
 # Variables
 
@@ -39,13 +39,13 @@ Again, the central entity in the data model system is a "Variable" (similar noti
 
 The simplest way to create a variable is by calling the `reactive(initialValue)` function, which will provided value as the initial value of the variable.
 
-Notifications of data changes are delivered by update notifications. When a downstream subscriber is interested in the results of a variable change, it can request the latest value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. And Variables support bi-directional flow. They can be updated as well as monitored.
+Notifications of data changes are delivered by update notifications. When a downstream subscriber is interested in the results of a variable change, it can request the latest value. This is subtly distinct from "streams", in that unnecessary computations can be avoided and optimized when only the current state (rather than the history of every intermediate change) is of interest. Variables can also employ internal caching of calculated values. And Variables support bi-directional flow. They can be modified as well as monitored.
 
 Variables also support promises as values, and the variable pipeline will handle waiting for a promises to resolve to do computations.
 
 Alkali uses extendable element constructors and updaters that are designed to consume variables, binding to variables values, and reactively responding to variable changes. They can also bound to inputs that will update variables in respond to user changes.
 
-The Variable class can be extended and variable classes can be used like variables, where the instance to be acted on, can be resolved as needed. This allows for categorical relationships between variable and element classes to be defined, and resolved based on context.
+The Variable class can be extended and variable classes can be used like variables, where the instance to be acted on, can be resolved as needed. This allows for structured variables and categorical relationships between variable and element classes to be defined, and resolved based on context.
 
 The main/index module in alkali exports all of functionality in alkali. If you are using ES6 module format, you can import different constructors and utilities like:
 ```javascript
@@ -55,7 +55,7 @@ Alkali uses UMD format, so it can be consumed by CommonJS or AMD module systems 
 
 ## Debugging/Interaction
 
-See the [Debugging](#debugging) section below for information on debugging tips with standard developer tools. Also [Litmus](https://github.com/kriszyp/litmus) is a project that aims to provide a visual explorer/graph of alkali variables and data flow.
+See the [Debugging](#debugging) section below for information on debugging tips with standard developer tools.
 
 ## Todo Example
 [Alkali-Todo](https://github.com/kriszyp/alkali-todo) is a the TodoMVC application written with Alkali. This repository includes a walk-through for a good example-based approach to learning to use Alkali.
@@ -69,12 +69,12 @@ The [ts-transform-alkali](https://github.com/kriszyp/ts-transform-reactive) can 
 ## Babel Plugin for Reactive Expressions
 Also, the [babel-plugin-transform-alkali](https://github.com/kriszyp/babel-plugin-transform-alkali) can optionally be used to write and transform reactive expressions for babel.
 
-## reactive API
+## `Variable`/`reactive` API
 
-The Variable is main API for creating variables with most data.
+The `Variable` class and `reactive` function are the main API for creating variables with most data.
 
 ### `reactive(initialValue: any)`: Variable
-This creates a new variable, using the intial value. The provided value will also be used to dictate the "type" or structure of the returned variable. Provide a primitive will return a variable with reactive methods mirroring the primitive methods. If you provide an object, it will return variable with reactive properties corresponding to the properties on the object. For example:
+This creates a new variable, using the intial value. The provided value will also be used to dictate the "type" or structure of the returned variable. Providing a primitive will return a variable with reactive methods mirroring the primitive methods. If you provide an object, it will return variable with reactive properties corresponding to the properties on the object. For example:
 ```
 import { reactive } from 'alkali'
 let greeting = reactive('hello')
@@ -107,7 +107,7 @@ This is the constructor for a variable. You may create a variable with an initia
 
 This returns the current value of the variable. This method also allows variables to be used directly in expressions in place of primitive values, where JavaScript coercion will automatically convert a value. For example a variable with the number 4 can be used:
 ```javascript
-import { reactive } from 'alkali' // assuming ES6 module transpilation
+import { reactive } from 'alkali' // assuming modern-ES or TS module transpilation
 let four = reactive(4)
 four * four -> 16
 '#' + four -> '#4'
@@ -137,7 +137,7 @@ An optional class can be provided to define the class to use/instantiate for the
 
 ### `to(function, reversal?)`
 
-This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in it, and is called with the value and should return a value to be provided to the returned variable. For example:
+This maps or transforms the value of the current variable to a new variable (that is returned), reflecting the current value of the variable (and any future changes) through the execution of the callback function. The callback function is called when the variable is changed and there is downstream interest in, or demand for it, and is called with the value and should return a value to be provided to the returned variable. For example:
 ```javascript
 let number = reactive(3);
 number.valueOf() -> 3
@@ -339,7 +339,7 @@ EcmaScript's new generator functions provide an elegant way to define reactive v
 ```javascript
 import { react } from 'alkali'
 
-let sumOfAAndB = react(function*(){
+let sumOfAAndB = react(function*() {
 	return Math.max(yield a, yield b)
 })
 ```
@@ -439,7 +439,7 @@ An argument can be an array that defines a set of elements to use as the content
 
 For example, we could create a table:
 ```javascript
-import { Table, TR, TD } from 'alkali/Element';
+import { Table, TR, TD } from 'alkali';
 let table = new Table([
 	TR, [
 		TD, ['Column 1, Row 1'],
@@ -735,7 +735,7 @@ Element classes themselves also act as variable classes. Element classes include
 Often you may want to create a set of child elements, based on an array or list of values or objects. You can provide an array, or a variable with an array, as the `content` of an element, and then define a child element structure to be generated for item in the array with an `each` property. The child element structure can then access the current item in the array loop through the `Item` variable class. For example, we could create a `ul` element with `li` children by doing:
 
 ```javascript
-import {UL, LI, Item} from 'alkali/Element';
+import { UL, LI, Item } from 'alkali';
 
 new UL({
 	content: ['One', 'Two'],
@@ -744,7 +744,7 @@ new UL({
 ```
 Like any other variable class, we can access properties from the `Item` class as well, and create more sophisticated child structures. Here is how to create a select dropdown:
 ```javascript
-import {Select, Option, Item} from 'alkali/Element';
+import { Select, Option, Item } from 'alkali';
 new Select({
 	content: [{id: 1, name: 'One'}, {id: 2, name: 'Two'}],
 	each: Option({
@@ -873,21 +873,21 @@ Alkali also exports an options object. It has the following properties:
 
 ## Renderers
 
-Renderers are an additional mechanism for making UI components react to data changes. Renderers allow us to add reactive capabilities to existing components with minimal change. Renderers are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an updater's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. A `Renderer` can be constructed with an options object that defines the source `variable`, the associated DOM `element`, and an `renderUpdate` method that will perform the rerender with the latest value from the variable.
+Renderers are an additional mechanism for making UI components react to data changes. Renderers allow us to add reactive capabilities to existing components with minimal change. Renderers are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an renderer's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. A `Renderer` can be constructed with an options object that defines the source `variable`, the associated DOM `element`, and an `renderUpdate` method that will perform the rerender with the latest value from the variable.
 
 For example, we could create a simple variable:
 
-	var Variable = require('alkali/Variable');
+	import { reactive } from 'alkali';
 
 	var greeting = reactive('Hi');
 
-And then define an updater:
+And then define an renderer:
 
 	import { Renderer } from 'alkali'
 
 	var greeting = reactive('Hi');
 	new Renderer({
-		variable: myNumber,
+		variable: greeting,
 		element: someElement,
 		renderUpdate: function (newValue) {
 			element.innerHTML = newValue + '.';
@@ -899,23 +899,6 @@ An Renderer will only update an element if it is visible, and will mark it as ne
 Alternately, you may set `alwaysUpdate` to true on the Renderer options to force the Renderer to always render in response to changes.
 
 If your variables use promises, alkali will wait for the promise to resolve before calling `renderUpdate` (and it will be called with the resolution of the promise). You may define a `renderLoading` to render something while a promise is waiting to be resolved.
-
-## Object Monitoring
-
-The plain JavaScript objects in a variable can be observed by the variable for changes. To actively monitor an object for property changes (direct assignment of properties outside of alkali), you can `observeObject` method on a variable. For example:
-
-	var myObject = {name: 'simple property'};
-	var myVariable = reactive(myObject);
-	// actively observe this object
-	myVariable.observeObject();
-	var nameProperty = myVariable.property('name');
-
-	nameProperty.subscribe(function (event) {
-		console.log('name change', event.value())
-	});
-
-	myObject.name = 'new name'; // this will trigger a change on the nameProperty
-
 
 ## Reverse Mappings
 
