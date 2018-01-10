@@ -277,7 +277,10 @@
 				})
 				return
 			}
-			if (!(classes.length > -1)) {
+			var isArray
+			if (classes.length > -1) {
+				isArray = true
+			} else {
 				// index the classes, if necessary
 				var i = 0
 				for (var key in classes) {
@@ -299,7 +302,7 @@
 						name: className,
 						variable: flag
 					})
-				} else if (flag || flag === undefined) {
+				} else if (flag || isArray) {
 					element.className += ' ' + className
 				}
 			}
