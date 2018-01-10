@@ -1,4 +1,5 @@
-![Alkali](https://github.com/kriszyp/alkali/raw/master/assets/alkali-logo.svg "Alkali")
+![Alkali](./assets/alkali-logo.svg)
+<img src="./assets/alkali-logo.svg">
 
 [![Join the chat at https://gitter.im/alkali-js/Lobby](https://badges.gitter.im/alkali-js/Lobby.svg)](https://gitter.im/alkali-js/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/kriszyp/alkali.svg?branch=master)](https://travis-ci.org/kriszyp/alkali)
