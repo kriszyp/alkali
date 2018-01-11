@@ -881,12 +881,7 @@
 			setPrototypeOf(element, this.prototype)
 		}
 		if (element.constructor != this) {
-			if (buggyConstructorSetter) {
-				// in safari, directly setting the constructor messes up the native prototype
-				Object.defineProperty(element, 'constructor', { value: this })
-			} else {
-				element.constructor = this // need to do this for hasOwn contextualization to work
-			}
+			element.constructor = this // need to do this for hasOwn contextualization to work
 		}
 		if (arguments.length > 0) {
 			// copy applyOnCreate when we have arguments
@@ -1176,6 +1171,18 @@
 	}
 
 	function setupElement(HTMLConstructor, tagName, type) {
+		if (buggyConstructorSetter) {
+			// fix safari's broken constructor property
+			Object.defineProperty(HTMLConstructor.prototype, 'constructor', {
+				get: function() {
+					return this._constructor
+				},
+				set: function(constructor) {
+					this._constructor = constructor
+				}
+			})
+			HTMLConstructor.prototype._constructor = HTMLConstructor
+		}
 		var Element = type ?
 			withProperties.call(HTMLConstructor, { type: type }) :
 			withProperties.call(HTMLConstructor)
