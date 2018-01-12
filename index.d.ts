@@ -237,6 +237,8 @@ declare namespace alkali {
   export class Copy extends Variable<any> {
   }
   export class Transform<T = any> extends Variable<T> {
+    protected cachedValue: any
+    protected cachedVersion: number
     constructor(source: any, transform: (...v) => T, sources?: any[])
   }
 
@@ -302,7 +304,7 @@ declare namespace alkali {
       version: number
       setVersion(version: number): void
       constructor(subject?: any, notifies?: (receiver: any) => any)
-      executeWithin(executor: () => any)
+      executeWithin<T>(executor: () => T): T
       newContext(): Context
   }
   /* A response from a variable, given a context with an `ifModifiedSince` that indicates it has not changed*/
