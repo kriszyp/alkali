@@ -427,7 +427,7 @@ By default, properties are copied directly to the element that is being, or will
 * If a property is not recognized as one of these handled properties described above, the value will be copied to the target element (if the value is variable, the variable itself will be copied directly). To avoid any unexpected property collisions, Alkali keeps a whitelist of known/standard element and style properties, such that if an unknown property on an element exists, it will be overriden (and its behavior ignored).
 
 In addition, custom handling of properties can be defined creating render methods or getters and setters as described below.
-[See JSFiddle Example](https://jsfiddle.net/kriszyp/7ndqjoyd/3/)
+[See JSFiddle Example](https://jsfiddle.net/kriszyp/7ndqjoyd/4/)
 
 ### Children Array Argument
 
