@@ -584,6 +584,10 @@
 			// treat array as children (potentially of the content node)
 			element = element.contentNode || element
 			layoutChildren(element, content, element)
+		} else if (typeof content === 'function' && content.for) {
+			// a child constructor
+			element = element.contentNode || element
+			layoutChildren(element, [content], element)
 		} else {
 			// render as string
 			element.appendChild(variableAsContent(element, content))
@@ -1568,11 +1572,11 @@
 			} else {
 				Class.attachedInstances = [element]
 			}*/
-			if (element.attached) {
-				element.attached()
-			}
 			if (element.needsRestart) {
 				restart(element)
+			}
+			if (element.attached) {
+				element.attached()
 			}
 		}
 	}
