@@ -2,8 +2,7 @@ var webpack = require('webpack')
 module.exports = {
     entry:  './index.js',
     output: {
-        path:     'dist',
-        filename: 'index.js',
+        filename: 'dist/index.js',
         library: 'alkali',
         libraryTarget: 'umd'
     },
