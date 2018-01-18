@@ -2540,6 +2540,7 @@
 		slice: VFunction.returns(VString),
 		toUpperCase: VFunction.returns(VString),
 		toLowerCase: VFunction.returns(VString),
+		replace: VFunction.returns(VString),
 		toString: function() {
 			return this.valueOf() || '' // if it is null or undefined, return blank string
 		}
