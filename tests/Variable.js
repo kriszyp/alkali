@@ -1063,12 +1063,17 @@ define(function(require) {
 			var sourceArray = ['a']
 			var varray = new VArray(sourceArray)
 			var collection = new Collection(varray)
-			var filteredCollection = collection.filter(function(model) { return true})
+			var filteredCollection = collection.filter(function(model) {
+				return Boolean(model.get) // make sure each one is a model instance
+			})
 
 			assert.equal(filteredCollection.valueOf().length, 1)
+			assert.equal(filteredCollection.valueOf()[0], 'a')
 			sourceArray.push('b')
 			varray.updated()
 			assert.equal(filteredCollection.valueOf().length, 2)
+			assert.equal(filteredCollection.valueOf()[0], 'a')
+			assert.equal(filteredCollection.valueOf()[1], 'b')
 		})
 
 		test('splice and filter', function() {
