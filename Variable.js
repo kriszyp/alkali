@@ -28,6 +28,9 @@
 		getTyped: true,
 		allowUntyped: true
 	}
+	var GET_VALID_TYPE = {
+		ensureValidType: true
+	}
 
 	var propertyListenersMap = new lang.WeakMap(null, 'propertyListenersMap')
 	var isStructureChecked = new lang.WeakMap()
@@ -1393,11 +1396,13 @@
 				var collectionOf = variable.collectionOf
 				if (typedArray && collectionOf) {
 					// create variable casted items
+					var untypedItems = items
 					items = items.map(function(item) {
 						item = item instanceof collectionOf ? item : collectionOf.from(item)
 						item.parent = variable
 						return item
 					})
+					items.untypedItems = untypedItems
 					results = typedArray.slice(startingIndex, deleteCount + startingIndex)
 				}
 				var event = new SplicedEvent(variable, items, results, startingIndex, deleteCount)
@@ -1609,7 +1614,7 @@
 				}
 				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {
 					if (argument) {
-						var result = argument.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
+						var result = argument.valueOf(GET_VALID_TYPE)
 						if (result && result.then) {
 							remaining++
 							if (i === 0) {
@@ -1900,6 +1905,9 @@
 						return // untyped not allowed
 					}
 				} else if (!array) {
+					if (mode && mode.ensureValidType) {
+						return []
+					}
 					return array
 				}
 				if (varray.sortFunction && varray._sortedArray != array) {
@@ -2715,7 +2723,8 @@
 
 	var IterativeMethod = lang.compose(Transform, function(source, method) {
 	}, {
-		transform: function(array) {
+		transform: function() {
+			var array = this.source.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
 			var method = this.method
 			if (typeof method === 'string') {
 				// apply method
@@ -2771,7 +2780,18 @@
 			var contextualizedVariable = context && context.getContextualized(this) || this
 			var filterFunction = this.source1.valueOf()
 			if (event.type === 'spliced') { // if we don't have unique items in the array, we can't match indices
-				var toAdd = event.items.filter(filterFunction)
+				var toAdd = []
+				var newItems = event.items
+				for (var i = 0; i < newItems.length; i++) {
+					// filter, preserving the original untyped value
+					if (filterFunction.call(newItems, newItems[i], i)) {
+						if (newItems.untypedItems) {
+							toAdd.push(newItems.untypedItems[i])
+						} else {
+							toAdd.push(newItems[i])
+						}
+					}
+				}
 				var toRemove = event.removed.filter(filterFunction)
 				var start, deleteCount
 				if (toRemove.length > 1) {
@@ -2817,7 +2837,8 @@
 				return Transform.prototype.updated.call(this, event, by, isDownstream)
 			}
 		},
-		transform: function(array) {
+		transform: function() {
+			var array = this.source.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
 			var untypedArray = this.source.valueOf()
 			var results = []
 			var callback = this.source1.valueOf()
