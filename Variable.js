@@ -1966,8 +1966,29 @@
 		},
 		sort: function(compareFunction) {
 			var variable = this
-			return when(this.valueOf(GET_TYPED_OR_UNTYPED_ARRAY), function(array) {
-				array.sort(compareFunction)
+			return when(this.valueOf(true), function(array) {
+				var typedArray = variable.valueOf(GET_TYPED_ARRAY)
+				if (typedArray) {
+					var combined = []
+					for (var l = array.length, i = 0; i < l; i++) {
+						combined.push({
+							typed: typedArray[i],
+							untyped: array[i]
+						})
+					}
+					combined.sort(function(a, b) {
+						return compareFunction(a.typed, b.typed)
+					})
+					array.splice(0, array.length) // clear and replace with sorted untyped values
+					array.push.apply(array, combined.map(function(combined) {
+						return combined.untyped
+					}))
+					variable._typedArray = combined.map(function(combined) {
+						return combined.typed
+					})
+				} else {
+					array.sort(compareFunction)
+				}
 				if (variable.source) {
 					variable.sortFunction = compareFunction
 					variable._sortedArray = array
@@ -1976,7 +1997,10 @@
 					}
 				}
 				variable.updated() // this is treated as an in-place update with no upstream impact
-				variable.cachedVersion = variable.versionF
+				variable.cachedVersion = variable.version
+				if (variable._typedArray) {
+					variable._typedVersion = variable.version
+				}
 				return array
 			})
 		},
@@ -2610,7 +2634,7 @@
 					return []
 				}
 
-				if (!varray._typedArray || !(varray._typedVersion >= sourceContext.version)) {
+				if (collectionOf && !varray._typedArray || !(varray._typedVersion >= sourceContext.version)) {
 					// TODO: eventually we may want to do this even more lazily for slice operations
 					varray._typedArray = array.map(function(item, index) {
 						if (!(item instanceof collectionOf)) {
@@ -2874,7 +2898,7 @@
 		getCollectionOf: function() {
 			return this.source.getCollectionOf()
 		}
-	}, VArray)
+	}, VCollection)
 	defineIterativeFunction('map', function Mapped(source) {
 	}, {
 		updated: function(event, by, isDownstream) {

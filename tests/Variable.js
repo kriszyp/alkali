@@ -1060,6 +1060,44 @@ define(function(require) {
 		test('typed array updated', function() {
 			var Foo = Variable.with({})
 			var Collection = VArray.of(Foo)
+			var varray = new VArray(['a'])
+			var collection = new Collection(varray)
+			var filteredCollection = collection.filter(function(model) {
+				return Boolean(model.get) // make sure each one is a model instance
+			})
+
+			var transformedCollection = filteredCollection.to(function(array) {
+				return array
+			})
+
+			assert.equal(filteredCollection.valueOf().length, 1)
+			assert.equal(filteredCollection.valueOf()[0], 'a')
+			assert.equal(transformedCollection.valueOf().length, 1)
+			assert.equal(transformedCollection.valueOf()[0], 'a')
+			varray.push('b')
+			assert.equal(filteredCollection.valueOf().length, 2)
+			assert.equal(filteredCollection.valueOf()[0], 'a')
+			assert.equal(filteredCollection.valueOf()[1], 'b')
+			assert.equal(transformedCollection.valueOf().length, 2)
+			assert.equal(transformedCollection.valueOf()[0], 'a')
+			assert.equal(transformedCollection.valueOf()[1], 'b')
+			varray.splice(0, 1, 'c')
+			assert.equal(filteredCollection.valueOf().length, 2)
+			assert.equal(filteredCollection.valueOf()[0], 'c')
+			assert.equal(filteredCollection.valueOf()[1], 'b')
+			assert.equal(transformedCollection.valueOf().length, 2)
+			assert.equal(transformedCollection.valueOf()[0], 'c')
+			assert.equal(transformedCollection.valueOf()[1], 'b')
+			filteredCollection.sort(function(a, b) {
+				return a.valueOf() < b.valueOf() ? -1 : 1
+			})
+			assert.equal(filteredCollection.valueOf()[0], 'b')
+			assert.equal(filteredCollection.valueOf()[1], 'c')
+		})
+
+		test('typed array with source updated', function() {
+			var Foo = Variable.with({})
+			var Collection = VArray.of(Foo)
 			var sourceArray = ['a']
 			var varray = new VArray(sourceArray)
 			var collection = new Collection(varray)
@@ -1067,13 +1105,22 @@ define(function(require) {
 				return Boolean(model.get) // make sure each one is a model instance
 			})
 
+			var transformedCollection = filteredCollection.to(function(array) {
+				return array
+			})
+
 			assert.equal(filteredCollection.valueOf().length, 1)
 			assert.equal(filteredCollection.valueOf()[0], 'a')
+			assert.equal(transformedCollection.valueOf().length, 1)
+			assert.equal(transformedCollection.valueOf()[0], 'a')
 			sourceArray.push('b')
 			varray.updated()
 			assert.equal(filteredCollection.valueOf().length, 2)
 			assert.equal(filteredCollection.valueOf()[0], 'a')
 			assert.equal(filteredCollection.valueOf()[1], 'b')
+			assert.equal(transformedCollection.valueOf().length, 2)
+			assert.equal(transformedCollection.valueOf()[0], 'a')
+			assert.equal(transformedCollection.valueOf()[1], 'b')
 		})
 
 		test('splice and filter', function() {
