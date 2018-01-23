@@ -2622,51 +2622,55 @@
 			var value = Variable.prototype.valueOf.call(this, mode)
 			sourceContext.setVersion(this.version)
 			var varray = this
-			return when(value, function(array) {
+			try {
+				return when(value, function(array) {
+					if (!mode || !mode.getTyped) {
+						return array
+					}
+					if (!array) {
+						return []
+					}
+					var collectionOf = varray.getCollectionOf()
+
+					if (collectionOf && !varray._typedArray || !(varray._typedVersion >= sourceContext.version)) {
+						// TODO: eventually we may want to do this even more lazily for slice operations
+						varray._typedArray = array.map(function(item, index) {
+							if (!(item instanceof collectionOf)) {
+								item = collectionOf === Variable ? exports.reactive(item) : collectionOf.from(item)
+								if (!item.parent) {
+									// set the parent; we may eventually put a check in place here to make sure we aren't
+									// reparenting, but this could legimately be a different parent if the array originates
+									// from another "source" variable that drives this.
+									item.parent = varray
+								}
+								if (varray.isWritable) {
+									item.key = index
+								}
+							}
+							return item
+						})
+						// items were converted, store the original array
+						varray._typedVersion = sourceContext.version
+					}
+					if (varray.sortFunction && varray._sortedArray != varray._typedArray) {
+						// we have a sort function, and a new incoming array, need to resort
+						var reversed = varray.reversed
+						var sortFunction = varray.sortFunction
+						varray.sortFunction = null // null this so we don't reenter here
+						array = varray.sort(sortFunction)
+						if (reversed) {
+							varray.reversed()
+						}
+						return array
+					}
+					return varray._typedArray
+				})
+			} finally {
 				if (parentContext) {
 					parentContext.setVersion(sourceContext.version)
 				}
-				if (!mode || !mode.getTyped) {
-					return array
-				}
-				var collectionOf = varray.getCollectionOf()
-				if (!array) {
-					return []
-				}
-
-				if (collectionOf && !varray._typedArray || !(varray._typedVersion >= sourceContext.version)) {
-					// TODO: eventually we may want to do this even more lazily for slice operations
-					varray._typedArray = array.map(function(item, index) {
-						if (!(item instanceof collectionOf)) {
-							item = collectionOf === Variable ? exports.reactive(item) : collectionOf.from(item)
-							if (!item.parent) {
-								// set the parent; we may eventually put a check in place here to make sure we aren't
-								// reparenting, but this could legimately be a different parent if the array originates
-								// from another "source" variable that drives this.
-								item.parent = varray
-							}
-							if (varray.isWritable) {
-								item.key = index
-							}
-						}
-						return item
-					})
-					// items were converted, store the original array
-					varray._typedVersion = sourceContext.version
-				}
-				if (varray.sortFunction && varray._sortedArray != varray._typedArray) {
-					// we have a sort function, and a new incoming array, need to resort
-					var reversed = varray.reversed
-					var sortFunction = varray.sortFunction
-					varray.sortFunction = null // null this so we don't reenter here
-					array = varray.sort(sortFunction)
-					if (reversed) {
-						varray.reversed()
-					}
-					return array
-				}
-				return varray._typedArray
-			})
+				context = parentContext
+			}
 		},
 		property: function(key, PropertyClass) {
 			if (this._typedArray) {
