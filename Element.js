@@ -701,7 +701,14 @@
 								value = Variable() // create a branded variable if we are using a generic one
 							}
 							// for Variable classes we make them statically available on the element
-							Element[key] = value
+							if (Element[key]) {
+								Object.defineProperty(Element, key, {
+									value: value,
+									enumerable: true
+								})
+							} else {
+								Element[key] = value
+							}
 						} else if (isGenerator(value)) {
 							if (key.slice(0, 4) === 'get_') {
 								key = key.slice(4)
@@ -710,7 +717,14 @@
 						}
 					} else if (value && value.notifies) {
 						// also store any variables as statically available properties
-						Element[key] = value
+						if (Element[key]) {
+							Object.defineProperty(Element, key, {
+								value: value,
+								enumerable: true
+							})
+						} else {
+							Element[key] = value
+						}
 					}
 					if (classHandlers[key]) { // Could eliminate this if we got rid of hasOwn
 						classHandlers[key](Element, value, key, applyOnCreate)
@@ -748,6 +762,9 @@
 			for (var i = 0, l = keys.length; i < l; i++) {
 				var key = keys[i]
 				if (key.slice(0, 2) === 'on' || (key === 'render' && isGenerator(prototype[key]))) {
+					if (Element.disallowClassEventHandlers && getPrototypeOf(prototype)[key] === null) {
+						throw new Error('Defining event handlers through class methods is not allowed (due to incompatibility with compiled code)')
+					}
 					applyOnCreate[key] = prototype[key]
 				} else if (key.slice(0, 6) === 'render') {
 					var propertyName = key[6].toLowerCase() + key.slice(7)

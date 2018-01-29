@@ -32,6 +32,7 @@ define([
 	var extend = Element.extend
 	var assign = Element.assign
 	var VArray = VariableExports.VArray
+	var VString = VariableExports.VString
 	suite('Element', function() {
 		test('simpleElement', function() {
 			var testDiv = new Div({id: 'test-div'})
@@ -518,6 +519,30 @@ define([
 				})
 			})
 		})
+
+		test('structured elements', function() {
+			var Name = VString()
+			var MyDiv = Div({
+				name: Name,
+				textContent: Name.to(function(name) { return name.slice(0, 10) }),
+				title: Name
+			})
+			var div1 = new MyDiv({ name: 'make sure this sliced' })
+			document.body.appendChild(div1)
+			assert.strictEqual(div1.textContent, 'make sure ')
+			assert.strictEqual(div1.title, 'make sure this sliced')
+/*			a.put('A')
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.strictEqual(div1.textContent, 'A')
+				assert.strictEqual(div1.title, 'b')
+				b.put('B')
+				return new Promise(requestAnimationFrame).then(function(){
+					assert.strictEqual(div1.textContent, 'A')
+					assert.strictEqual(div1.title, 'B')
+				})
+			})*/
+		})
+
 		test('cleanup', function() {
 			var a = new Variable('a')
 			var div = new Div([
