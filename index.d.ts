@@ -721,11 +721,13 @@ declare namespace alkali {
   type ElementChild3 = string | Variable<any> | ElementClass<Node> | VariableClass<any> | Array<any> | Node | number | boolean
 
   export interface ElementClass<Element> {
+    new<T> (properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): Element & T
+    new (properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     new (selector?: string): Element
     new (content: ElementChild): Element
-    new<T> (properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): Element & T
     new (selector: string, content: ElementChild): Element
     new<T> (selector: string, properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): Element & T
+    new (selector: string, properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     (selector?: string): ElementClass<Element>
     (content: ElementChild): ElementClass<Element>
     <T>(properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): ElementClass<Element & T>
@@ -736,8 +738,9 @@ declare namespace alkali {
     create(properties: OptionalElementProperties<Element>, content?: ElementChild): Element
     create(selector: string, content: ElementChild): Element
     create(selector: string, properties: OptionalElementProperties<Element>, content?: ElementChild): Element
-    with(content: ElementChild): ElementClass<Element>
+    with<T>(selector: string, properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): ElementClass<Element & T>
     with<T>(properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): ElementClass<Element & T>
+    with(selector: string): ElementClass<Element>
     defineElement<T extends Element>(this: { new(...params: {}[]): T}, tagSelect?: string): ElementClass<T>
     property(key): VariableClass<any>
     children: Array<ElementChild>
