@@ -827,6 +827,8 @@ declare namespace alkali {
   export var Details: ElementClass<HTMLElement>
   export var DataList: ElementClass<HTMLDataListElement>
   export var DL: ElementClass<HTMLElement>
+  export var DT: ElementClass<HTMLElement>
+  export var DD: ElementClass<HTMLElement>
   export var Canvas: ElementClass<HTMLCanvasElement>
   export var Button: ElementClass<HTMLButtonElement>
   export var Base: ElementClass<HTMLBaseElement>
