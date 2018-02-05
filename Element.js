@@ -1158,6 +1158,8 @@
 		'Details',
 		'DataList',
 		'DL',
+		'DT',
+		'DD',
 		'Canvas',
 		'Button',
 		'Base',
