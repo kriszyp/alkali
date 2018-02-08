@@ -154,6 +154,9 @@
 		},
 		restart: function() {
 			this.updateRendering(true)
+		},
+		isSameProperty: function(renderer) {
+			return renderer.constructor === this.constructor && renderer.name === this.name
 		}
 	}
 	Object.defineProperty(Renderer.prototype, 'subject', {

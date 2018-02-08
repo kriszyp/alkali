@@ -1056,7 +1056,23 @@
 		} else {
 			// assign to an element
 			// TODO: Handle content property separately
-			return assignProperties(target, properties)
+			var renderers = target.alkaliRenderers
+			var startingRenderers = renderers.length
+			assignProperties(target, properties)
+			var endingRenderers = renderers.length
+			// look for duplicate renderers so overriden renderers can be stopped and removed
+			for (var newIndex = startingRenderers; newIndex < endingRenderers; newIndex++) {
+				for (var oldIndex = 0; oldIndex < startingRenderers; oldIndex++) {
+					if (renderers[oldIndex].isSameProperty(renderers[newIndex])) {
+						renderers[oldIndex].stop()
+						renderers.splice(oldIndex, 1)
+						// adjust the indices
+						oldIndex = -1
+						startingRenderers--
+						endingRenderers--
+					}
+				}
+			}
 		}
 	}
 

@@ -835,14 +835,21 @@ define([
 		})
 
 		test('assignElement', function() {
-			var div = document.body.appendChild(new Div())
-			var v = new Variable()
+			var v1 = new Variable()
+			var div = document.body.appendChild(new Div({
+				title: v1,
+			}))
+			var v2 = new Variable()
 			assign(div, {
-				title: v
+				title: v2
 			})
-			v.put('foo')
+			v2.put('foo')
 			return new Promise(requestAnimationFrame).then(function() {
 				assert.equal(div.title, 'foo')
+				v1.put('bar') // should be overriden, should have no effect
+				return new Promise(requestAnimationFrame).then(function() {
+					assert.equal(div.title, 'foo')
+				})
 			})
 		})
 
