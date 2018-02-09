@@ -706,7 +706,7 @@
 
 			this.lastUpdate = updateEvent */
 			if (updateEvent instanceof PropertyChangeEvent) {
-				this.versionWithChildren = Math.max(Date.now(), nextVersion + 1)
+				this.versionWithChildren = nextVersion = Math.max(Date.now(), nextVersion + 1)
 			} else if (!isDownstream) {
 				this.updateVersion()
 			}
@@ -2506,7 +2506,6 @@
 			}
 		}
 	})
-	Variable.nextVersion = Date.now()
 	Variable.generalize = generalizeClass
 	Variable.call = Function.prototype.call // restore these
 	Variable.apply = Function.prototype.apply
