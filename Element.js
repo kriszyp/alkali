@@ -1057,9 +1057,9 @@
 			// assign to an element
 			// TODO: Handle content property separately
 			var renderers = target.alkaliRenderers
-			var startingRenderers = renderers.length
+			var startingRenderers = renderers ? renderers.length : 0
 			assignProperties(target, properties)
-			var endingRenderers = renderers.length
+			var endingRenderers = renderers ? renderers.length : 0
 			// look for duplicate renderers so overriden renderers can be stopped and removed
 			for (var newIndex = startingRenderers; newIndex < endingRenderers; newIndex++) {
 				for (var oldIndex = 0; oldIndex < startingRenderers; oldIndex++) {
