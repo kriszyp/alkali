@@ -291,6 +291,8 @@ declare namespace alkali {
       subject: any
       /* The maximum version number of the sources used to compute the variable (usually accessed after a variable is computed to compare with future computations for differences). */
       version: number
+      constructor(subject?: any, notifies?: (receiver: any) => any)
+      executeWithin(executor: () => any)
   }
   /* A response from a variable, given a context with an `ifModifiedSince` that indicates it has not changed*/
   export var NOT_MODIFIED: {}
