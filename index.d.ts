@@ -6,6 +6,7 @@ declare namespace alkali {
 
   class UpdateEvent {
     visited: Set<Variable>
+    version?: number
     type: ('replaced' | 'property' | 'added' | 'removed' | 'entry' | 'spliced')
     child?: UpdateEvent
   }
@@ -207,6 +208,8 @@ declare namespace alkali {
       new<U>(collectionOf: { new (): U }): VArray<U>
     }
     collectionOf: VariableClass
+    [Symbol.toStringTag]: () => string
+    [Symbol.iterator]: any
   }
   export class VMap<K = {}, V= {}> extends Variable<Map<K, V>> {
   }
@@ -894,6 +897,12 @@ declare namespace alkali {
   export function onShowElement(element: Node)
   export function onElementRemoval(element: Node, onlyChildren?: boolean)
   export function content<T>(node: T): T
+
+  export function getNextVersion(): number
+
+  export class ReplacedEvent extends UpdateEvent {}
+  export class AddedEvent extends UpdateEvent {}
+  export class DeletedEvent extends UpdateEvent {}
 }
 declare module 'alkali' {
     export = alkali

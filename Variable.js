@@ -252,12 +252,14 @@
 	function DeletedEvent(key, value) {
 		this.key = key
 		this.value = value
+		this.visited = new Set()
 	}
 	DeletedEvent.prototype.type = 'deleted'
 
 	function AddedEvent(key, value) {
 		this.key = key
 		this.value = value
+		this.visited = new Set()
 	}
 	AddedEvent.prototype.type = 'added'
 	AddedEvent.prototype.doesAffect = function() {
@@ -705,10 +707,13 @@
 			}
 
 			this.lastUpdate = updateEvent */
+			if (!updateEvent.version) {
+				updateEvent.version = nextVersion = Math.max(Date.now(), nextVersion + 1)
+			}
 			if (updateEvent instanceof PropertyChangeEvent) {
-				this.versionWithChildren = nextVersion = Math.max(Date.now(), nextVersion + 1)
+				this.versionWithChildren = updateEvent.version
 			} else if (!isDownstream) {
-				this.updateVersion()
+				this.version = updateEvent.version
 			}
 
 			var listeners = this.listeners
@@ -2740,13 +2745,21 @@
 		delayUpdate: delayUpdate,
 		objectUpdated: objectUpdated,
 		NOT_MODIFIED: NOT_MODIFIED,
-		_changeValue: changeValue
+		_changeValue: changeValue,
+		getNextVersion: getNextVersion,
+		ReplacedEvent: ReplacedEvent,
+		AddedEvent: AddedEvent,
+		DeletedEvent: DeletedEvent
 	}
 	Object.defineProperty(exports, 'currentContext', {
 		get: function() {
 			return context
 		}
 	})
+
+	function getNextVersion() {
+		return nextVersion = Math.max(Date.now(), nextVersion + 1)
+	}
 
 	var IterativeMethod = lang.compose(Transform, function(source, method) {
 	}, {

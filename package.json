@@ -24,15 +24,14 @@
     "test.proxy": "intern-runner config=tests/intern --proxyOnly"
   },
   "main": "./index.js",
-  "dependencies": {
-  },
+  "dependencies": {},
   "typings": "./index.d.ts",
   "dojoBuild": "package.js",
   "devDependencies": {
     "bluebird": "^3.3.3",
     "dojo": "^1.10.2",
     "dojo-dstore": "^1.1.1",
-    "mocha": "^4",
+    "mocha": "^5",
     "chai": "^4",
     "webpack": "^3.10.0"
   }
