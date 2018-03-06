@@ -666,7 +666,7 @@
 			var nextUpdateMap = this.nextUpdateMap
 			if (nextUpdateMap && since) {
 				while ((since = nextUpdateMap.get(since))) {
-					if (since.type === 'refresh') {
+					if (since.type === 'replaced') {
 						// if it was refresh, we can clear any prior entries
 						updates = []
 					}
@@ -1733,7 +1733,7 @@
 			if (this.promise) {
 				this.promise = null
 			}
-			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'refresh') {
+			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'replaced') {
 				// search for the output in the sources
 				var argument, argumentName
 				for (var i = 0; (argument = this[argumentName = i > 0 ? 'source' + i : 'source']) || argumentName in this; i++) {

@@ -7,8 +7,10 @@ declare namespace alkali {
   class UpdateEvent {
     visited: Set<Variable>
     version?: number
-    type: ('replaced' | 'property' | 'added' | 'removed' | 'entry' | 'spliced')
+    type: ('replaced' | 'property' | 'added' | 'deleted' | 'entry' | 'spliced')
     child?: UpdateEvent
+    triggers?: Set<any>
+    sources?: Set<any>
   }
 
 
