@@ -103,6 +103,7 @@
 		// SELECT: 1, we exclude this, so the default "content" of the element can be the options
 	}
 
+	var canExtendElements
 	var buggyConstructorSetter = false
 	var testElement = doc.createElement('font')
 	var originalConstructor = testElement.constructor
@@ -887,8 +888,18 @@
 				applyOnCreate = getApplySet(this)
 			}
 		}*/
+		if (this._BaseElementClass && canExtendElements === undefined) {
+			canExtendElements = true // test to see if can construct extended elements first
+			try {
+				construct(this._BaseElementClass, [], this._ElementClass)
+			} catch (error) {
+				if (error.toString().match(/Illegal constructor/)) {
+					canExtendElements = false
+				}
+			}
+		}
 		var element = this._ElementClass ?
-			construct(HTMLElement, arguments, this._ElementClass) : // does HTMLElement differ from any other constructors?
+			construct(canExtendElements && this._BaseElementClass || HTMLElement, arguments, this._ElementClass) : // does HTMLElement differ from any other constructors?
 			doc.createElement(this.tagName)
 		if (selector && selector.parent) {
 			parent = selector.parent
@@ -1018,10 +1029,12 @@
 				return tagSelector.with()
 			}
 		}
-		var extendElement = Element.tagName
+		var extendElement = Element.nativeTagName === undefined ? Element.tagName : Element.nativeTagName
 		var selector = tagSelector.match(/[\.\#].+/)
 		var tagName = selector ? tagSelector.slice(0, tagSelector.length - (selector = selector[0]).length) : tagSelector
 		Element.tagName = tagName
+		Element.nativeTagName = extendElement || null // regardless of subclassing, want to preserve the original native tag name
+		if (extendElement)
 		if (typeof customElements === 'object') {
 			try {
 				if (Element._ElementClass = customElements.get(tagName)) {
@@ -1029,6 +1042,8 @@
 				} else {
 					customElements.define(tagName, Element, { extends: extendElement })
 					Element._ElementClass = Element
+					if (extendElement)
+						Element._BaseElementClass = customElements.get(extendElement) || doc.createElement(extendElement).constructor
 				}
 			} catch(error) {
 				console.warn(error)

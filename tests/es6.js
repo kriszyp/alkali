@@ -280,7 +280,7 @@ define([
 			//assert.isTrue(MyDiv instanceof Element.ElementClass)
 		})
 		test('registerTag', function() {
-			class CustomElementTemp extends Div {
+			class CustomElementTemp extends Element {
 				constructor() {
 					super(...arguments)
 					this.bar = 4
