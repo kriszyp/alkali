@@ -888,18 +888,8 @@
 				applyOnCreate = getApplySet(this)
 			}
 		}*/
-		if (this._BaseElementClass && canExtendElements === undefined) {
-			canExtendElements = true // test to see if can construct extended elements first
-			try {
-				construct(this._BaseElementClass, [], this._ElementClass)
-			} catch (error) {
-				if (error.toString().match(/Illegal constructor/)) {
-					canExtendElements = false
-				}
-			}
-		}
 		var element = this._ElementClass ?
-			construct(canExtendElements && this._BaseElementClass || HTMLElement, arguments, this._ElementClass) : // does HTMLElement differ from any other constructors?
+			construct(this._BaseElementClass || HTMLElement, arguments, this._ElementClass) : // does HTMLElement differ from any other constructors?
 			doc.createElement(this.tagName)
 		if (selector && selector.parent) {
 			parent = selector.parent
@@ -1032,10 +1022,21 @@
 		var extendElement = Element.nativeTagName === undefined ? Element.tagName : Element.nativeTagName
 		var selector = tagSelector.match(/[\.\#].+/)
 		var tagName = selector ? tagSelector.slice(0, tagSelector.length - (selector = selector[0]).length) : tagSelector
-		Element.tagName = tagName
+		if (!extendElement) {
+			Element.tagName = tagName
+		}
 		Element.nativeTagName = extendElement || null // regardless of subclassing, want to preserve the original native tag name
-		if (extendElement)
-		if (typeof customElements === 'object') {
+
+		if (canExtendElements === undefined && typeof customElements === 'object') {
+			var TestSupport = function() {}
+			customElements.define('alkali-test-support', TestSupport, { extends: 'div' })
+			canExtendElements = false
+			try {
+				construct(HTMLDivElement, [], TestSupport)
+				canExtendElements = true
+			} catch (error) {}
+		}
+		if (typeof customElements === 'object' && (!extendElement || canExtendElements)) {
 			try {
 				if (Element._ElementClass = customElements.get(tagName)) {
 					console.warn('Element', tagName, 'already registered')
@@ -1048,8 +1049,8 @@
 			} catch(error) {
 				console.warn(error)
 			}
-		} else if (extendElement && extendElement != 'div' && extendElement != 'span') {
-			console.warn('This browser does not support customized built-in elements, make sure to only extend Element, Div, or Span')
+		} else if (extendElement) {
+			console.warn('This browser does not support customized built-in elements, make sure to only extend Element')
 		}
 		if (!Element.with) {
 			Element.with = withProperties
