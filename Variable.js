@@ -645,7 +645,10 @@
 		versionWithChildren: 0,
 
 		updateVersion: function(version) {
-			this.version = nextVersion = Math.max(Date.now(), nextVersion + 1)
+			var now = Date.now()
+			this.version = nextVersion = Math.max(now, nextVersion + 1)
+			if (nextVersion > now && ((nextVersion - now) % 600000) == 0)
+				console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
 		},
 
 		getVersion: function() {
@@ -708,7 +711,10 @@
 
 			this.lastUpdate = updateEvent */
 			if (!updateEvent.version) {
-				updateEvent.version = nextVersion = Math.max(Date.now(), nextVersion + 1)
+				var now = Date.now()
+				updateEvent.version = nextVersion = Math.max(now, nextVersion + 1)
+				if (nextVersion > now && (nextVersion - now) % 600000 == 0)
+					console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
 			}
 			if (updateEvent instanceof PropertyChangeEvent) {
 				this.versionWithChildren = updateEvent.version
