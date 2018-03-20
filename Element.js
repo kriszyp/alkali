@@ -103,7 +103,7 @@
 		// SELECT: 1, we exclude this, so the default "content" of the element can be the options
 	}
 
-	var canExtendElements
+	var canExtendBuiltinElements
 	var buggyConstructorSetter = false
 	var testElement = doc.createElement('font')
 	var originalConstructor = testElement.constructor
@@ -1027,30 +1027,30 @@
 		}
 		Element.nativeTagName = extendElement || null // regardless of subclassing, want to preserve the original native tag name
 
-		if (canExtendElements === undefined && typeof customElements === 'object') {
-			var TestSupport = function() {}
-			customElements.define('alkali-test-support', TestSupport, { extends: 'div' })
-			canExtendElements = false
-			try {
-				construct(HTMLDivElement, [], TestSupport)
-				canExtendElements = true
-			} catch (error) {}
-		}
-		if (typeof customElements === 'object' && (!extendElement || canExtendElements)) {
-			try {
-				if (Element._ElementClass = customElements.get(tagName)) {
-					console.warn('Element', tagName, 'already registered')
-				} else {
-					customElements.define(tagName, Element, { extends: extendElement })
-					Element._ElementClass = Element
-					if (extendElement)
-						Element._BaseElementClass = customElements.get(extendElement) || doc.createElement(extendElement).constructor
-				}
-			} catch(error) {
-				console.warn(error)
+		if (typeof customElements === 'object') {
+			if (canExtendBuiltinElements === undefined) {
+				var TestSupport = function() {}
+				customElements.define('alkali-test-support', TestSupport, { extends: 'div' })
+				canExtendBuiltinElements = false
+				try {
+					construct(HTMLDivElement, [], TestSupport)
+					canExtendBuiltinElements = true
+				} catch (error) {}
 			}
-		} else if (extendElement) {
-			console.warn('This browser does not support customized built-in elements, make sure to only extend Element')
+			if (!extendElement || canExtendBuiltinElements) {
+				try {
+					if (Element._ElementClass = customElements.get(tagName)) {
+						console.warn('Element', tagName, 'already registered')
+					} else {
+						customElements.define(tagName, Element, { extends: extendElement })
+						Element._ElementClass = Element
+						if (extendElement)
+							Element._BaseElementClass = customElements.get(extendElement) || doc.createElement(extendElement).constructor
+					}
+				} catch(error) {
+					console.warn(error)
+				}
+			}
 		}
 		if (!Element.with) {
 			Element.with = withProperties
