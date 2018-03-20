@@ -1347,7 +1347,10 @@
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)
 				} else if (value.defineAs) {
-					descriptor = value.defineAs(key)
+					descriptor = value.defineAs(key, this)
+					if (!descriptor) {
+						continue
+					}
 				} else {
 					value = generalizeMethod(value, key)
 				}
