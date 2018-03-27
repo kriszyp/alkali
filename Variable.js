@@ -646,7 +646,8 @@
 
 		updateVersion: function(version) {
 			var now = Date.now()
-			this.version = nextVersion = Math.max(now, nextVersion + 1)
+			this.version = nextVersion = nextVersion < now ? now :
+				nextVersion + ((nextVersion > now + 500) ? 0.001 : 1)
 			if (nextVersion > now && ((nextVersion - now) % 600000) == 0)
 				console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
 		},
@@ -712,7 +713,8 @@
 			this.lastUpdate = updateEvent */
 			if (!updateEvent.version) {
 				var now = Date.now()
-				updateEvent.version = nextVersion = Math.max(now, nextVersion + 1)
+				updateEvent.version = nextVersion = nextVersion < now ? now :
+					nextVersion + ((nextVersion > now + 500) ? 0.001 : 1)
 				if (nextVersion > now && (nextVersion - now) % 600000 == 0)
 					console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
 			}
@@ -1607,7 +1609,7 @@
 					// get the version in there
 					transformContext.setVersion(this.version)
 				}
-				if (this && this.cachedVersion >= this.version && this.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
+				if (this && this.cachedVersion == this.version && this.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
 					transformContext.ifModifiedSince = this.cachedVersion
 				}
 				// TODO: var hasCustomTransformFunction = this.transform && this.transform.value === ObjectValueOf
