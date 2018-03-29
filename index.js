@@ -15,6 +15,10 @@
 	main.Renderer = Renderer.ElementRenderer
 	lang.copy(main, Renderer)
 	lang.copy(main, operators)
-	main.default = reactive // no default export
-	return main
+	main.default = reactive // default export
+	var localGlobal = typeof window == 'undefined' ? global : window
+	if (localGlobal.alkali) {
+		console.warn('Multiple instances of alkali have been defined, which can cause alkali context instances to be out of sync')
+	}
+	return localGlobal.alkali = main
 }))
