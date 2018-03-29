@@ -647,7 +647,7 @@
 		updateVersion: function(version) {
 			var now = Date.now()
 			this.version = nextVersion = nextVersion < now ? now :
-				nextVersion + ((nextVersion > now + 500) ? 0.001 : 1)
+				nextVersion + ((nextVersion > now + 500) ? 0.0003 : 1)
 			if (nextVersion > now && ((nextVersion - now) % 600000) == 0)
 				console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
 		},
