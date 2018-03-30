@@ -905,13 +905,17 @@
 		if (element.constructor != this) {
 			element.constructor = this // need to do this for hasOwn contextualization to work
 		}
-		if (arguments.length > 0) {
-			// copy applyOnCreate when we have arguments
+		var hasArguments = arguments.length > 0
+		if (hasArguments || element.created || element.ready) {
+			// copy applyOnCreate when we have arguments or method that accepts applyOnCreate
 			var ElementApplyOnCreate = applyOnCreate
 			applyOnCreate = {}
 			for (var key in ElementApplyOnCreate) {
 				applyOnCreate[key] = classHandlers[key] ? Object.create(ElementApplyOnCreate[key]) : ElementApplyOnCreate[key]
 			}
+
+		}
+		if (hasArguments) {
 			var i = 0
 			if (typeof selector == 'string') {
 				i++
