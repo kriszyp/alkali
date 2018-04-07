@@ -1576,6 +1576,9 @@
 			}
 		}
 	}, {
+		getTransform() {
+			return this.transform && this.transform.valueOf()
+		},
 		getValue: function() {
 			// first check to see if we have the variable already computed
 			if (this.readyState == 'invalidated') {
@@ -1613,7 +1616,7 @@
 					transformContext.ifModifiedSince = this.cachedVersion
 				}
 				// TODO: var hasCustomTransformFunction = this.transform && this.transform.value === ObjectValueOf
-		 		var transform = this.transform && this.transform.valueOf()
+		 		var transform = this.getTransform()
 
 				var argument, argumentName, lastPromiseResult, resolved = []
 				var afterPromiseResolved
