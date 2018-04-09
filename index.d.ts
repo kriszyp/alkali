@@ -209,6 +209,10 @@ declare namespace alkali {
       <U>(collectionOf: { new (): U }): { new(v?: any[]): VArray<U> }
       new<U>(collectionOf: { new (): U }): VArray<U>
     }
+    entries(): IterableIterator<[T, T]>
+    keys(): IterableIterator<T>
+    values(): IterableIterator<T>
+    clear(): void
     collectionOf: VariableClass
     [Symbol.toStringTag]: () => string
     [Symbol.iterator]: any
@@ -296,8 +300,10 @@ declare namespace alkali {
       subject: any
       /* The maximum version number of the sources used to compute the variable (usually accessed after a variable is computed to compare with future computations for differences). */
       version: number
+      setVersion(version: number): void
       constructor(subject?: any, notifies?: (receiver: any) => any)
       executeWithin(executor: () => any)
+      newContext(): Context
   }
   /* A response from a variable, given a context with an `ifModifiedSince` that indicates it has not changed*/
   export var NOT_MODIFIED: {}
@@ -465,7 +471,6 @@ declare namespace alkali {
     onmouseup?: (ev: MouseEvent) => any
     onmousewheel?: (ev: MouseWheelEvent) => any
     onmscontentzoom?: (ev: UIEvent) => any
-    onmsmanipulationstatechanged?: (ev: MSManipulationEvent) => any
     onpaste?: (ev: DragEvent) => any
     onpause?: (ev: Event) => any
     onplay?: (ev: Event) => any
