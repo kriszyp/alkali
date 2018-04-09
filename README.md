@@ -116,6 +116,12 @@ four < 5 -> true
 four == 4 -> true
 ```
 
+If the variable requires asynchronous resolution (async transform or source), this will return a promise.
+
+### `then(onFulfilled, onRejected)`
+
+This also retrieves the current of the variable, using the standard promise API/callback. This method also means that all variables can be treated as promises/thenables, and used in places that accept promises, including the `await` operator.
+
 ### `put(value)`
 
 `put` allows us to update the value of a variable with a new value. This can be given a standard value, or you can pass in another variable, in which case this variable will be "linked" to the other, receiving all values and updates from the provided variable.
