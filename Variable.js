@@ -181,9 +181,6 @@
 	}
 	NotifyingContext.prototype = Object.create(Context.prototype)
 	NotifyingContext.prototype.constructor = NotifyingContext
-	NotifyingContext.prototype.addInput = function(contextualized) {
-		contextualized.notifies(this.listener)
-	}
 
 	function registerListener(value, listener) {
 		var listeners = propertyListenersMap.get(value)
@@ -2650,7 +2647,7 @@
 					}
 					var collectionOf = varray.getCollectionOf()
 
-					if (collectionOf && !varray._typedArray || !(varray._typedVersion >= sourceContext.version)) {
+					if (collectionOf && (!varray._typedArray || !(varray._typedVersion >= sourceContext.version))) {
 						// TODO: eventually we may want to do this even more lazily for slice operations
 						varray._typedArray = array.map(function(item, index) {
 							if (!(item instanceof collectionOf)) {
@@ -2670,7 +2667,8 @@
 						// items were converted, store the original array
 						varray._typedVersion = sourceContext.version
 					}
-					if (varray.sortFunction && varray._sortedArray != varray._typedArray) {
+					array = varray._typedArray || mode.allowUntyped && array
+					if (varray.sortFunction && varray._sortedArray != array) {
 						// we have a sort function, and a new incoming array, need to resort
 						var reversed = varray.reversed
 						var sortFunction = varray.sortFunction
@@ -2679,9 +2677,8 @@
 						if (reversed) {
 							varray.reversed()
 						}
-						return array
 					}
-					return varray._typedArray
+					return array
 				})
 			} finally {
 				if (parentContext) {
