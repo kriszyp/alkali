@@ -98,14 +98,6 @@
 		newContext: function() {
 			return new Context(this.element, true)
 		},
-		integrate: function(context, contextualized) {
-			this.addInput(contextualized)
-		},
-		addInput: function(contextualized) {
-			if (this.variable !== contextualized) {
-				this.contextualized = contextualized
-			}
-		},
 		getContextualized: function(Variable) {
 			return Context.prototype.getContextualized.call(this, Variable)
 			//return this.contextualized || this.variable
