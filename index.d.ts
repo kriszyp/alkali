@@ -918,3 +918,6 @@ declare module 'alkali' {
 declare module 'alkali/extensions/typescript' {
     export function reactive(target: any, key: string)
 }
+
+export class ContextualPromise<T> extends Promise<T> {
+}

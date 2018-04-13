@@ -1,8 +1,8 @@
 /// <reference path="./typings.d.ts" />
 (function (root, factory) { if (typeof define === 'function' && define.amd) {
-  define(['./Element', './Renderer', './reactive', './Copy', './operators', './Variable', './util/lang'], factory) } else if (typeof module === 'object' && module.exports) {
-  module.exports = factory(require('./Element'), require('./Renderer'), require('./reactive'), require('./Copy'), require('./operators'), require('./Variable'), require('./util/lang')) // Node
-}}(this, function (Element, Renderer, reactive, Copy, operators, VariableExports, lang) {
+  define(['./Element', './Renderer', './reactive', './Copy', './operators', './Variable', './util/lang', './util/ContextualPromise'], factory) } else if (typeof module === 'object' && module.exports) {
+  module.exports = factory(require('./Element'), require('./Renderer'), require('./reactive'), require('./Copy'), require('./operators'), require('./Variable'), require('./util/lang'), require('./util/ContextualPromise')) // Node
+}}(this, function (Element, Renderer, reactive, Copy, operators, VariableExports, lang, ContextualPromise) {
 
 	var main = Object.create(Element)
 	main.Copy = Copy
@@ -15,6 +15,7 @@
 	main.Renderer = Renderer.ElementRenderer
 	lang.copy(main, Renderer)
 	lang.copy(main, operators)
+	main.ContextualPromise = ContextualPromise
 	main.default = reactive // default export
 	var localGlobal = typeof window == 'undefined' ? global : window
 	if (localGlobal.alkali) {
