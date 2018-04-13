@@ -976,7 +976,7 @@
 			if (reverse) {
 				transformFunction.reverse = function(value, args) {
 					// for direct to, we can just use the first argument
-					reverse.call(this, value, args[0])
+					return reverse.call(this, value, args[0])
 				}
 			}
 			if (transformFunction.prototype instanceof Variable) {
@@ -1789,7 +1789,7 @@
 				var transform = call.transform.valueOf()
 				if (transform.reverse) {
 					(transform.reverse).call(call, value, call.getArguments())
-					call.updated(event)
+					return call.updated(event)
 				} else if (originalValue && originalValue.put) {
 					return originalValue.put(value, event)
 				} else {
@@ -2269,6 +2269,12 @@
 	var argsToArray = {
 		apply: function(instance, args) {
 			return args
+		},
+		reverse: function(value, args) {
+			// reverse the conversion, putting an array of values into the source inputs
+			return args.map(function(arg, i) {
+				return arg.put(value[i])
+			})
 		}
 	}
 
@@ -2276,9 +2282,6 @@
 		// This is intended to mirror Promise.all. It actually takes
 		// an iterable, but for now we are just looking for array-like
 		if (array instanceof Array) {
-			if (array.length > 1000) {
-				 //throw new Error('too big')
-			}
 			if (array.length > 0 || typeof transform === 'function') {
 				// TODO: Return VArray Transform
 				return new Transform(array[0], typeof transform === 'function' ? transform : argsToArray, array)

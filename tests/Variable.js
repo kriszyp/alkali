@@ -919,6 +919,10 @@ define(function(require) {
 			assert.deepEqual(result, [4, 2, 3])
 			c.put(6)
 			assert.deepEqual(result, [4, 2, 6])
+			composite.put([7, 8, 9])
+			assert.equal(a.valueOf(), 7)
+			assert.equal(b.valueOf(), 8)
+			assert.equal(c.valueOf(), 9)
 		})
 
 		test('incrementalUpdate', function() {
