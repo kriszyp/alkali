@@ -237,7 +237,7 @@ declare namespace alkali {
   export class Copy extends Variable<any> {
   }
   export class Transform<T = any> extends Variable<T> {
-    constructor(source: any, transform: (...v) => T, sources: any[])
+    constructor(source: any, transform: (...v) => T, sources?: any[])
   }
 
   export function reactive(initialValue: string): Vstring

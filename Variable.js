@@ -66,7 +66,7 @@
 	Context.prototype = {
 		constructor: Context,
 		newContext: function(variable) {
-			return new Context(this.subject, this.notifies)
+			return new this.constructor(this.subject, this.notifies)
 		},
 		executeWithin: function(executor) {
 			var previousContext = context

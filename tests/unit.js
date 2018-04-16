@@ -5,4 +5,5 @@ define(function(require) {
   require('./Copy')
   require('./operators')
   require('./reactive')
+  require('./ContextualPromise')
 });
