@@ -20,7 +20,7 @@ lang.copy(ContextualPromise.prototype, {
 				return context.executeWithin(function() {
 					return onRejected(error)
 				})
-			} : onRejected,
+			} : onRejected
 		), this.context)
 	},
 	catch: function(onRejected) {
@@ -30,7 +30,7 @@ lang.copy(ContextualPromise.prototype, {
 				return context.executeWithin(function() {
 					return onRejected(error)
 				})
-			} : onRejected,
+			} : onRejected
 		), this.context)
 	},
 	finally: function(onResolved) {
@@ -40,7 +40,7 @@ lang.copy(ContextualPromise.prototype, {
 				return context.executeWithin(function() {
 					return onResolved(error)
 				})
-			} : onResolved,
+			} : onResolved
 		), this.context)
 	}
 })
