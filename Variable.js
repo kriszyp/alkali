@@ -1573,7 +1573,7 @@
 			}
 		}
 	}, {
-		getTransform() {
+		getTransform: function() {
 			return this.transform && this.transform.valueOf()
 		},
 		getValue: function() {
