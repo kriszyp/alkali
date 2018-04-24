@@ -2070,6 +2070,9 @@
 		},
 		clear: function() {
 			this.is([])
+		},
+		has: function(idOrValue) { // same as includes
+			return this.indexOf(idOrValue) > -1
 		}
 	})
 	/*Object.defineProperty(VArray.prototype, 'length', {
