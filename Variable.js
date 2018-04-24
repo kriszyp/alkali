@@ -2075,7 +2075,7 @@
 			return this.indexOf(idOrValue) > -1
 		}
 	})
-	/*Object.defineProperty(VArray.prototype, 'length', {
+	Object.defineProperty(VArray.prototype, 'length', {
 		get: function() {
 			if (typeof this !== 'function') {
 				var properties = this._properties || (this._properties = {})
@@ -2091,12 +2091,12 @@
 				}
 			}
 		},
-		configurable: true/*
-		set length(length) {
+		configurable: true,
+		set: function(length) {
 			// allow overriding
 			this.value.length = length
 		},
-	})*/
+	})
 	VArray.of = function(collectionOf) {
 		var ArrayClass = VCollection({collectionOf: collectionOf})
 		if (this !== VArray) {
