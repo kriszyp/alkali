@@ -382,6 +382,32 @@ define([
 				assert.strictEqual(listElement.children.length, 3)
 			})
 		})
+
+		test('list of mapped objects with changes', function() {
+			var TypedArray = VArray.of(Variable.with({name: ''}))
+			var arrayVariable = new TypedArray([{name:'a'}, {name: 'b'},{name: 'c'}])
+			var listElement = new UL(arrayVariable.map(function(item) {
+				return Input(item.name)
+			}))
+			var asString = arrayVariable.to(function(items) {
+				return items.map(function(item) {
+					return item.name
+				}).join(', ')
+			})
+			assert.equal(asString.valueOf(), 'a, b, c')
+			document.body.appendChild(listElement)
+			assert.strictEqual(listElement.children.length, 3)
+			assert.strictEqual(listElement.childNodes[0].value, 'a')
+			return new Promise(requestAnimationFrame).then(function(){
+				var textInput = listElement.childNodes[0]
+				textInput.value = 'change from input'
+				var nativeEvent = document.createEvent('HTMLEvents')
+				nativeEvent.initEvent('change', true, true)
+				textInput.dispatchEvent(nativeEvent)
+				assert.equal(asString.valueOf(), 'change from input, b, c')
+			})
+		})
+
 		test('simplePropertyAccess', function() {
 			var MyComponent = extend(Div, {})
 			MyComponent.children = [

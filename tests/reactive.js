@@ -46,5 +46,16 @@ define(function(require) {
 			reactive(obj).foo.put(3)
 			assert.equal(obj.foo, 3)
 		})
+		test('with arrays', function() {
+			var array = reactive([{ name: 'first' }, { name: 'second' }])
+			var asString = array.to(function(array) {
+				return array.map(function(item) {
+					return item.name
+				}).join(', ')
+			})
+			assert.equal(asString.valueOf(), 'first, second')
+			array.property(0).set('name', 'changed')
+			assert.equal(asString.valueOf(), 'changed, second')
+		})
 	})
 })
