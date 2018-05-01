@@ -405,10 +405,24 @@
 		},
 		then: function(onFulfilled, onRejected) {
 			var result = this.valueOf(true)
-			if (!result || !result.then) {
+			var isAsyncPromise = result && result.then
+			if (!isAsyncPromise) {
 				result = new lang.SyncPromise(result) // ensure it is promise-like
 			}
 			if (onFulfilled || onRejected) { // call then if we have any callbacks
+				if (isAsyncPromise && context) {
+					// if it is async and we have a context, we will restore it for the callback
+					var currentContext = context
+					return result.then(onFulfilled && function(result) {
+						return currentContext.executeWithin(function() {
+							return onFulfilled(result)
+						})
+					}, onRejected && function(error) {
+						return currentContext.executeWithin(function() {
+							return onRejected(error)
+						})
+					})
+				}
 				return result.then(onFulfilled, onRejected)
 			}
 			return result
