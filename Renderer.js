@@ -461,7 +461,7 @@
 				each.defineHasOwn()
 			}
 			if (newValue) {
-				newValue.forEach(function(item) {
+				this.variable.forEach(function(item) {
 					childElements.push(Renderer.append(thisElement, eachItem(item)))
 				})
 			}
@@ -481,7 +481,7 @@
 						thisElement.removeChild(childElements[i])
 					}
 					renderer.updateElement(thisElement)
-				} else {
+				} else if (update.type === 'spliced') {
 					var index = update.start
 					for (var i = 0; i < update.deleteCount; i++) {
 						thisElement.removeChild(childElements[update.start + i])
@@ -498,6 +498,13 @@
 							childElements.push(newElement)
 						}
 					}
+				} else if (update.type === 'property') {
+					// should be handled by sub-renderers
+					/*thisElement.removeChild(childElements[update.key])
+					var nextChild = childElements[update.key + 1]
+					var newElement = Renderer.append(thisElement, eachItem(update.target))
+					thisElement.insertBefore(newElement, nextChild)
+					childElements[update.key] = newElement*/
 				}
 			})
 			this.updates = [] // clear the updates

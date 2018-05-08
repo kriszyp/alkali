@@ -550,11 +550,18 @@
 			// render as list
 			if (each.create) {
 				each.defineHasOwn = function () {
-					var ItemClass = content.getCollectionOf && content.getCollectionOf() || Item
-					hasOwn(each, ItemClass, function (element) {
-						var itemVariable = ItemClass.from(element._item)
+					hasOwn(each, Item, function (element) {
+						var itemVariable = Item.from(element._item)
 						return itemVariable
 					})
+					var ItemClass = content.getCollectionOf && content.getCollectionOf()
+					if (ItemClass) {
+						// if it is typed, make it available through the typed class as well.
+						hasOwn(each, ItemClass, function (element) {
+							var itemVariable = ItemClass.from(element._item)
+							return itemVariable
+						})
+					}
 				}
 			}
 			if (content.notifies) {
