@@ -461,7 +461,7 @@
 				each.defineHasOwn()
 			}
 			if (newValue) {
-				this.variable.forEach(function(item) {
+				(this.variable.forEach ? this.variable : newValue).forEach(function(item) {
 					childElements.push(Renderer.append(thisElement, eachItem(item)))
 				})
 			}
