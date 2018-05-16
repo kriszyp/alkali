@@ -159,6 +159,7 @@ declare namespace alkali {
 
   export class VArray<T = {}> extends Variable<Array<T>> implements Set<T> {
     constructor(value?: Array<T> | Promise<Array<T>> | Variable<Array<T>>)
+    readonly length: VNumber
     /**
     * Return a VArray with the map applied
     */
@@ -200,8 +201,11 @@ declare namespace alkali {
     shift(): T
     splice(start: number, end: number, ...items: any[]): T[]
 
-    remove(item: any)
-    add(item: any)
+    remove(item: T): void
+    add(value: T): void
+    delete(value: T): this
+    has(value: T): boolean
+    includes(searchElement: T): boolean
 
     static of: {
       /*<T, U extends Variable<T>>(collectionOf: { new (): U }): { new(v?: T[]): VArray<T, U> }
