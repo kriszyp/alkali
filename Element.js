@@ -372,7 +372,7 @@
 				}
 			}
 		}),
-		select: lang.copy(['name', 'size', 'type', 'selectedIndex', 'validationMessage'], {
+		select: lang.copy(['disabled', 'name', 'size', 'type', 'selectedIndex', 'validationMessage'], {
 			value: bidirectionalHandler
 		}),
 		textarea: lang.copy(['cols', 'dirName', 'maxLength', 'minLength', 'name', 'placeholder', 'rows', 'wrap', 'type', 'defaultValue', 'textLength', 'validationMessage', 'autocapitalize'], {
