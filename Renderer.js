@@ -461,9 +461,17 @@
 				each.defineHasOwn()
 			}
 			if (newValue) {
-				(this.variable.forEach ? this.variable : newValue).forEach(function(item) {
+				var renderEach = function(item) {
 					childElements.push(Renderer.append(thisElement, eachItem(item)))
-				})
+				}
+				var variable = this.variable
+				if (variable.collectionOf) {
+					this.executeWithin(function() {
+						variable.forEach(renderEach)
+					})
+				} else {
+					newValue.forEach(renderEach)
+				}
 			}
 			var contextualized = this.contextualized || this.variable
 			contextualized.notifies(this)
