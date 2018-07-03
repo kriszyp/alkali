@@ -213,6 +213,11 @@
 		}
 	}
 
+	function UpdateEvent() {
+		this.visited = new Set()
+	}
+	UpdateEvent.prototype.type = 'replaced'
+
 	function ReplacedEvent(triggerEvent) {
 		this.visited = triggerEvent ? triggerEvent.visited : new Set()
 	}
@@ -1690,6 +1695,11 @@
 					version = transformContext.version
 
 					if (isPromise) {
+						if (variable.promise && variable.promise.abort) {
+							// promises with an abort method can be aborted and replaced with the latest result
+							variable.promise.replacedResolutionWith = result
+							variable.promise.abort('Cancelled due to updated value being available')
+						}
 						var promise = variable.promise = result
 						variable.cachedVersion = version
 						result = result.then(function(resolved) {
@@ -1704,6 +1714,9 @@
 								variable.promise = null
 								variable.lastError = error
 								onResolve(null, -1)
+							} else if (promise.replacedResolutionWith) {
+								// if it was aborted and substituted with the latest promise, return that value
+								return promise.replacedResolutionWith
 							}
 							throw error // rethrow so it isn't silenced
 						})
@@ -1755,7 +1768,7 @@
 
 		updated: function(updateEvent, by, isDownstream) {
 			this.readyState = 'invalidated'
-			if (this.promise) {
+			if (this.promise && !this.promise.abort) { // if it can be aborted, keep it around for better network cleanup, otherwise remove reference for immediate memory cleanup
 				this.promise = null
 			}
 			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'replaced') {
@@ -2577,6 +2590,9 @@
 				// TODO: may actually want to do getValue().invoke()
 				var variable = this
 				return when(this.valueOf(), function(value) {
+					if (!value) {
+						value = new variable.constructor.wrapsType()
+					}
 					var returnValue = value[method].apply(value, args)
 					return when(variable.put(value), function() {
 						return returnValue
@@ -2646,6 +2662,7 @@
 			return this._array || (this._array = this.to(setToArray).as(VArray))
 		}
 	})
+	VSet.wrapsType = lang.Set
 
 	var VCollection = lang.compose(VArray, function VCollection(value) {
 		return makeSubVar(this, value, VCollection)
@@ -2744,6 +2761,8 @@
 		setTime: VMethod
 	}, VDate)
 
+	VDate.wrapsType = Date
+
 	var VPromise = lang.compose(Variable, function VPromise(value) {
 		return makeSubVar(this, value, VPromise)
 	}, {
@@ -2780,7 +2799,8 @@
 		getNextVersion: getNextVersion,
 		ReplacedEvent: ReplacedEvent,
 		AddedEvent: AddedEvent,
-		DeletedEvent: DeletedEvent
+		DeletedEvent: DeletedEvent,
+		UpdateEvent: UpdateEvent,
 	}
 	Object.defineProperty(exports, 'currentContext', {
 		get: function() {

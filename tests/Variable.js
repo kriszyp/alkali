@@ -553,6 +553,17 @@ define(function(require) {
 			assert.equal(a.valueOf(), false)
 			assert.equal(c.valueOf(), false)
 		})
+		test('empty VSet', function() {
+			var vs = new VSet()
+			var a = vs.has('a')
+			assert.equal(Boolean(a.valueOf()), false)
+			vs.add('a')
+			vs.add('c')
+			assert.equal(a.valueOf(), true)
+			assert.equal(vs.has('c').valueOf(), true)
+			vs.delete('a')
+			assert.equal(a.valueOf(), false)
+		})
 		test('variablePromise', function() {
 			var p = new Variable(Promise.resolve('hi'))
 			return p.then(function(value) {

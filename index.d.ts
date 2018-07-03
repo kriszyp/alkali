@@ -4,7 +4,7 @@ declare namespace alkali {
     then<U>(callback?: (T) => U | Promise<U>, errback?: (T) => U | Promise<U>): Promise<U>
   }
 
-  class UpdateEvent {
+  export class UpdateEvent {
     visited: Set<Variable>
     version?: number
     type: ('replaced' | 'property' | 'added' | 'deleted' | 'entry' | 'spliced')
@@ -926,4 +926,5 @@ declare module 'alkali/extensions/typescript' {
 }
 
 export class ContextualPromise<T> extends Promise<T> {
+  constructor(executor: Function)
 }
