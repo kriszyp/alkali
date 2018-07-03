@@ -495,14 +495,20 @@
 				} else {
 					styleDefinition(element, value, key)
 				}
-			} else if (element[key] == null) {
-				// we are working an unknown/unstandard property (or an event listener)
-				// undefined or null means we can safely set
-				// TODO: we may want to do the event listener check first so we can handle oncustomevent (that needs an addEventListener call to work)
-				element[key] = value
 			} else if (typeof value === 'function' && key.slice(0, 2) === 'on') {
-				// event listener with one already defined on the prototype
-				element.addEventListener(key.slice(2), value)
+				// event listener
+				if (element[key] !== null && !element['_registeredEvent_' + key]) {
+					// setup custom event listener
+					element['_registeredEvent_' + key] = true
+					element.addEventListener(key.slice(2), function(event) {
+						this['on' + event.type](event)
+					})
+				}
+				element[key] = value // standard assignment
+			} else if (element[key] == null) {
+				// we are working an unknown/unstandard property (or a standard/registered event listener)
+				// undefined or null means we can safely set
+				element[key] = value
 			} else {
 				// otherwise bypass/override the native getter/setter
 				Object.defineProperty(element, key, {
