@@ -2590,8 +2590,8 @@
 				// TODO: may actually want to do getValue().invoke()
 				var variable = this
 				return when(this.valueOf(), function(value) {
-					if (!value) {
-						value = new variable.constructor.wrapsType()
+					if (!value || !value[method]) {
+						value = new variable.constructor.wrapsType(value)
 					}
 					var returnValue = value[method].apply(value, args)
 					return when(variable.put(value), function() {
@@ -2652,7 +2652,17 @@
 		return makeSubVar(this, value instanceof Array ? new lang.Set(value) : value, VSet)
 	}
 	VSet = Variable.with({
-		has: VFunction.returns(VBoolean),
+		has: function(value) {
+			return this.to(function(set) {
+				if (set && set.has) { // ideally
+					return set.has(value)
+				}
+				if (set && set.indexOf) { // also handle arrays
+					return set.indexOf(value) > -1
+				}
+				return false
+			}).as(VBoolean)
+		},
 		add: VMethod,
 		clear: VMethod,
 		delete: VMethod
