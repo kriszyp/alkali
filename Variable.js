@@ -495,6 +495,8 @@
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
 					// nothing changed, immediately return valueOf
+					if (context && context.ifModifiedSince > -1) // we don't want the nested value to return a NOT_MODIFIED
+						context.ifModifiedSince = undefined
 					return value.valueOf(true)
 				}
 				// if there was a another value that we were dependent on before, stop listening to it
@@ -509,6 +511,8 @@
 				if (variable.listeners) {
 					value.notifies(variable)
 				}
+				if (context && context.ifModifiedSince > -1) // we don't want the nested value to return a NOT_MODIFIED
+					context.ifModifiedSince = undefined
 				value = value.valueOf(true)
 			}
 			if (value && value.then) {
