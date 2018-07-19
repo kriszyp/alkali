@@ -519,6 +519,7 @@
 					var isSync = null
 					var result = nextValue.then(function(value) {
 						nextValue = value
+						isThrowing = false
 						if (isSync === false) {
 							return next()
 						} else {
