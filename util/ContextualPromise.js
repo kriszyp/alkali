@@ -3,7 +3,7 @@
   module.exports = factory(require('./lang'), require('../Variable')) // Node
 }}(this, function (lang, VariableExports) {
 
-const Promise = (typeof global != 'undefined' ? global : window).Promise
+var Promise = (typeof global != 'undefined' ? global : window).Promise
 function ContextualPromise(executor) {
 	this.context = VariableExports.currentContext
 	this.promise = new Promise(executor)
@@ -26,13 +26,13 @@ lang.copy(ContextualPromise.prototype, {
 			getExecutor(onRejected, context)
 		), context, this)
 	},
-	catch: function(onRejected) {
+	'catch': function(onRejected) {
 		var context = this.context
 		return new ContextualPromiseFromPromise(this.promise.catch(
 			getExecutor(onRejected, context)
 		), context, this)
 	},
-	finally: function(onResolved) {
+	'finally': function(onResolved) {
 		var context = this.context
 		return new ContextualPromiseFromPromise(this.promise.finally(
 			getExecutor(onResolved, context)
