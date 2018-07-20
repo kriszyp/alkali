@@ -1364,7 +1364,11 @@
 					}
 					var descriptor = getDescriptor(key, value)
 					Object.defineProperty(prototype, key, descriptor)
-					Object.defineProperty(this, key, descriptor)
+					try {
+						Object.defineProperty(this, key, descriptor)
+					} catch(error) {
+						console.warn('Unable to define property', key)
+					}
 					continue
 				} else if (isGenerator(value)) {
 					descriptor = getGeneratorDescriptor(value)
