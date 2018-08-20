@@ -700,6 +700,22 @@
 			return updates
 		},
 
+		_initUpdate: function(updateEvent, isDownstream) {
+			if (!updateEvent.version) {
+				var now = Date.now()
+				updateEvent.version = nextVersion = nextVersion < now ? now :
+					nextVersion + ((nextVersion > now + 500) ? 0.001 : 1)
+				if (nextVersion > now && (nextVersion - now) % 600000 == 0)
+					console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
+			}
+			if (updateEvent instanceof PropertyChangeEvent) {
+				this.versionWithChildren = updateEvent.version
+			} else if (!isDownstream) {
+				this.version = updateEvent.version
+			}
+			return updateEvent
+		},
+
 		updated: function(updateEvent, by, isDownstream) {
 			if (!updateEvent) {
 				updateEvent = new ReplacedEvent()
@@ -731,19 +747,7 @@
 			}
 
 			this.lastUpdate = updateEvent */
-			if (!updateEvent.version) {
-				var now = Date.now()
-				updateEvent.version = nextVersion = nextVersion < now ? now :
-					nextVersion + ((nextVersion > now + 500) ? 0.001 : 1)
-				if (nextVersion > now && (nextVersion - now) % 600000 == 0)
-					console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
-			}
-			if (updateEvent instanceof PropertyChangeEvent) {
-				this.versionWithChildren = updateEvent.version
-			} else if (!isDownstream) {
-				this.version = updateEvent.version
-			}
-
+			this._initUpdate(updateEvent, isDownstream)
 			var listeners = this.listeners
 			if (listeners) {
 				var variable = this
