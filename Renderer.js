@@ -83,7 +83,7 @@
 				(updateEvent.visited.enqueueUpdate || requestAnimationFrame)(function() {
 					if (renderer.invalidated === true) {
 						renderer.updateRendering(renderer.alwaysUpdate, renderer.element)
-					} else {
+					} else if (renderer.invalidated) {
 						renderer.invalidated.forEach(function(element) {
 							renderer.updateRendering(renderer.alwaysUpdate, element)
 						})
