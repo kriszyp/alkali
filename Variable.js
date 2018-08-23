@@ -1712,9 +1712,8 @@
 							variable.promise.replacedResolutionWith = result
 							variable.promise.abort('Cancelled due to updated value being available')
 						}
-						var promise = variable.promise = result
 						variable.cachedVersion = version
-						result = result.then(function(resolved) {
+						var promise = variable.promise = result = result.then(function(resolved) {
 							if (promise === variable.promise) { // make sure we are still the latest promise
 								variable.promise = null
 								onResolve(resolved, transformContext.version)
@@ -1757,6 +1756,10 @@
 							console.log('ready state different than when the variable trasnform started ', variable, variable.readyState, readyState)
 						}*/
 					}
+				}
+				if (lastPromiseResult.abort) {
+					// if abort was propagated, don't propagate past the variable, as we want to finish our resolution of the value
+					lastPromiseResult.abort = null
 				}
 				return lastPromiseResult
 			} finally {
