@@ -6,7 +6,8 @@
 	var knownElementProperties = [
 		'textContent', // Node
 		'id', 'className', 'innerHTML', // Element
-		'title', 'lang', 'translate', 'dir', 'tabIndex', 'accessKey', 'draggable', 'spellcheck', 'contentEditable', 'innerText', 'webkitdropzone'] // HTMLElement
+		'title', 'lang', 'hidden', 'translate', 'dir', 'tabIndex', 'accessKey', 'draggable', 'dropzone', 'spellcheck', 'contentEditable', 'innerText', // HTMLElement
+		'translate', 'webkitdropzone'] // HTMLElement
 
 	var SELECTOR_REGEX = /^(\.|#)([-\w]+)(.+)?/
 	var isGenerator = lang.isGenerator
