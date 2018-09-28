@@ -574,6 +574,30 @@ define([
 				assert.strictEqual(div2.textContent, '2')
 			})
 		})
+
+		test('variable in classes', function() {
+			var Active = Variable(false)
+
+			var PadRow = UL('.pad-row')
+			var Pad = LI('.pad', {
+				hasOwn: Active,
+			  	classes: {
+			  		hidden: Active
+			  	}
+			})
+
+			var container = new Div()
+			document.body.appendChild(container)
+			container.appendChild(new PadRow([ Pad, Pad, Pad, Pad ]))
+			Active.for(container.firstChild.firstChild.nextSibling).put(true)
+			return new Promise(requestAnimationFrame).then(function() {
+				assert.isFalse(container.firstChild.firstChild.className.indexOf('hidden') > -1)
+				assert.isTrue(container.firstChild.firstChild.nextSibling.className.indexOf('hidden') > -1)
+				assert.isFalse(container.firstChild.firstChild.nextSibling.nextSibling.className.indexOf('hidden') > -1)
+				assert.isFalse(container.firstChild.firstChild.nextSibling.nextSibling.nextSibling.className.indexOf('hidden') > -1)
+			})
+		})
+
 		test('inheritance', function() {
 			var a = new Variable('a')
 			var b = new Variable('b')
