@@ -508,34 +508,39 @@
 					return stepReturn.value
 				}
 				nextValue = stepReturn.value
-				// if the return value is a (generator) iterator, execute it
-				if (nextValue && nextValue.next && isGeneratorIterator(nextValue)) {
-					nextValue = spawn(nextValue)
-				}
-				if (nextValue && nextValue.then) {
-					// if it is a promise, we will wait on it
-					// and return the promise so that the next caller can wait on this
-					var resolved
-					var isSync = null
-					var result = nextValue.then(function(value) {
-						nextValue = value
-						isThrowing = false
-						if (isSync === false) {
+				try {
+					// if the return value is a (generator) iterator, execute it
+					if (nextValue && nextValue.next && isGeneratorIterator(nextValue)) {
+						nextValue = spawn(nextValue)
+					}
+					if (nextValue && nextValue.then) {
+						// if it is a promise, we will wait on it
+						// and return the promise so that the next caller can wait on this
+						var resolved
+						var isSync = null
+						var result = nextValue.then(function(value) {
+							nextValue = value
+							isThrowing = false
+							if (isSync === false) {
+								return next()
+							} else {
+								isSync = true
+							}
+						}, function(error) {
+							nextValue = error
+							isThrowing = true
 							return next()
-						} else {
-							isSync = true
-						}
-					}, function(error) {
-						nextValue = error
-						isThrowing = true
-						return next()
-					})
-					if (!isSync) {
-						isSync = false
-						return result
-					} // else keeping looping to avoid recursion
+						})
+						if (!isSync) {
+							isSync = false
+							return result
+						} // else keeping looping to avoid recursion
+					}
+					isThrowing = false
+				} catch(error) {
+					isThrowing = true
+					nextValue = error
 				}
-				isThrowing = false
 			} while(true)
 		}
 	}
