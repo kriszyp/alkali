@@ -98,7 +98,7 @@ function startPromises(promises) {
 			promise.abort = function(message) {
 				for (var i = 0, l = promises.length; i < l; i++) {
 					var promise = promises[i]
-					if (promise.abort) {
+					if (promise && promise.abort) {
 						promise.abort(message)
 					}
 				}
