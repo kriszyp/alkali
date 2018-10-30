@@ -7,10 +7,11 @@ declare namespace alkali {
   export class UpdateEvent {
     visited: Set<Variable>
     version?: number
-    type: ('replaced' | 'property' | 'added' | 'deleted' | 'entry' | 'spliced')
+    type: ('replaced' | 'property' | 'added' | 'deleted' | 'entry' | 'spliced' | 'discovered')
     child?: UpdateEvent
-    triggers?: Set<any>
+    triggers?: any[]
     sources?: Set<any>
+    source: any
   }
 
 
