@@ -51,6 +51,9 @@
 		},
 		catch: function(handler) {
 			return this.then(null, handler)
+		},
+		finally: function(handler) {
+			handler()
 		}
 	}
 	function SyncErrorPromise(error) {
