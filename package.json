@@ -1,7 +1,7 @@
 {
   "name": "alkali",
   "author": "Kris Zyp",
-  "version": "0.20.10",
+  "version": "0.20.11",
   "description": "Reactivity with native JavaScript objects and HTML elements",
   "license": "BSD-3-Clause",
   "licenses": [
@@ -25,7 +25,7 @@
   },
   "main": "./index.js",
   "dependencies": {},
-  "typings": "./index.d.ts",
+  "types": "./index.d.ts",
   "dojoBuild": "package.js",
   "devDependencies": {
     "bluebird": "^3.3.3",

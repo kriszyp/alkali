@@ -77,7 +77,7 @@
 				return this
 			},
 			sort: function(sortFunction) {
-				return new VArrayDStore(varray.sort(sortFunction))
+				return new VArrayDstore(varray.sort(sortFunction))
 			},
 			getIdentity: function(object) {
 				return object.getId()
