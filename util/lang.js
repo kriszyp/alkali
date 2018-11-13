@@ -54,6 +54,7 @@
 		},
 		finally: function(handler) {
 			handler()
+			return this
 		}
 	}
 	function SyncErrorPromise(error) {
