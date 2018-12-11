@@ -917,15 +917,15 @@ declare namespace alkali {
   export class ReplacedEvent extends UpdateEvent {}
   export class AddedEvent extends UpdateEvent {}
   export class DeletedEvent extends UpdateEvent {}
+  export class ContextualPromise<T> extends Promise<T> {
+    constructor(executor: Function)
+  }
 }
 declare module 'alkali' {
-    export = alkali
+  export = alkali
 }
 
 declare module 'alkali/extensions/typescript' {
     export function reactive(target: any, key: string)
 }
 
-export class ContextualPromise<T> extends Promise<T> {
-  constructor(executor: Function)
-}
