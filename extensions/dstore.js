@@ -76,7 +76,12 @@
 			track: function() {
 				return this
 			},
-			sort: function(sortFunction) {
+			sort: function(sortInfo) {
+				var sortFunction
+				if (typeof sortInfo === 'function') {
+					
+				}
+
 				return new VArrayDstore(varray.sort(sortFunction))
 			},
 			getIdentity: function(object) {

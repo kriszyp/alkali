@@ -2958,13 +2958,15 @@
 			var untypedArray = this.source.valueOf()
 			var results = []
 			var callback = this.source1.valueOf()
-			array.forEach(function(value, index) {
-				if (callback(value, index)) {
-					// push the original values, so we preserve underlying and typed values
-					results.push(untypedArray[index])
-				}
-			}, this.source2)
-			return results
+			return when(array, function(array) {
+				array.forEach(function(value, index) {
+					if (callback(value, index)) {
+						// push the original values, so we preserve underlying and typed values
+						results.push(untypedArray[index])
+					}
+				}, this.source2)
+				return results
+			})
 		},
 		// just delegate directly to the source for these methods
 		push: function(value) {
