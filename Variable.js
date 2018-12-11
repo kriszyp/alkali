@@ -2955,10 +2955,11 @@
 		},
 		transform: function() {
 			var array = this.source.valueOf(GET_TYPED_OR_UNTYPED_ARRAY)
-			var untypedArray = this.source.valueOf()
+			var source = this.source
 			var results = []
 			var callback = this.source1.valueOf()
 			return when(array, function(array) {
+				var untypedArray = source.valueOf() // wait until the variable is resolved to resolve this
 				array.forEach(function(value, index) {
 					if (callback(value, index)) {
 						// push the original values, so we preserve underlying and typed values
