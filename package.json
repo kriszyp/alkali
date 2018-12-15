@@ -1,7 +1,7 @@
 {
   "name": "alkali",
   "author": "Kris Zyp",
-  "version": "0.20.14",
+  "version": "0.20.15",
   "description": "Reactivity with native JavaScript objects and HTML elements",
   "license": "BSD-3-Clause",
   "licenses": [
@@ -33,6 +33,6 @@
     "dojo-dstore": "^1.1.1",
     "mocha": "^5",
     "chai": "^4",
-    "webpack": "^3.10.0"
+    "webpack": "^4.7.0"
   }
 }
