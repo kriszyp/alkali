@@ -397,12 +397,6 @@
 
 	var VariablePrototype = Variable.prototype = {
 		// for debugging use
-		get _currentValue() {
-			return this.valueOf(true)
-		},
-		set _currentValue(value) {
-			this.put(value)
-		},
 		constructor: Variable,
 		valueOf: function(allowPromise) {
 			var result = this.gotValue(this.getValue())
@@ -1029,23 +1023,6 @@
 			return valueUntilResolved || arguments.length > 0 ? new WhileResolving(this, valueUntilResolved, useLastValue) :
 				new WhileResolving(this, undefined, true) // for zero arguments we default to the last value
 		},
-		get schema() {
-			// default schema is the constructor
-			if (this.returnedVariable) {
-				return this.returnedVariable.schema
-			}
-			if (this.parent) {
-				var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
-				return parentSchemaProperties && parentSchemaProperties[this.key]
-			}
-			return this.constructor
-		},
-		set schema(schema) {
-			// but allow it to be overriden
-			Object.defineProperty(this, 'schema', {
-				value: schema
-			})
-		},
 		validate: function(target, schema) {
 			if (this.returnedVariable) {
 				return this.returnedVariable.validate(target, schema)
@@ -1064,20 +1041,6 @@
 			var valid = []
 			valid.isValid = true
 			return valid
-		},
-
-		get validation() {
-			var validation = new Validating(this)
-			Object.defineProperty(this, 'validation', {
-				value: validation
-			})
-			return validation
-		},
-		set validation(validation) {
-			// but allow it to be overriden
-			Object.defineProperty(this, 'validation', {
-				value: validation
-			})
 		},
 		set structured(structure) {
 			// find any variable properties and attaches them as a property
@@ -1177,6 +1140,49 @@
 			return new Date(this.getVersion())
 		}
 	}
+	Object.defineProperty(VariablePrototype, '=', {
+		get: function() {
+			return this.valueOf(true)
+		},
+		set: function(value) {
+			this.put(value)
+		},
+		enumerable: true
+	})
+	Object.defineProperty(VariablePrototype, 'schema', {
+		get: function() {
+			// default schema is the constructor
+			if (this.returnedVariable) {
+				return this.returnedVariable.schema
+			}
+			if (this.parent) {
+				var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
+				return parentSchemaProperties && parentSchemaProperties[this.key]
+			}
+			return this.constructor
+		},
+		set: function(schema) {
+			// but allow it to be overriden
+			Object.defineProperty(this, 'schema', {
+				value: schema
+			})
+		}
+	})
+	Object.defineProperty(VariablePrototype, 'validation', {
+		get: function() {
+			var validation = new Validating(this)
+			Object.defineProperty(this, 'validation', {
+				value: validation
+			})
+			return validation
+		},
+		set: function(validation) {
+			// but allow it to be overriden
+			Object.defineProperty(this, 'validation', {
+				value: validation
+			})
+		}
+	})
 
 	function changeValue(variable, type, newValue, event) {
 		var key = variable.key
@@ -1591,7 +1597,7 @@
 		}
 	})
 
-	var Transform = Variable.Transform = lang.compose(Variable, function Transform(source, transform, sources) {
+	var Transform = Variable.Transform = lang.compose(Variable, function Transform(source, transform, sources, dontCache) {
 		if (source !== undefined || sources) {
 			this.source = source
 		}
@@ -1602,6 +1608,9 @@
 					this['source' + i] = sources[i]
 				}
 			}
+		}
+		if (dontCache) {
+			this.dontCache = true
 		}
 	}, {
 		getTransform: function() {
@@ -1745,7 +1754,7 @@
 						return result
 					}
 					function onResolve(result, version) {
-						if (variable.readyState === readyState) {
+						if (variable.readyState === readyState && !variable.dontCache) {
 							if (parentContext) {
 								parentContext.setVersion(version)
 							}
@@ -2329,14 +2338,14 @@
 		if (array instanceof Array) {
 			if (array.length > 0 || typeof transform === 'function') {
 				// TODO: Return VArray Transform
-				return new Transform(array[0], typeof transform === 'function' ? transform : argsToArray, array)
+				return new Transform(array[0], typeof transform === 'function' ? transform : argsToArray, array, true)
 			} else {
 				return new VArray([])
 			}
 		}
 		if (arguments.length > 1) {
 			// support multiple arguments as an array
-			return new Transform(arguments[0], argsToArray, arguments).as(VArray)
+			return new Transform(arguments[0], argsToArray, arguments, true).as(VArray)
 		}
 		if (typeof array === 'object') {
 			// allow an object as a hash to be mapped
