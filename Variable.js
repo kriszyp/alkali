@@ -659,11 +659,11 @@
 		versionWithChildren: 0,
 
 		updateVersion: function(version) {
-			var now = Date.now()
-			this.version = nextVersion = nextVersion < now ? now :
-				nextVersion + ((nextVersion > now + 500) ? 0.0003 : 1)
-			if (nextVersion > now && ((nextVersion - now) % 600000) == 0)
-				console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
+			var dateBasedVersion = (Date.now() - 1500000000000) * 256
+			if (dateBasedVersion > nextVersion) {
+				nextVersion = dateBasedVersion
+			}
+			this.version = nextVersion++
 		},
 
 		getVersion: function() {
@@ -696,11 +696,11 @@
 
 		_initUpdate: function(updateEvent, isDownstream) {
 			if (!updateEvent.version) {
-				var now = Date.now()
-				updateEvent.version = nextVersion = nextVersion < now ? now :
-					nextVersion + ((nextVersion > now + 500) ? 0.001 : 1)
-				if (nextVersion > now && (nextVersion - now) % 600000 == 0)
-					console.warn('Version/timestamp has drifted ahead of real time by', (nextVersion - now) / 1000, 'seconds')
+				var dateBasedVersion = (Date.now() - 1500000000000) * 256
+				if (dateBasedVersion > nextVersion) {
+					nextVersion = dateBasedVersion
+				}
+				updateEvent.version = nextVersion++
 			}
 			if (updateEvent instanceof PropertyChangeEvent) {
 				this.versionWithChildren = updateEvent.version
@@ -1137,7 +1137,7 @@
 			this.__debug = _debug
 		},
 		get _lastUpdated() {
-			return new Date(this.getVersion())
+			return new Date(this.getVersion() / 256 + 1500000000000)
 		}
 	}
 	Object.defineProperty(VariablePrototype, '=', {
@@ -2843,7 +2843,11 @@
 	})
 
 	function getNextVersion() {
-		return nextVersion = Math.max(Date.now(), nextVersion + 1)
+		var dateBasedVersion = (Date.now() - 1500000000000) * 256
+		if (dateBasedVersion > nextVersion) {
+			nextVersion = dateBasedVersion
+		}
+		return nextVersion++
 	}
 
 	var IterativeMethod = lang.compose(Transform, function(source, method) {
