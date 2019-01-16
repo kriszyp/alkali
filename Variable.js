@@ -3130,5 +3130,39 @@
 	Variable.all = all
 	Variable.Context = Context
 
-	return exports
-}))
+	var g = typeof global != 'undefined' ? global : window;
+	(g.devtoolsFormatters || (g.devtoolsFormatters = [])).push({
+		header(variable, config) {
+			if (variable && variable instanceof Variable) {
+				var copy = Object.assign({ [Symbol.toStringTag]: variable.constructor.name }, variable)
+				return ['span', {}, '',
+					(variable.readyState === 'invalidated' ? ' invalidated ' :
+						typeof variable.valueOf() === 'object' ? ['object', { object: variable.valueOf() }] : ['span', {}, ' = ' + variable]),
+					['object', { object: copy }],
+					['span', {}, ' (' +
+					(variable.version ? new Date()[Date.now() - variable.version > 30000000 ? 'toLocaleString' : 'toLocaleTimeString']() : '') +
+					(variable.listeners ? ' live)' : ')')]]
+			}
+			return null // ignore all other objects
+		},
+		hasBody(request) {
+			return false // default
+		},
+		body(variable) {
+			var properties = ['div', {}, ['div', {}, 'version: ' + (variable.version && new Date(variable.version).toLocaleString())],
+				['div', {}, 'readyState: ' + variable.readyState]]
+			if (variable.valueOf())
+				properties.push(['div', {}, ['object', { object: variable.valueOf() }], '(value)'])
+			if (variable.listeners) {
+				properties.push(['div', {}, ['object', { object: variable.listeners }], '(listeners)'])
+			}
+			var source, i = 0
+			while (source = variable['source' + (i || '')]) {
+				properties.push(['div', {}, ['object', { object: variable['source' + (i || '')] }], ['div', { float: 'left' }, '(source ' + i + ')']])
+				i++
+			}
+			return properties
+		}
+	})
+
+	return exports}))
