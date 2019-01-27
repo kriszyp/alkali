@@ -1135,52 +1135,56 @@
 		},
 		set _debug(_debug) {
 			this.__debug = _debug
-		},
-		get _lastUpdated() {
-			return new Date(this.getVersion() / 256 + 1500000000000)
 		}
 	}
-	Object.defineProperty(VariablePrototype, '=', {
-		get: function() {
-			return this.valueOf(true)
+	Object.defineProperties(VariablePrototype, {
+		'=': {
+			get: function() {
+				return this.valueOf(true)
+			},
+			set: function(value) {
+				this.put(value)
+			},
+			enumerable: true
 		},
-		set: function(value) {
-			this.put(value)
-		},
-		enumerable: true
-	})
-	Object.defineProperty(VariablePrototype, 'schema', {
-		get: function() {
-			// default schema is the constructor
-			if (this.returnedVariable) {
-				return this.returnedVariable.schema
+		_lastUpdated: {
+			get: function() {
+				return new Date(this.getVersion() / 256 + 1500000000000)
 			}
-			if (this.parent) {
-				var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
-				return parentSchemaProperties && parentSchemaProperties[this.key]
+		},
+		schema: {
+			get: function() {
+				// default schema is the constructor
+				if (this.returnedVariable) {
+					return this.returnedVariable.schema
+				}
+				if (this.parent) {
+					var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
+					return parentSchemaProperties && parentSchemaProperties[this.key]
+				}
+				return this.constructor
+			},
+			set: function(schema) {
+				// but allow it to be overriden
+				Object.defineProperty(this, 'schema', {
+					value: schema
+				})
 			}
-			return this.constructor
 		},
-		set: function(schema) {
-			// but allow it to be overriden
-			Object.defineProperty(this, 'schema', {
-				value: schema
-			})
-		}
-	})
-	Object.defineProperty(VariablePrototype, 'validation', {
-		get: function() {
-			var validation = new Validating(this)
-			Object.defineProperty(this, 'validation', {
-				value: validation
-			})
-			return validation
-		},
-		set: function(validation) {
-			// but allow it to be overriden
-			Object.defineProperty(this, 'validation', {
-				value: validation
-			})
+		validation: {
+			get: function() {
+				var validation = new Validating(this)
+				Object.defineProperty(this, 'validation', {
+					value: validation
+				})
+				return validation
+			},
+			set: function(validation) {
+				// but allow it to be overriden
+				Object.defineProperty(this, 'validation', {
+					value: validation
+				})
+			}
 		}
 	})
 
@@ -3136,24 +3140,27 @@
 
 	var g = typeof global != 'undefined' ? global : window;
 	(g.devtoolsFormatters || (g.devtoolsFormatters = [])).push({
-		header(variable, config) {
+		header: function(variable, config) {
 			if (variable && variable instanceof Variable) {
-				var copy = Object.assign({ [Symbol.toStringTag]: variable.constructor.name }, variable)
+				var copy = Object.assign({}, variable)
+				copy[Symbol.toStringTag] = variable.constructor.name
+				var variableTime = variable.version / 256 + 1500000000000
 				return ['span', {}, '',
 					(variable.readyState === 'invalidated' ? ' invalidated ' :
 						typeof variable.valueOf() === 'object' ? ['object', { object: variable.valueOf() }] : ['span', {}, ' = ' + variable]),
 					['object', { object: copy }],
 					['span', {}, ' (' +
-					(variable.version ? new Date()[Date.now() - variable.version > 30000000 ? 'toLocaleString' : 'toLocaleTimeString']() : '') +
+					(variable.version ? new Date(variableTime)[Date.now() - variableTime > 30000000 ? 'toLocaleString' : 'toLocaleTimeString']() : '') +
 					(variable.listeners ? ' live)' : ')')]]
 			}
 			return null // ignore all other objects
 		},
-		hasBody(request) {
+		hasBody: function(request) {
 			return false // default
 		},
-		body(variable) {
-			var properties = ['div', {}, ['div', {}, 'version: ' + (variable.version && new Date(variable.version).toLocaleString())],
+		body: function(variable) {
+			var variableTime = variable.version / 256 + 1500000000000
+			var properties = ['div', {}, ['div', {}, 'version: ' + (variableTime && new Date(variableTime).toLocaleString())],
 				['div', {}, 'readyState: ' + variable.readyState]]
 			if (variable.valueOf())
 				properties.push(['div', {}, ['object', { object: variable.valueOf() }], '(value)'])
@@ -3169,4 +3176,5 @@
 		}
 	})
 
-	return exports}))
+	return exports
+}))
