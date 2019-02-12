@@ -1725,7 +1725,9 @@
 							variable.promise.replacedResolutionWith = result
 							variable.promise.abort('Cancelled due to updated value being available')
 						}
-						variable.cachedVersion = version
+						if (variable.readyState === readyState && !variable.dontCache) {
+							variable.cachedVersion = version
+						}
 						var promise = variable.promise = result = result.then(function(resolved) {
 							if (promise === variable.promise) { // make sure we are still the latest promise
 								variable.promise = null
@@ -1797,6 +1799,9 @@
 		updated: function(updateEvent, by, isDownstream) {
 			this.readyState = 'invalidated'
 			if (this.promise && !this.promise.abort) { // if it can be aborted, keep it around for better network cleanup, otherwise remove reference for immediate memory cleanup
+				if (this.cachedVersion > -1) {
+					this.cachedVersion = -1
+				}
 				this.promise = null
 			}
 			if (by !== this.returnedVariable && updateEvent && updateEvent.type !== 'replaced') {
