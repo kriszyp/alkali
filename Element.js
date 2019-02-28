@@ -385,6 +385,7 @@
 		details: ['open'],
 		dialog: ['open'],
 		embed: ['src', 'type', 'name'],
+		fieldset: ['disabled', 'form', 'name'],
 		form: ['acceptCharset', 'action', 'autocomplete', 'enctype', 'encoding', 'method', 'name', 'target', 'novalidate'],
 		frame: ['name', 'scrolling', 'src', 'frameBorder'],
 		frameset: ['cols', 'rows'],
