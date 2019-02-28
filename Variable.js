@@ -78,7 +78,7 @@
 			}
 		},
 		//version: 2166136261, // FNV-1a prime seed
-		version: 0,
+		version: 1,
 		restart: function() {
 			//this.version = 2166136261
 		},
@@ -489,7 +489,7 @@
 			if (previousNotifyingValue) {
 				if (value === previousNotifyingValue) {
 					// nothing changed, immediately return valueOf
-					if (context && context.ifModifiedSince > -1) // we don't want the nested value to return a NOT_MODIFIED
+					if (context && context.ifModifiedSince > 0) // we don't want the nested value to return a NOT_MODIFIED
 						context.ifModifiedSince = undefined
 					return value.valueOf(true)
 				}
@@ -505,7 +505,7 @@
 				if (variable.listeners) {
 					value.notifies(variable)
 				}
-				if (context && context.ifModifiedSince > -1) // we don't want the nested value to return a NOT_MODIFIED
+				if (context && context.ifModifiedSince > 0) // we don't want the nested value to return a NOT_MODIFIED
 					context.ifModifiedSince = undefined
 				value = value.valueOf(true)
 			}
@@ -1626,7 +1626,7 @@
 				this.readyState = nextVersion.toString()
 			} else if (isFinite(this.readyState)) {
 				// will un-invalidate this later (contextualizedVariable.readyState = 'up-to-date')
-			} else if ((this.listeners && this.readyState === 'up-to-date' || this.staysUpdated) && this.cachedVersion > -1) {
+			} else if ((this.listeners && this.readyState === 'up-to-date' || this.staysUpdated) && this.cachedVersion > 0) {
 				// it is live, so we can shortcut and just return the cached value
 				if (context) {
 					context.setVersion(this.cachedVersion)
@@ -1653,7 +1653,7 @@
 					// get the version in there
 					transformContext.setVersion(this.version)
 				}
-				if (this && this.cachedVersion == this.version && this.cachedVersion > -1 && !this.hasOwnProperty('source1')) {
+				if (this && this.cachedVersion == this.version && this.cachedVersion > 0 && !this.hasOwnProperty('source1')) {
 					transformContext.ifModifiedSince = this.cachedVersion
 				}
 				// TODO: var hasCustomTransformFunction = this.transform && this.transform.value === ObjectValueOf
@@ -1739,7 +1739,7 @@
 								// clear out the cache on an error
 								variable.promise = null
 								variable.lastError = error
-								onResolve(null, -1)
+								onResolve(null, 0)
 							} else if (promise.replacedResolutionWith) {
 								// if it was aborted and substituted with the latest promise, return that value
 								return promise.replacedResolutionWith
@@ -1766,7 +1766,7 @@
 							}
 							variable.cachedVersion = version
 							variable.cachedValue = result
-							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) && version !== -1 ? 'up-to-date' : '' // mark it as up-to-date now
+							variable.readyState = (variable.listeners || variable.staysUpdated || parentContext && parentContext.notifies) && version !== 0 ? 'up-to-date' : '' // mark it as up-to-date now
 						}/* else {
 							console.log('ready state different than when the variable trasnform started ', variable, variable.readyState, readyState)
 						}*/
@@ -1799,8 +1799,8 @@
 		updated: function(updateEvent, by, isDownstream) {
 			this.readyState = 'invalidated'
 			if (this.promise && !this.promise.abort) { // if it can be aborted, keep it around for better network cleanup, otherwise remove reference for immediate memory cleanup
-				if (this.cachedVersion > -1) {
-					this.cachedVersion = -1
+				if (this.cachedVersion > 0) {
+					this.cachedVersion = 0
 				}
 				this.promise = null
 			}
