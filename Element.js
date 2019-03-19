@@ -1183,6 +1183,7 @@
 		'Frame',
 		'Form',
 		'Font',
+		'FieldSet',
 		'Embed',
 		'Em',
 		'Code',
