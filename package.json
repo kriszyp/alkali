@@ -31,7 +31,7 @@
     "bluebird": "^3.5.3",
     "dojo": "^1.10.2",
     "dojo-dstore": "^1.1.1",
-    "mocha": "^5",
+    "mocha": "^6",
     "chai": "^4",
     "webpack": "^4.7.0"
   }
