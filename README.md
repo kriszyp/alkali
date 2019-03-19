@@ -58,6 +58,7 @@
       - [Generator `*render` Method](#generator-render-method)
     - [Construction Lifecycle Methods](#construction-lifecycle-methods)
   - [Variable Classes](#variable-classes)
+  - [Element Lists/Loops](#element-listsloops)
   - [Metadata and Validation](#metadata-and-validation)
   - [Alkali Element API](#alkali-element-api)
     - [Alkali Element Exports](#alkali-element-exports)
@@ -92,8 +93,6 @@
   - [Testing](#testing)
 - [Browser Support](#browser-support)
 - [License](#license)
-
-*Table of contents generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -168,7 +167,7 @@ The `Variable` class and `reactive` function are the main API for creating varia
 
 ### `reactive(initialValue: any)`: Variable
 This creates a new variable, using the intial value. The provided value will also be used to dictate the "type" or structure of the returned variable. Providing a primitive will return a variable with reactive methods mirroring the primitive methods. If you provide an object, it will return variable with reactive properties corresponding to the properties on the object. For example:
-```
+```javascript
 import { reactive } from 'alkali'
 let greeting = reactive('hello')
 let upperCaseHello = greeting.toUpperCase()
@@ -178,7 +177,7 @@ upperCaseHello.valueOf() -> "HI" // reactively updates
 ```
 
 Likewise returned variables will have reactive properties:
-```
+```javascript
 let person = reactive({
 	name: 'John',
 })
@@ -278,7 +277,7 @@ This sets the value of the named property. The following are functionally equiva
 variable.property(name).put(value)
 ```
 and
-```
+```javascript
 variable.set(name, value)
 ```
 
@@ -314,7 +313,7 @@ let sum = all(a, b).to(([a, b]) => a + b);
 `all` will also work with a set of arguments, instead of an array. It was will also work with an object, in which case each property value will be resolved, and the result will resolved to an object with the resolved values.
 
 You can also provide an optional `transform` argument that will do a transform of the input values, which is essentially shorthand for `all(...).to(...)`:
-```
+```javascript
 let sum = all([a, b], (a, b) => a + b);
 ```
 
@@ -357,7 +356,7 @@ let MyVariable = Variable.with({
 ([JSFiddle example](https://jsfiddle.net/kriszyp/8oLtfz10/4/))
 
 This is a useful pattern because it defines a structure for your data, and these sub-variables can easily be accessed as first class properties (rather than going through the `property` API). We can also values to these properties and they will be assigned to the value of the variable. For example:
-```
+```javascript
 let myVar = new MyVariable({ name: 'Alkali' });
 myVar.name; // the "name" property variable
 myVar.name.valueOf(); -> 'Alkali'
@@ -380,7 +379,7 @@ let MyVariable = Variable({
 
 ## Variable `collection`s
 In addition, any time you create a new variable class (with `Variable.with`, `Variable`, or extending with `class` syntax), this class has its own implicit, default collection (and instance of `VArray.of(Class)`) that can be accessed from the static `collection` property, and instances can be added to and removed from it. The idiomatic way to create a model class with alkali is to create a variable class and then using it's collection to manage and interact with the set of instances. For example:
-```
+```javascript
 let MyVariable = Variable.with({
 	name: VString,
 	age: VNumber
@@ -389,7 +388,7 @@ let john = MyVariable.collection.push({ name: "John", age: 17})
 ```
 
 Furthermore, for convenience in using this idiomatic pattern, the array methods are directly available as static methods on the model class:
-```
+```javascript
 MyVariable.push({ name: "John", age: 17})
 let filtered = MyVariable.filter(person => person.age > 15)
 ```
@@ -405,7 +404,7 @@ We can also define properties with a specific primitive type. Alkali exports cla
 * VMap
 
 Each of these have methods corresponding to the methods on the original primitive. For non-mutating accessor methods, the method will return a new variable representing the result of applying the method to the value. For example:
-```
+```javascript
 let greeting = new VString('hello, world')
 let greet = vs.slice(0, 5)
 greet.valueOf() -> 'hello'
@@ -413,7 +412,7 @@ greeting.put('hi there')
 greet.valueOf() -> 'hi th'
 ```
 And the mutating methods (that change the value of the primitive) will change the primitive and notifying any listeners:
-```
+```javascript
 let set = new VSet(['a', 'b'])
 let hasC = set.has('c')
 hasC.valueOf() -> false
@@ -827,7 +826,6 @@ title.put('Hello')
 ```
 
 Element classes themselves also act as variable classes. Element classes include a static `property` method, like variables, which maps to the properties of the elements themselves. This makes it convenient to declaratively use element properties in child elements.
-```
 
 ## Element Lists/Loops
 
@@ -975,24 +973,24 @@ Alkali also exports an options object. It has the following properties:
 Renderers are an additional mechanism for making UI components react to data changes. Renderers allow us to add reactive capabilities to existing components with minimal change. Renderers are given a variable to respond to, an element (or set of elements) to attach to, and rendering functionality to perform. When an renderer's variable changes, it will queue the rendering functionality, and render the change in the next rendering frame, if the element is still visible. A `Renderer` can be constructed with an options object that defines the source `variable`, the associated DOM `element`, and an `renderUpdate` method that will perform the rerender with the latest value from the variable.
 
 For example, we could create a simple variable:
+```javascript
+import { reactive } from 'alkali';
 
-	import { reactive } from 'alkali';
-
-	var greeting = reactive('Hi');
-
+var greeting = reactive('Hi');
+```
 And then define an renderer:
+```javascript
+import { Renderer } from 'alkali'
 
-	import { Renderer } from 'alkali'
-
-	var greeting = reactive('Hi');
-	new Renderer({
-		variable: greeting,
-		element: someElement,
-		renderUpdate: function (newValue) {
-			element.innerHTML = newValue + '.';
-		}
-	})
-
+var greeting = reactive('Hi');
+new Renderer({
+	variable: greeting,
+	element: someElement,
+	renderUpdate: function (newValue) {
+		element.innerHTML = newValue + '.';
+	}
+})
+```
 An Renderer will only update an element if it is visible, and will mark it as needing rerendering. If a hidden element is made visible again, you can trigger the rerendering by calling `Renderer.onShowElement(element)` on a parent element. You can also provide a custom definition for what constitutes a visible element that should be immediately rendered by defining a `shouldRender(element)` method, which should return true or false indicating if the element needs to be rendered.
 
 Alternately, you may set `alwaysUpdate` to true on the Renderer options to force the Renderer to always render in response to changes.
@@ -1068,15 +1066,16 @@ Note that when returning a variable from `to` variable transform, the resulting 
 ## Variable Copies
 
 Alkali includes a variable Copy constructor, that allows you to maintain a copy of an object from another variable. Variable copies are very useful in situations where you want to reactively create a working copy of any object to edit and change, and potentially later save those changes back to the original object. For example, you may want to select an object to open in a form, and allow changes to be made in form. By using a working copy, the form edits can automatically be mapped to the object, but not committed back to the original object until later:
-
-	var selectedObject = reactive(); // this will be set to the currently selected object
-	var workingCopy = new Copy(selectedObject); // holds a copy of each object contained in selectedObject
-	var myForm = new MyForm({
-		variable: workingCopy // we can pass this to a form, with changing the original object
-	});
-	myForm.on('submit', function() {
-		workingCopy.save(); // now save the changes back to the original object
-	})
+```javascript
+var selectedObject = reactive(); // this will be set to the currently selected object
+var workingCopy = new Copy(selectedObject); // holds a copy of each object contained in selectedObject
+var myForm = new MyForm({
+	variable: workingCopy // we can pass this to a form, with changing the original object
+});
+myForm.on('submit', function() {
+	workingCopy.save(); // now save the changes back to the original object
+})
+```
 
 ## Creating Web Components/Custom Tag Named Elements
 
@@ -1094,7 +1093,7 @@ Note that this functionality currently will only work predictably on all browser
 Again, the returned element constructor can be called directly to construct new constructors, instantiated.
 
 The provided name can include selectors as well as to define a class name or ids to assign on construction:
-```
+```javascript
 defineElement('custom-element.add-this-class-too')
 ```
 
@@ -1174,7 +1173,7 @@ Alkali includes several operator functions for combining variables with operator
 
 ### `delayUpdate(variable, until)`
 This can be used to delay the update or rendering from a variable that has been updated. For example:
-```
+```javascript
 let v = reactive(3)
 let v2 = v.to(reallyExpensive)
 new Div(v2)
