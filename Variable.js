@@ -2848,6 +2848,9 @@
 	Object.defineProperty(exports, 'currentContext', {
 		get: function() {
 			return context
+		},
+		set: function(currentContext) {
+			context = currentContext
 		}
 	})
 
