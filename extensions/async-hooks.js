@@ -3,19 +3,31 @@ var Variable = require('../Variable')
 
 var contexts = []
 var previousContext
-const alkaliAsyncHook = async_hooks.createHook({
-	init(asyncId, type, triggerAsyncId) {
-    	contexts[asyncId] = Variable.currentContext
-    },
-    before(asyncId) {
-    	previousContext = Variable.currentContext
-    	Variable.currentContext = contexts[asyncId]
-    },
-    after(asyncId) {
-    	previousContext = Variable.currentContext
-    },
-    destroy(asyncId) {
-    	delete contexts[asyncId]
-    } 
-})
-module.exports = alkaliAsyncHook
+module.exports.enable = () => {
+	const alkaliAsyncHook = async_hooks.createHook({
+		init(asyncId, type, triggerAsyncId, resource) {
+			if (type === 'PROMISE') {// might also do Timeout
+				if (resource.isChainedPromise) {
+					let context = Variable.currentContex
+					if (context) {
+						contexts[asyncId] = context
+						global.asyncEvents[asyncId] = [type + 'init ' + new Error().stack]
+					}
+				}
+			}
+		},
+		before(asyncId) {
+			previousContext = Variable.currentContext
+			// we could potentially throw an error if there is an existing previousContext, since there should not be a global context
+			Variable.currentContext = contexts[asyncId];
+		},
+		after(asyncId) {
+			Variable.currentContext = previousContext
+			delete contexts[asyncId]
+		},
+		destroy(asyncId) {
+			delete contexts[asyncId]
+		}
+	})
+	alkaliAsyncHook.enable()
+}
