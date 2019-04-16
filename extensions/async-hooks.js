@@ -8,10 +8,9 @@ module.exports.enable = () => {
 		init(asyncId, type, triggerAsyncId, resource) {
 			if (type === 'PROMISE') {// might also do Timeout
 				if (resource.isChainedPromise) {
-					let context = Variable.currentContex
+					let context = Variable.currentContext
 					if (context) {
 						contexts[asyncId] = context
-						global.asyncEvents[asyncId] = [type + 'init ' + new Error().stack]
 					}
 				}
 			}
