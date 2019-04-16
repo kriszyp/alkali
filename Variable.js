@@ -870,9 +870,9 @@
 			if (oldValue === value && typeof value != 'object') {
 				return noChange
 			}
-			if (oldValue && oldValue.put) {
+			if (oldValue && oldValue.put && oldValue.notifies) {
 				// if it is set to fixed, we see we can put in the current variable
-				if (this.fixed || !(value && value.put)) {
+				if (this.fixed || !(value && value.put && value.notifies)) {
 					try {
 						return oldValue.put(value)
 					} catch (error) {
