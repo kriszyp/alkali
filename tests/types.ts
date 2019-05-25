@@ -1,5 +1,5 @@
 /// <reference path="../index.d.ts" />
-import { Variable, VArray, VNumber, all, reactive, Reacts, VariableClass } from 'alkali'
+import { Variable, VArray, VNumber, all, reactive, Reacts, VariableClass, Promise as AlkaliPromise } from 'alkali'
 
 // Variable, Primitive-Typed Variable, reactive/Reacts compatibility
 let vi = new Variable(1)
@@ -33,6 +33,21 @@ let Rn: Reacts<number>
   //t = vi
   t = vn
   //t = rn
+}
+// put, then
+{
+  const p = new Variable<string>('p')
+  let sr: string | Variable<string> | AlkaliPromise<string> = p.put('string')
+  let vr: string | Variable<string> | AlkaliPromise<string> = p.put(new Variable('string var'))
+  p.then(s => s.toLowerCase())
+}
+// subscription
+{
+  const v = new Variable('a')
+  const subscription = v.subscribe(e => {
+    const str: string = e.value()
+  })
+  subscription.unsubscribe()
 }
 
 // test heterogeneous variadic types
@@ -142,8 +157,17 @@ let Rn: Reacts<number>
   })
 }
 
-// VArray length
+// VArray
 {
   const a = new VArray(['a','b'])
-  const len: VariableClass<boolean, {}> = a.length.to(n => n < 2)
+  const doubled: VariableClass<boolean, {}> = a.length.to(n => n < 1)
+  const reduced = a.map(s => s.toLowerCase()).filter(s => s.split('/')).reduce((memo, s, i) => {
+    memo[i] = s
+    return memo
+  }, { MEMO: true } as { [key: number]: string, MEMO: true })
+  const r = reduced.valueOf()
+  const b: boolean = r.MEMO
+  //r['0']
+  const s: string = r[0]
+  const l: boolean = a.map(s => s.length).every(n => n < 2).valueOf()
 }
