@@ -1,5 +1,5 @@
 /// <reference path="../index.d.ts" />
-import { Variable, VNumber, all, reactive, Reacts } from 'alkali'
+import { Variable, VArray, VNumber, all, reactive, Reacts, VariableClass } from 'alkali'
 
 // Variable, Primitive-Typed Variable, reactive/Reacts compatibility
 let vi = new Variable(1)
@@ -140,4 +140,10 @@ let Rn: Reacts<number>
       two.toLowerCase()
     }
   })
+}
+
+// VArray length
+{
+  const a = new VArray(['a','b'])
+  const len: VariableClass<boolean, {}> = a.length.to(n => n < 2)
 }

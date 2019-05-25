@@ -15,8 +15,8 @@ declare namespace alkali {
   }
 
   // support heterogenous inputs https://github.com/Microsoft/TypeScript/pull/26063
-  type YieldedValue<T> = T extends Variable<infer U> ? U : T;
-  type Yield<T> = { [P in keyof T]: YieldedValue<T[P]> };
+  type YieldedValue<T> = T extends Variable<infer U> ? U : T
+  type Yield<T> = { [P in keyof T]: YieldedValue<T[P]> }
 
   export class Variable<T = {}> implements Promise<T> {
     /**
@@ -148,7 +148,7 @@ declare namespace alkali {
     valueOf(): T
     then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
     for(subject: any): Variable<T2>
-    to<U>(transform: (T) => U | Variable<U>): VariableClass<U>
+    to<U>(transform: (value: T) => U | Variable<U>): VariableClass<U>
     property<K extends keyof T2>(key: KeyType): VariableClass<T2[K]>
   }
 
@@ -161,7 +161,7 @@ declare namespace alkali {
 
   export class VArray<T = {}> extends Variable<Array<T>> implements Set<T> {
     constructor(value?: Array<T> | Promise<Array<T>> | Variable<Array<T>>)
-    readonly length: VNumber
+    readonly length: typeof VNumber
     /**
     * Return a VArray with the map applied
     */
