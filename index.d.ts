@@ -14,7 +14,9 @@ declare namespace alkali {
     source: any
   }
 
-
+  // support heterogenous inputs https://github.com/Microsoft/TypeScript/pull/26063
+  type YieldedValue<T> = T extends Variable<infer U> ? U : T;
+  type Yield<T> = { [P in keyof T]: YieldedValue<T[P]> };
 
   export class Variable<T = {}> implements Promise<T> {
     /**
@@ -72,7 +74,7 @@ declare namespace alkali {
     * @param transform The transform function to use to compute the value of the returned variable
     * @param reverseTransform The reverse transform function that is called when a value is put/set into the returned transform variable
     */
-    to<U>(transform: (T) => Variable<U> | Promise<U> | U, reverseTransform?: (U) => any): Variable<U>
+    to<U>(transform: (value: T) => Variable<U> | Promise<U> | U, reverseTransform?: (U) => any): Variable<U>
     /**
     * Indicate that the variable's value has changed (primarily used if the value has been mutated outside the alkali API, and alkali needs to be notified of the change)
     * @param event An event object can be provided that will be passed to all variables that are updated/invalidated by this event
@@ -113,16 +115,15 @@ declare namespace alkali {
     * to any of the input variables
     * @param inputs input variables
     */
-    static all<T, U>(inputs: Array<Variable<T>>, transform?: (...v: Array<T>) => U): Variable<U>
-    static all<U>(inputs: Array<Variable<any>>, transform?: (...v: Array<any>) => U): Variable<U>
+    static all<T extends any[]>(inputs: T): Variable<Yield<T>>
+    static all<T extends any[], U>(inputs: T, transform: (...v: Yield<T>) => U): Variable<U>
     /**
     * Compose a new variable based on the provided input variables. The returned variable will hold an array
     * with elements corresponding to the values of the input variables, and will update in response to changes
     * to any of the input variables
     * @param inputs input variables
     */
-    static all<T>(...inputs: Array<Variable<T>>): Variable<Array<T>>
-    static all(...inputs: Array<Variable<any>>): Variable<Array<any>>
+    static all<T extends any[]>(...inputs: T): Variable<Yield<T>>
 
     static with<V, Props>(this: V, properties: {[P in keyof Props]: Props[P]}): {
         new (...args: any[]): V & Reacts<Props>
@@ -269,14 +270,16 @@ declare namespace alkali {
   * to any of the input variables
   * @param inputs input variables
   */
-  export function all<T, U>(inputs: Array<Variable<T>>, transform?: (...v: Array<T>) => U): Variable<U>
+  export function all<T extends any[]>(inputs: T): Variable<Yield<T>>
+  export function all<T extends any[], U>(inputs: T, transform: (...v: Yield<T>) => U): Variable<U>
   /**
   * Compose a new variable based on the provided input variables. The returned variable will hold an array
   * with elements corresponding to the values of the input variables, and will update in response to changes
   * to any of the input variables
   * @param inputs input variables
   */
-  export function all<T>(...inputs: Array<Variable<T>>): Variable<Array<T>>
+  export function all<T extends any[]>(...inputs: T): Variable<Yield<T>>
+
   /**
   * Execute the provided generator or generator iterator, resolving yielded promises and variables
   */

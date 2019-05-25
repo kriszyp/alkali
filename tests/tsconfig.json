@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "lib": ["DOM", "ES2017", "ScriptHost"],
+    "noEmit": true
+    //"strict": true,
+    //"strictNullChecks": false
+  },
+  "files": [ "./types.ts" ]
+}
