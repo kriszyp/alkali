@@ -171,3 +171,36 @@ let Rn: Reacts<number>
   const s: string = r[0]
   const l: boolean = a.map(s => s.length).every(n => n < 2).valueOf()
 }
+// properties
+{
+  let o = {
+    str: 'string',
+    num: 1,
+    vb: new Variable(true),
+    inner: new Variable({
+      x: 2,
+      y: new Variable({
+        a: false
+      })
+    })
+  }
+  let vo = new Variable(o)
+  const s: string = vo.get('str')
+  const num: number = vo.get('num')
+  const b: boolean = vo.get('vb')
+  const inner = vo.get('inner')
+  const x: number = inner.x
+  //const y = inner.y
+  //const yab: boolean = y.a
+  let ps: Variable<string> = vo.property('str')
+  let pnum: Variable<number> = vo.property('num')
+  let pvb: Variable<boolean> = vo.property('vb')
+  let r = pvb.valueOf()
+  let pvo = vo.property('inner')
+  let pvoy = pvo.property('y')
+  let avalue0: boolean = pvoy.get('a')
+  let a = pvo.property('y').property('a')
+  let avalue1: boolean = a.valueOf()
+
+  vo.set('str', 123) // should fail type check
+}

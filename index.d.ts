@@ -41,7 +41,7 @@ declare namespace alkali {
     * Returns a variable corresponding to the property of the value of this variable
     * @param key The name of the property
     */
-    property<K extends keyof T>(key: KeyType): Variable<T[K]>
+    property<K extends keyof T>(key: K): Variable<YieldedValue<T[K]>>
     property<U>(key: KeyType, PropertyClass: { new(): U }): U
     /**
     * Assigns a new value to this variables (which marks it as updated and any listeners will be notified). This is a request to change the variable, and subclasses can reject the put request, or return asynchronously.
@@ -52,13 +52,13 @@ declare namespace alkali {
     * Gets the property value of this variable's value/object. This differs from `property` in that it returns the resolved value, not a variable
     * @param key The name of the property
     */
-    get<K extends keyof T>(key: KeyType): T[K]
+    get<K extends keyof T>(key: K): YieldedValue<T[K]>
     /**
     * Assigns a value to the property of this variable's value
     * @param key The name of the property
     * @param value The new value to assign to the property
     */
-    set<K extends keyof T>(key: KeyType, value: T[K] | Variable<T[K]> | Promise<T[K]>, event?: UpdateEvent): void
+    set<K extends keyof T>(key: K, value: T[K] | Variable<T[K]> | Promise<T[K]>, event?: UpdateEvent): void
     /**
     * Assigns undefined to the property of this variable's value
     * @param key The name of the property
@@ -154,7 +154,7 @@ declare namespace alkali {
     then<U>(callback: (value: T) => U | Promise<U>, errback: (value: T) => U | Promise<U>): Promise<U>
     for(subject: any): Variable<T2>
     to<U>(transform: (value: T) => U | Variable<U>): VariableClass<U>
-    property<K extends keyof T2>(key: KeyType): VariableClass<T2[K]>
+    property<K extends keyof T2>(key: K): VariableClass<T2[K]>
   }
 
   export type Reacts<T> = {[P in keyof T]?: Reacts<T[P]>} & Variable<T>
