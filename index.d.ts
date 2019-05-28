@@ -1,11 +1,11 @@
 declare namespace alkali {
   type KeyType = string | number
   interface Promise<T> {
-    then<U>(callback?: (T) => U | Promise<U>, errback?: (T) => U | Promise<U>): Promise<U>
+    then<U>(callback?: (value: T) => U | Promise<U>, errback?: (value: T) => U | Promise<U>): Promise<U>
   }
 
   export class UpdateEvent {
-    visited: Set<Variable>
+    visited: Set<Variable<any>>
     version?: number
     type: ('replaced' | 'property' | 'added' | 'deleted' | 'entry' | 'spliced' | 'discovered')
     child?: UpdateEvent
@@ -14,7 +14,13 @@ declare namespace alkali {
     source: any
   }
 
+  // support heterogenous inputs https://github.com/Microsoft/TypeScript/pull/26063
+  type YieldedValue<T> = T extends Variable<infer U> ? U : T
+  type Yield<T> = { [P in keyof T]: YieldedValue<T[P]> }
 
+  interface Subscription {
+    unsubscribe(): void
+  }
 
   export class Variable<T = {}> implements Promise<T> {
     /**
@@ -30,40 +36,40 @@ declare namespace alkali {
     /**
     * Listen for the value of the variable, waiting if necessary, for any dependent promises to resolve. If the variable has a synchronously available value, the callback will be called immediately/synchronously
     */
-    then<U>(callback?: (T) => U | Promise<U>, errback?: (T) => U | Promise<U>): Promise<U>
+    then<U>(callback?: (value: T) => U | Promise<U>, errback?: (value: T) => U | Promise<U>): Promise<U>
     /**
     * Returns a variable corresponding to the property of the value of this variable
     * @param key The name of the property
     */
-    property<K extends keyof T>(key: KeyType): Variable<T[K]>
+    property<K extends keyof T>(key: K): Variable<YieldedValue<T[K]>>
     property<U>(key: KeyType, PropertyClass: { new(): U }): U
     /**
     * Assigns a new value to this variables (which marks it as updated and any listeners will be notified). This is a request to change the variable, and subclasses can reject the put request, or return asynchronously.
     * @param value The new value to assign to the variable. The may be another variable or a promise, which will transitively be resolved
     */
-    put(value: T | Variable<T> | Promise<T>, event?: UpdateEvent)
+    put(value: T | Variable<T> | Promise<T>, event?: UpdateEvent): T | Variable<T> | Promise<T>
     /**
     * Gets the property value of this variable's value/object. This differs from `property` in that it returns the resolved value, not a variable
     * @param key The name of the property
     */
-    get<K extends keyof T>(key: KeyType): T[K]
+    get<K extends keyof T>(key: K): YieldedValue<T[K]>
     /**
     * Assigns a value to the property of this variable's value
     * @param key The name of the property
     * @param value The new value to assign to the property
     */
-    set<K extends keyof T>(key: KeyType, value: T[K] | Variable<T[K]> | Promise<T[K]>, event?: UpdateEvent)
+    set<K extends keyof T>(key: K, value: T[K] | Variable<T[K]> | Promise<T[K]>, event?: UpdateEvent): void
     /**
     * Assigns undefined to the property of this variable's value
     * @param key The name of the property
     */
-    undefine(key: KeyType)
+    undefine(key: KeyType): void
     /**
     * Define the value of this variable. This can be used to indicate that the some
     * @param variable The variable to proxy
     */
-    is(variable: Variable<T>)
-    for(subject: any): Variable<T>
+    is(variable: Variable<T>): this
+    for(subject: any): this
     /**
     * Creates a new variable that is a transform of this variable, using the provided function to compute
     * the value of the new variable based on this variable's value. The returned variable is reactively dependent
@@ -72,7 +78,7 @@ declare namespace alkali {
     * @param transform The transform function to use to compute the value of the returned variable
     * @param reverseTransform The reverse transform function that is called when a value is put/set into the returned transform variable
     */
-    to<U>(transform: (T) => Variable<U> | Promise<U> | U, reverseTransform?: (U) => any): Variable<U>
+    to<U>(transform: (value: T) => Variable<U> | Promise<U> | U, reverseTransform?: (transformed: U) => any): Variable<U>
     /**
     * Indicate that the variable's value has changed (primarily used if the value has been mutated outside the alkali API, and alkali needs to be notified of the change)
     * @param event An event object can be provided that will be passed to all variables that are updated/invalidated by this event
@@ -87,12 +93,12 @@ declare namespace alkali {
     * Subscribe to the variable, calling the listener after changes to the variable's value.
     * @param listener The listener function that will be called after data changes. This will be called on the next micro-turn.
     */
-    subscribe(listener: (event: { value:() => T }) => any)
+    subscribe(listener: (event: { value:() => T }) => any): Subscription
     /**
     * Subscribe to the variable, calling the `next` method after changes to the variable's value.
     * @param listener The listener function that will be called immediately/synchronously after data changes.
     */
-    subscribe(observable: { next: (T) => any})
+    subscribe(observable: { next: (value: T) => any}): Subscription
     /**
     * Cast the variable to the provided type
     * @param Type
@@ -104,8 +110,9 @@ declare namespace alkali {
     * the `valueUntilResolved` until the `this` variable is resolved (and which point
     * it will update and return that source value)
     * @param valueUntilResolved The value to return while waiting for the source value to resolve
+    * @param useLastValue whether to use the last resolved value until the next resolution
     */
-    whileResolving<U>(valueUntilResolved: U): Variable<T | U>
+    whileResolving<U>(valueUntilResolved: U, useLastValue?: boolean): Variable<T | U>
 
     /**
     * Compose a new variable based on the provided input variables. The returned variable will hold an array
@@ -113,16 +120,15 @@ declare namespace alkali {
     * to any of the input variables
     * @param inputs input variables
     */
-    static all<T, U>(inputs: Array<Variable<T>>, transform?: (...v: Array<T>) => U): Variable<U>
-    static all<U>(inputs: Array<Variable<any>>, transform?: (...v: Array<any>) => U): Variable<U>
+    static all<T extends any[]>(inputs: T): Variable<Yield<T>>
+    static all<T extends any[], U>(inputs: T, transform: (...v: Yield<T>) => U): Variable<U>
     /**
     * Compose a new variable based on the provided input variables. The returned variable will hold an array
     * with elements corresponding to the values of the input variables, and will update in response to changes
     * to any of the input variables
     * @param inputs input variables
     */
-    static all<T>(...inputs: Array<Variable<T>>): Variable<Array<T>>
-    static all(...inputs: Array<Variable<any>>): Variable<Array<any>>
+    static all<T extends any[]>(...inputs: T): Variable<Yield<T>>
 
     static with<V, Props>(this: V, properties: {[P in keyof Props]: Props[P]}): {
         new (...args: any[]): V & Reacts<Props>
@@ -141,14 +147,14 @@ declare namespace alkali {
     <U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
     with<U, V extends this>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U & V>
     assign<U>(properties: {[P in keyof U]: { new (): U[P] }}): VariableClass<T & U>
-    hasOwn(Target: () => any)
+    hasOwn(Target: () => any): void
 
-    put(value: T | Variable<T> | Promise<T>)
+    put(value: T | Variable<T> | Promise<T>): T | Variable<T> | Promise<T>
     valueOf(): T
-    then<U>(callback: (T) => U | Promise<U>, errback: (T) => U | Promise<U>): Promise<U>
+    then<U>(callback: (value: T) => U | Promise<U>, errback: (value: T) => U | Promise<U>): Promise<U>
     for(subject: any): Variable<T2>
-    to<U>(transform: (T) => U | Variable<U>): VariableClass<U>
-    property<K extends keyof T2>(key: KeyType): VariableClass<T2[K]>
+    to<U>(transform: (value: T) => U | Variable<U>): VariableClass<U>
+    property<K extends keyof T2>(key: K): VariableClass<T2[K]>
   }
 
   export type Reacts<T> = {[P in keyof T]?: Reacts<T[P]>} & Variable<T>
@@ -160,35 +166,36 @@ declare namespace alkali {
 
   export class VArray<T = {}> extends Variable<Array<T>> implements Set<T> {
     constructor(value?: Array<T> | Promise<Array<T>> | Variable<Array<T>>)
-    readonly length: VNumber
+    readonly length: typeof VNumber
     /**
     * Return a VArray with the map applied
     */
-    map<U>(transform: (T) => U): VArray<U>
+    map<U>(transform: (value: T) => U): VArray<U>
     /**
     * Return a VArray with the filter applied
     */
-    filter(filterFunction: (T) => any): VArray<T>
+    filter(filterFunction: (value: T) => any): VArray<T>
     /**
     * Iterate over the current value of the variable array
     */
-    forEach(each: (T) => {})
+    //@ts-ignore
+    forEach(each: (value: T, index: number, collection: Array<T>) => {})
     /**
     * Return a Variable with the reduce applied
     */
-    reduce<U>(reducer: (T, U) => U, initialValue?: any): Variable<U>
+    reduce<I = any, U = I>(reducer: (memo: I, value: T, index: number) => U, initialValue?: I): Variable<U>
     /**
     * Return a Variable with the reduceRight applied
     */
-    reduceRight<U>(reducer: (T, U) => U, initialValue?: any): Variable<U>
+    reduceRight<I = any, U = I>(reducer: (memo: I, value: T, index: number) => U, initialValue?: I): Variable<U>
     /**
     * Return a Variable with the some method applied
     */
-    some(filter: (T) => any): Variable<boolean>
+    some(filter: (value: T) => any): Variable<boolean>
     /**
     * Return a Variable with the every method applied
     */
-    every(filter: (T) => any): Variable<boolean>
+    every(filter: (value: T) => any): Variable<boolean>
     /**
     * Return a VArray with the slice applied
     */
@@ -203,7 +210,9 @@ declare namespace alkali {
     splice(start: number, end: number, ...items: any[]): T[]
 
     remove(item: T): void
+    //@ts-ignore
     add(value: T): void
+    //@ts-ignore
     delete(value: T): this
     has(value: T): boolean
     includes(searchElement: T): boolean
@@ -219,7 +228,7 @@ declare namespace alkali {
     values(): IterableIterator<T>
     clear(): void
     collectionOf: VariableClass
-    [Symbol.toStringTag]: () => string
+    [Symbol.toStringTag]: string
     [Symbol.iterator]: any
   }
   export class VMap<K = {}, V= {}> extends Variable<Map<K, V>> {
@@ -244,7 +253,7 @@ declare namespace alkali {
   export class Transform<T = any> extends Variable<T> {
     protected cachedValue: any
     protected cachedVersion: number
-    constructor(source: any, transform: (...v) => T, sources?: any[])
+    constructor(source: any, transform: (...v: any[]) => T, sources?: any[])
   }
 
   export function reactive(initialValue: string): Vstring
@@ -269,14 +278,16 @@ declare namespace alkali {
   * to any of the input variables
   * @param inputs input variables
   */
-  export function all<T, U>(inputs: Array<Variable<T>>, transform?: (...v: Array<T>) => U): Variable<U>
+  export function all<T extends any[]>(inputs: T): Variable<Yield<T>>
+  export function all<T extends any[], U>(inputs: T, transform: (...v: Yield<T>) => U): Variable<U>
   /**
   * Compose a new variable based on the provided input variables. The returned variable will hold an array
   * with elements corresponding to the values of the input variables, and will update in response to changes
   * to any of the input variables
   * @param inputs input variables
   */
-  export function all<T>(...inputs: Array<Variable<T>>): Variable<Array<T>>
+  export function all<T extends any[]>(...inputs: T): Variable<Yield<T>>
+
   /**
   * Execute the provided generator or generator iterator, resolving yielded promises and variables
   */
@@ -761,7 +772,7 @@ declare namespace alkali {
     with<T>(properties: OptionalElementProperties<Element> | {[P in keyof T]: T[P]}, content?: ElementChild): ElementClass<Element & T>
     with(selector: string): ElementClass<Element>
     defineElement<T extends Element>(this: { new(...params: {}[]): T}, tagSelect?: string): ElementClass<T>
-    property(key): VariableClass<any>
+    property(key: KeyType): VariableClass<any>
     children: Array<ElementChild>
   }
   export var Element: ElementClass<HTMLElement>
@@ -905,11 +916,11 @@ declare namespace alkali {
   export var Week: ElementClass<HTMLInputElement>
   export var WeekInput: ElementClass<HTMLInputElement>
 
-  export function assign(element: HTMLElement, properties: ElementProperties)
+  export function assign(element: HTMLElement, properties: ElementProperties): void
   export function append(...args: Array<ElementChild>): HTMLElement
   export function prepend(...args: Array<ElementChild>): HTMLElement
-  export function onShowElement(element: Node)
-  export function onElementRemoval(element: Node, onlyChildren?: boolean)
+  export function onShowElement(element: Node): void
+  export function onElementRemoval(element: Node, onlyChildren?: boolean): void
   export function content<T>(node: T): T
 
   export function getNextVersion(): number
@@ -926,6 +937,6 @@ declare module 'alkali' {
 }
 
 declare module 'alkali/extensions/typescript' {
-    export function reactive(target: any, key: string)
+    export function reactive(target: any, key: string): void
 }
 

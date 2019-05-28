@@ -11,7 +11,8 @@
   "scripts": {
     "test": "./node_modules/.bin/mocha tests/unit -u tdd",
     "test.sauce": "intern-runner config=tests/intern",
-    "test.proxy": "intern-runner config=tests/intern --proxyOnly"
+    "test.proxy": "intern-runner config=tests/intern --proxyOnly",
+    "test.types": "./node_modules/.bin/tsc -p tests"
   },
   "main": "./index.js",
   "dependencies": {},
