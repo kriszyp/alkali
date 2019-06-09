@@ -46,6 +46,22 @@ define([
 				assert.equal(div.innerHTML, 'next');
 			});
 		})
+		test('TextRenderer', function() {
+			var div = document.createElement('div')
+			var textNode = div.appendChild(document.createTextNode(''))
+			document.body.appendChild(div);
+			var variable = new Variable('start');
+			var renderer = new Renderer.TextRenderer({
+				variable: variable,
+				element: div,
+				textNode: textNode
+			});
+			assert.equal(div.innerHTML, 'start');
+			variable.put('next');
+			return new Promise(requestAnimationFrame).then(function(){
+				assert.equal(div.innerHTML, 'next');
+			});
+		})
 		test('PromisedUpdate', function() {
 			var resolvePromise;
 			var promise = new Promise(function(resolve){
