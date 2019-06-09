@@ -35,5 +35,9 @@ define(function(require) {
 			})
 			})
 		})
+		test('round', function() {
+			assert.equal(operators.round(new Variable(2.345)).valueOf(), 2)
+			assert.equal(operators.round(new Variable(2.567)).valueOf(), 3)
+		})
 	})
 })

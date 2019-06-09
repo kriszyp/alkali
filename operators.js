@@ -81,6 +81,6 @@
 	operator('==', VBoolean, 'equal', 9, 'a==b');
 	operator('&', VBoolean, 'and', 8, 'a&&b');
 	operator('|', VBoolean, 'or', 8, 'a||b');
-	operator('round', 'round', 8, 'Math.round(a*Math.pow(10,b||1))/Math.pow(10,b||1)', 'a', 'a');
+	operator('nint', VNumber, 'round', 8, 'Math.round(a*Math.pow(10,b||1)/Math.pow(10,b||1))', 'a', 'a');
 	return operators;
 }))
