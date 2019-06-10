@@ -1351,6 +1351,10 @@ Tests are written with Mocha.
 To run unit tests: `npm run test`
 To run functional tests: serve the project directory (e.g. python -m SimpleHTTPServer) and open `http://localhost:8000/tests/test.html`
 
+## Build
+
+For developing and building Alkali, run `webpack` to build the Alkali bundle. We currently check this in for ease in using the bundled files for github pages.
+
 # Browser Support
 
 Basic variables will work on virtually any browser, but the Alkali elements require at least IE11+ or any other modern browser.
