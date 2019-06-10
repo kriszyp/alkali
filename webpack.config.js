@@ -6,9 +6,9 @@ module.exports = {
         library: 'alkali',
         libraryTarget: 'umd'
     },
-    plugins: [
-      new webpack.optimize.UglifyJsPlugin()
-    ],
+    optimization: {
+      minimize: true
+    },
     mode: 'production',
     devtool: 'source-map'
 };

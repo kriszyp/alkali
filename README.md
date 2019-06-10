@@ -1346,9 +1346,10 @@ Week (also WeekInput)
 
 ## Testing
 
-This package uses the [Intern test framework](https://theintern.github.io/intern/#what-is-intern) installed via `npm`. To run tests, after installing intern-geezer dependency, serve the project directory and open the url in a browser:
+Tests are written with Mocha.
 
-`http://localhost:<port>/node_modules/intern-geezer/client.html?config=tests/intern` (add `&grep=...` to filter tests)
+To run unit tests: `npm run test`
+To run functional tests: serve the project directory (e.g. python -m SimpleHTTPServer) and open `http://localhost:8000/tests/test.html`
 
 # Browser Support
 

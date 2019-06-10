@@ -9,9 +9,8 @@
     "url": "http://github.com/kriszyp/alkali"
   },
   "scripts": {
+    "build": "webpack",
     "test": "./node_modules/.bin/mocha tests/unit -u tdd",
-    "test.sauce": "intern-runner config=tests/intern",
-    "test.proxy": "intern-runner config=tests/intern --proxyOnly",
     "test.types": "./node_modules/.bin/tsc -p tests"
   },
   "main": "./index.js",
@@ -24,6 +23,7 @@
     "dojo-dstore": "^1.1.1",
     "mocha": "^6",
     "chai": "^4",
-    "webpack": "^4.7.0"
+    "webpack": "^4.7.0",
+    "webpack-cli": "^3.3.3"
   }
 }
