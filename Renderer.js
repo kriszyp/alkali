@@ -105,8 +105,7 @@
 		specify: function(Variable) {
 			return this.contextualized = Context.prototype.specify.call(this, Variable)
 			// a new context to get this
-			this.contextualized = this.newContext(null, true).specify(Variable)
-
+			//return this.contextualized = this.newContext(null, true).specify(Variable)
 		},
 		merge: function(){
 			// noop
