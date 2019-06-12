@@ -18,12 +18,12 @@
   "types": "./index.d.ts",
   "dojoBuild": "package.js",
   "devDependencies": {
-    "bluebird": "^3.5.3",
+    "bluebird": "^3.5",
     "dojo": "^1.10.2",
     "dojo-dstore": "^1.1.1",
-    "mocha": "^6",
-    "chai": "^4",
-    "webpack": "^4.7.0",
+    "mocha": "^6.1",
+    "chai": "^4.2",
+    "webpack": "^4.33.0",
     "webpack-cli": "^3.3.3"
   }
 }
