@@ -266,6 +266,7 @@
 				return requestAnimationFrame
 			})(),
 		SyncPromise: SyncPromise,
+		SyncErrorPromise: SyncErrorPromise,
 		Promise: has('promise') ? Promise : (function() {
 			function Promise(execute) {
 				var isResolved, resolution, errorResolution

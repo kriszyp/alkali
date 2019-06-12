@@ -443,6 +443,18 @@ define(function(require) {
 			b.put([4])
 			assert.deepEqual(mult.valueOf(), [12])
 		})
+		test('from empty array', function() {
+			var a = new VArray()
+			a.sort()
+			assert.deepEqual(a.valueOf(), [])
+			a.push('b')
+			a.push('a')
+			a.sort()
+			assert.deepEqual(a.valueOf(), ['a', 'b'])
+			var a = new VArray()
+			a = a.slice(0)
+			assert.deepEqual(a.valueOf(), [])
+		})
 		test('typedMap', function() {
 			var Foo = Variable({
 				foo: Variable

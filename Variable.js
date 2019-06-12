@@ -403,10 +403,15 @@
 			return (allowPromise || !(result && result.then)) ? result : undefined
 		},
 		then: function(onFulfilled, onRejected) {
-			var result = this.valueOf(true)
-			var isAsyncPromise = result && result.then
-			if (!isAsyncPromise) {
-				result = new lang.SyncPromise(result) // ensure it is promise-like
+			var result, isAsyncPromise
+			try {
+				result = this.valueOf(true)
+				isAsyncPromise = result && result.then
+				if (!isAsyncPromise) {
+					result = new lang.SyncPromise(result) // ensure it is promise-like
+				}
+			} catch (error) {
+				result = new lang.SyncErrorPromise(error)
 			}
 			if (onFulfilled || onRejected) { // call then if we have any callbacks
 				if (isAsyncPromise && context) {
@@ -2044,6 +2049,9 @@
 			var variable = this
 			return when(this.valueOf(true), function(array) {
 				var typedArray = variable.valueOf(GET_TYPED_ARRAY)
+				var newArray
+				if (!array)
+					newArray = array = []
 				if (typedArray) {
 					var combined = []
 					for (var l = array.length, i = 0; i < l; i++) {
@@ -2072,7 +2080,10 @@
 						variable.reversed = false
 					}
 				}
-				variable.updated() // this is treated as an in-place update with no upstream impact
+				if (newArray)
+					variable.put(newArray)
+				else
+					variable.updated() // this is treated as an in-place update with no upstream impact
 				variable.cachedVersion = variable.version
 				if (variable._typedArray) {
 					variable._typedVersion = variable.version
@@ -2093,7 +2104,7 @@
 		},
 		slice: function(start, end) {
 			return when(this.valueOf(true), function(array) {
-				return array.slice(start, end)
+				return (array || []).slice(start, end)
 			})
 		},
 		indexOf: function(idOrValue) {
