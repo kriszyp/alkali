@@ -1841,5 +1841,16 @@
 		}
 	})
 
+	Element.createElement = function(element, props, children) {
+		if (arguments.length > 2)
+			props.content = [].slice.call(arguments, 2)
+		if (typeof element === 'string')
+			element = getConstructor(element)
+		if (typeof element === 'function') {
+			return element(props)
+		}
+		throw Error('Unrecognize element type')
+	}
+
 	return Element
 }))
