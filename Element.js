@@ -1841,7 +1841,7 @@
 		}
 	})
 
-	Element.createElement = function(element, props, children) {
+	Element.createElement = function(element, props) {
 		if (arguments.length > 2)
 			props.content = [].slice.call(arguments, 2)
 		if (typeof element === 'string')
