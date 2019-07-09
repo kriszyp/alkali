@@ -922,6 +922,7 @@ declare namespace alkali {
   export function onShowElement(element: Node): void
   export function onElementRemoval(element: Node, onlyChildren?: boolean): void
   export function content<T>(node: T): T
+  export function createElement(element: string|Function, properties: ElementProperties, ...children: Array<ElementChild>): ElementClass<HTMLElement>
 
   export function getNextVersion(): number
 
