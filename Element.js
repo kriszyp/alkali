@@ -1847,9 +1847,10 @@
 			props.content = [].slice.call(arguments, 2)
 		if (typeof element === 'string')
 			element = getConstructor(element)
-		if (typeof element === 'function') {
+		if (element.with)
+			return element.with(props)
+		if (element === 'function')
 			return element(props)
-		}
 		throw Error('Unrecognize element type')
 	}
 
