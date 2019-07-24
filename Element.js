@@ -1849,7 +1849,7 @@
 			element = getConstructor(element)
 		if (element.with)
 			return element.with(props)
-		if (element === 'function')
+		if (typeof element === 'function')
 			return element(props)
 		throw Error('Unrecognize element type')
 	}
