@@ -782,8 +782,8 @@
 						throw new Error('Defining event handlers through class methods is not allowed (due to incompatibility with compiled code)')
 					}
 					applyOnCreate[key] = prototype[key]
-				} else if (key.slice(0, 6) === 'render') {
-					var propertyName = key[6].toLowerCase() + key.slice(7)
+				} else if (key.slice(0, 7) === '_render') {
+					var propertyName = key[7].toLowerCase() + key.slice(8)
 					if (!propertyHandlers) {
 						propertyHandlers = prototype._propertyHandlers = Object.create(prototype._propertyHandlers)
 					}
