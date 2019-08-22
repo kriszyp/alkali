@@ -730,7 +730,7 @@ define([
 		})
 		test('renderProperty', function() {
 			var MyComponent = extend(Div, {
-				renderFoo: function(value) {
+				_renderFoo: function(value) {
 					this.textContent = value + 'foo'
 				}
 			})
@@ -881,10 +881,10 @@ define([
 		test('overrideDefaultWithRender', function() {
 			var widthRendered, textContentRendered
 			var MyComponent = extend(Div, {
-				renderWidth: function() {
+				_renderWidth: function() {
 					widthRendered = true
 				},
-				renderTextContent: function() {
+				_renderTextContent: function() {
 					textContentRendered = true
 				}
 			})

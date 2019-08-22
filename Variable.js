@@ -2356,9 +2356,10 @@
 		// This is intended to mirror Promise.all. It actually takes
 		// an iterable, but for now we are just looking for array-like
 		if (array instanceof Array) {
-			if (array.length > 0 || typeof transform === 'function') {
+			var hasTransform = typeof transform === 'function'
+			if (array.length > 0 || hasTransform) {
 				// TODO: Return VArray Transform
-				return new Transform(array[0], typeof transform === 'function' ? transform : argsToArray, array, true)
+				return new Transform(array[0], hasTransform ? transform : argsToArray, array, !hasTransform)
 			} else {
 				return new VArray([])
 			}
