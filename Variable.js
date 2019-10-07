@@ -944,8 +944,10 @@
 				return this
 			}
 			this.fixed = true
-
-			this.value = newValue
+			if (newValue && newValue.then && !newValue.notifies) {
+				assignPromise(this, newValue)
+			} else
+				this.value = newValue
 			this.updated(new ReplacedEvent(), this)
 			return this
 		},
