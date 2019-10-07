@@ -479,7 +479,7 @@
 			// thisElement.appendChild(container)
 		} else {
 			var childElements = this.childElements
-			var updates = this.updates
+			var updates = this.updates || [{ type: 'replaced' }]
 			container = thisElement
 			updates.forEach(function(update) {
 				if (update.type === 'replaced') {
@@ -549,6 +549,8 @@
 					element.className = element.className.replace(/\s?needs\-rerendering\s?/g, '')
 					for (var id in renderers) {
 						var renderer = renderers[id]
+						if (renderer.omitValueOf)
+							renderer.omitValueOf = false
 						renderer.updateElement(element)
 					}
 				}
