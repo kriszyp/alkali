@@ -760,7 +760,7 @@
 							dependent.updated(updateEvent.propertyEvent, variable)
 						}
 					} else {
-						dependent.updated(updateEvent, variable, true)
+						dependent.updated(dependent.key === undefined ? updateEvent : null, variable, true)
 					}
 				}
 			}
