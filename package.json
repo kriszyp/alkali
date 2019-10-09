@@ -18,7 +18,7 @@
   "types": "./index.d.ts",
   "dojoBuild": "package.js",
   "devDependencies": {
-    "bluebird": "^3.5",
+    "bluebird": "^3.7",
     "dojo": "^1.10.2",
     "dojo-dstore": "^1.1.1",
     "mocha": "^6.1",
