@@ -522,7 +522,7 @@
 				childElement = each.create({parent: thisElement, _item: item}) // TODO: make a faster object here potentially
 			} else {
 				childElement = each(item, thisElement)
-				if (childElement.create) {
+				if (childElement && childElement.create) {
 					childElement = childElement.create({parent: thisElement, _item: item})
 				}
 			}
