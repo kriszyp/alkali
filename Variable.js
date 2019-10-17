@@ -1218,40 +1218,42 @@
 		if (object && typeof object.set === 'function') {
 			object.set(key, newValue, event)
 		} else {
-			if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
-				// if a put and the property value is a variable, assign it to that.
-				return oldValue.put(newValue, event)
-			} else {
-				if (newValue && newValue.then && !newValue.notifies) {
-					// wait for it to resolve and then assign
-					return newValue.then(function(newValue) {
-						return changeValue(variable, type, newValue, event)
-					})
+			return when(object, function(object) {
+				if (type == RequestChange && oldValue && oldValue.put && (!newValue && newValue.put)) {
+					// if a put and the property value is a variable, assign it to that.
+					return oldValue.put(newValue, event)
 				} else {
-					// copy, if this is a copy-on-write variable
-					// nothing there yet, create an object to hold the new property
-					var newObject = object == null
-						? typeof key == 'number' ? [] : {}
-						: parent.isWritable
-							? lang.copy(
-								object.constructor === Object
-								?	{}
-								:	object.constructor === Array
-									?	[]
-									: Object.create(Object.getPrototypeOf(object)), object)
-							: object
-					newObject[key] = newValue
+					if (newValue && newValue.then && !newValue.notifies) {
+						// wait for it to resolve and then assign
+						return newValue.then(function(newValue) {
+							return changeValue(variable, type, newValue, event)
+						})
+					} else {
+						// copy, if this is a copy-on-write variable
+						// nothing there yet, create an object to hold the new property
+						var newObject = object == null
+							? typeof key == 'number' ? [] : {}
+							: parent.isWritable
+								? lang.copy(
+									object.constructor === Object
+									?	{}
+									:	object.constructor === Array
+										?	[]
+										: Object.create(Object.getPrototypeOf(object)), object)
+								: object
+						newObject[key] = newValue
+					}
+					// or set the setter/getter
 				}
-				// or set the setter/getter
-			}
-			event = event || new ReplacedEvent()
-			var parentEvent = new PropertyChangeEvent(key, event, variable)
-			parentEvent.oldValue = oldValue
-			parentEvent.target = variable
-			return when(newObject === object ?
-					parent.updated(parentEvent, variable) :
-					parent.put(newObject, parentEvent), function() {
-				variable.updated(event, variable)
+				event = event || new ReplacedEvent()
+				var parentEvent = new PropertyChangeEvent(key, event, variable)
+				parentEvent.oldValue = oldValue
+				parentEvent.target = variable
+				return when(newObject === object ?
+						parent.updated(parentEvent, variable) :
+						parent.put(newObject, parentEvent), function() {
+					variable.updated(event, variable)
+				})
 			})
 		}
 		variable.updated(event, variable)
