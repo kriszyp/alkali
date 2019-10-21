@@ -754,13 +754,17 @@
 				listeners = listeners.slice()
 				for (var i = 0, l = listeners.length; i < l; i++) {
 					var dependent = listeners[i]
-					if ((updateEvent instanceof PropertyChangeEvent) &&
-							dependent.parent) {
-						if (dependent.key === updateEvent.key) {
-							dependent.updated(updateEvent.propertyEvent, variable)
+					if (dependent.parent && !(updateEvent instanceof ReplacedEvent)) {
+						if (updateEvent instanceof PropertyChangeEvent) {
+							if (dependent.key === updateEvent.key) {
+								dependent.updated(updateEvent.propertyEvent, variable)
+							}
+						} else {
+							var childEvent = new ReplacedEvent(updateEvent)
+							dependent.updated(childeEvent, variable, true)
 						}
 					} else {
-						dependent.updated(dependent.key === undefined ? updateEvent : null, variable, true)
+						dependent.updated(updateEvent, variable, true)
 					}
 				}
 			}
@@ -1167,7 +1171,7 @@
 				}
 				if (this.parent) {
 					var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
-					return parentSchemaProperties && parentSchemaProperties[this.key]
+					return parentSchemaProperties && parentSchemaProperties[typeof  this.key == 'number' ? 'collectionOf' : this.key]
 				}
 				return this.constructor
 			},

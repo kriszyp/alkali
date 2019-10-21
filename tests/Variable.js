@@ -927,6 +927,28 @@ define(function(require) {
 			assert.strictEqual(propertyA.validation.valueOf().length, 1)
 		})
 
+		test('inner validate', function() {
+			var Inner = Variable.with({
+			  text: VString,
+			  validate: o => {
+			    o = o.valueOf()
+			    var valid = []
+			    valid.isValid = true
+			    return valid
+			  }
+			})
+			var Outer = Variable.with({
+			  inners: [Inner],
+			})
+			// fails in transform below: TypeError: Cannot read property 'properties' of undefined at VString.get (Variable.js:1170)
+			var extraction = new Outer({ inners: [{ text: 'abcd' }]})
+			var inner = extraction.inners.property(0)
+			// succeeds
+			//var inner = new Inner({ text: 'abcd' })
+
+			var isValid = inner.text.validation.to(v => v.isValid).valueOf()
+		})
+
 		test('composite', function() {
 			var a = new Variable(1)
 			var b = new Variable(2)
