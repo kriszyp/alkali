@@ -761,7 +761,7 @@
 							}
 						} else {
 							var childEvent = new ReplacedEvent(updateEvent)
-							dependent.updated(childeEvent, variable, true)
+							dependent.updated(childEvent, variable, true)
 						}
 					} else {
 						dependent.updated(updateEvent, variable, true)

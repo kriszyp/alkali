@@ -12,6 +12,7 @@
 	main.reactive = reactive
 	lang.copy(main.react, reactive) // For backwards compatibility with babel transform
 	main.spawn = lang.spawn
+	main.when = lang.when
 	main.Renderer = Renderer.ElementRenderer
 	lang.copy(main, Renderer)
 	lang.copy(main, operators)
