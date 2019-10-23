@@ -1847,6 +1847,14 @@
 			props.content = [].slice.call(arguments, 2)
 		if (typeof element === 'string')
 			element = getConstructor(element)
+		for (var key in props) {
+			if (typeof key === 'string' && key.slice(0, 5) == 'data-') {
+				if (!props.dataset)
+					props.dataset = {}
+				props.dataset[key.slice(5)] = props[key]
+				delete props[key]
+			}
+		}
 		if (element.with)
 			return element.with(props)
 		if (typeof element === 'function')
