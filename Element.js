@@ -1851,7 +1851,8 @@
 			if (typeof key === 'string' && key.slice(0, 5) == 'data-') {
 				if (!props.dataset)
 					props.dataset = {}
-				props.dataset[key.slice(5)] = props[key]
+				props.dataset[key.slice(5).toLowerCase().replace(/-[a-zA-Z]/g,
+					(dashLetter) => dashLetter.charAt(1).toUpperCase())] = props[key]
 				delete props[key]
 			}
 		}
