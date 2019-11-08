@@ -768,7 +768,7 @@
 					}
 				}
 			}
-			if (updateEvent instanceof PropertyChangeEvent) {
+			if (updateEvent instanceof PropertyChangeEvent || updateEvent instanceof ReplacedEvent) {
 				if (this.returnedVariable && this.fixed) {
 					this.returnedVariable.updated(updateEvent, this)
 				}
@@ -2130,7 +2130,7 @@
 			}
 			var i = this.indexOf(idOrValue)
 			var array = this.valueOf()
-			var instance = new this.collectionOf.from(array[i] || {})
+			var instance = this.collectionOf.from(array[i] || {})
 			instance.id = idOrValue
 			return instance
 		},
