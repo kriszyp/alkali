@@ -23,7 +23,10 @@
 			if (definition) {
 				definition(element, newValue, this.name)
 			} else {
-				element.style[this.name] = newValue
+				if (this.name.indexOf('-') == -1)
+					cssRule.style[this.name] = newValue
+				else
+					cssRule.setProperty(this.name, newValue)
 			}
 		}
 	})
@@ -426,7 +429,11 @@
 	}
 
 	var styleObjectHandler = applySubProperties(function(newValue, element, key) {
-		element.style[key || this.name] = newValue
+		key = key || this.name
+		if (key.indexOf('-') == -1)
+			element.style[key] = newValue
+		else
+			element.style.setProperty(key, newValue)
 	})
 
 	function applySubProperties(renderer) {
@@ -1437,7 +1444,10 @@
 				cssRule = cssRule || createCssRule(options.uniqueTag ? Element.tagName :
 					(Element.tagName + '.' + applyOnCreate.className))
 				for (var name in value) {
-					cssRule.style[name] = value[name]
+					if (name.indexOf('-') == -1)
+						cssRule.style[name] = value[name]
+					else
+						cssRule.setProperty(name, value[name])
 				}
 				preBoundProperties.style = undefined
 			}
