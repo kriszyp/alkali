@@ -1862,7 +1862,7 @@
 				if (!props.dataset)
 					props.dataset = {}
 				props.dataset[key.slice(5).toLowerCase().replace(/-[a-zA-Z]/g,
-					(dashLetter) => dashLetter.charAt(1).toUpperCase())] = props[key]
+					function(dashLetter) { return dashLetter.charAt(1).toUpperCase() })] = props[key]
 				delete props[key]
 			}
 		}
