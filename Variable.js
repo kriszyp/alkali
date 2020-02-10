@@ -1169,7 +1169,7 @@
 				if (this.returnedVariable) {
 					return this.returnedVariable.schema
 				}
-				if (this.parent) {
+				if (this.parent && this.parent.schema) {
 					var parentSchemaProperties = this.parent.schema.properties || this.parent.schema
 					return parentSchemaProperties && parentSchemaProperties[typeof  this.key == 'number' ? 'collectionOf' : this.key]
 				}
