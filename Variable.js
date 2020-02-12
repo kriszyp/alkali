@@ -479,14 +479,15 @@
 						listeners.observer.addKey(key)
 					}
 				//}
-				return value
+				return value !== undefined ?
+				value : this.default
 			}
 			if (this.promise) {
 				return this.promise
 			}
 			var value = this.value
 			return value !== undefined ?
-				this.value : this.default
+				value : this.default
 		},
 		gotValue: function(value) {
 			var previousNotifyingValue = this.returnedVariable
