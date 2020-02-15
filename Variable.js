@@ -1754,7 +1754,7 @@
 								variable.promise = null
 								variable.lastError = error
 								onResolve(null, 0)
-							} else if (promise.replacedResolutionWith) {
+							} else if (promise && promise.replacedResolutionWith) {
 								// if it was aborted and substituted with the latest promise, return that value
 								return promise.replacedResolutionWith
 							}
