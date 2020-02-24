@@ -2865,6 +2865,7 @@
 		AddedEvent: AddedEvent,
 		DeletedEvent: DeletedEvent,
 		UpdateEvent: UpdateEvent,
+		EntryEvent: EntryEvent,
 	}
 	Object.defineProperty(exports, 'currentContext', {
 		get: function() {
