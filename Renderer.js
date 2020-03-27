@@ -468,8 +468,12 @@
 					this.executeWithin(function() {
 						variable.forEach(renderEach)
 					})
-				} else {
+				} else if (newValue.forEach) {
 					newValue.forEach(renderEach)
+				} else {
+					this.renderUpdate = TextRenderer.prototype.renderUpdate
+					this.omitValueOf = false
+					return this.renderUpdate(newValue, element)
 				}
 			}
 			var contextualized = this.contextualized || this.variable
