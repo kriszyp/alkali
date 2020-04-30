@@ -245,7 +245,7 @@
 	}
 
 	var lang = {
-		requestAnimationFrame: has('requestAnimationFrame') ? requestAnimationFrame :
+		requestAnimationFrame:
 			(function() {
 				var toRender = []
 				var queued = false
@@ -258,7 +258,7 @@
 				}
 				function requestAnimationFrame(renderer) {
 				 	if (!queued) {
-						setTimeout(processAnimationFrame)
+						(window.requestAnimationFrame || setTimeout)(processAnimationFrame)
 						queued = true
 					}
 					toRender.push(renderer)

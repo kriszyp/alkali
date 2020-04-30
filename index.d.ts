@@ -927,6 +927,7 @@ declare namespace alkali {
   export function getNextVersion(): number
 
   export class ReplacedEvent extends UpdateEvent {}
+  export class EntryEvent extends UpdateEvent {}
   export class AddedEvent extends UpdateEvent {}
   export class DeletedEvent extends UpdateEvent {}
   export class ContextualPromise<T> extends Promise<T> {
