@@ -949,6 +949,7 @@
 				return this
 			}
 			this.fixed = true
+			this.returnedVariable = null
 			if (newValue && newValue.then && !newValue.notifies) {
 				assignPromise(this, newValue)
 			} else
