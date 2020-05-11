@@ -1661,8 +1661,6 @@
 			var readyState = this.readyState
 			var parentContext = context
 			var transformContext = context = context ? context.newContext() : new Context()
-			var args = []
-			var isAsyncInputs
 			try {
 				if (this.version) {
 					// get the version in there
@@ -1711,7 +1709,6 @@
 					return whenAllResolved()
 					// everything resolved, fast path
 				}
-				isAsyncInputs = true
 				function whenAllResolved() {
 	 				if (transformContext.ifModifiedSince !== undefined) {
 	 					transformContext.ifModifiedSince = undefined
@@ -1787,6 +1784,7 @@
 						}*/
 					}
 				}
+				var isAsyncInputs = true
 				if (lastPromiseResult.abort) {
 					// if abort was propagated, don't propagate past the variable, as we want to finish our resolution of the value
 					lastPromiseResult.abort = null
