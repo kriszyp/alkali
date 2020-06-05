@@ -892,6 +892,8 @@
 					}
 				}
 			}
+			if (this.promise)
+				this.promise = null
 			if (value && value.then && !value.notifies) {
 				value = assignPromise(this, value)
 			} else {
@@ -950,6 +952,8 @@
 			}
 			this.fixed = true
 			this.returnedVariable = null
+			if (this.promise)
+				this.promise = null
 			if (newValue && newValue.then && !newValue.notifies) {
 				assignPromise(this, newValue)
 			} else
