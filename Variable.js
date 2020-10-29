@@ -665,7 +665,7 @@
 		versionWithChildren: 0,
 
 		updateVersion: function(version) {
-			var dateBasedVersion = (Date.now() - 1500000000000) * 256
+			var dateBasedVersion = Date.now()
 			if (dateBasedVersion > nextVersion) {
 				nextVersion = dateBasedVersion
 			}
@@ -702,7 +702,7 @@
 
 		_initUpdate: function(updateEvent, isDownstream) {
 			if (!updateEvent.version) {
-				var dateBasedVersion = (Date.now() - 1500000000000) * 256
+				var dateBasedVersion = Date.now()
 				if (dateBasedVersion > nextVersion) {
 					nextVersion = dateBasedVersion
 				}
@@ -1166,7 +1166,7 @@
 		},
 		_lastUpdated: {
 			get: function() {
-				return new Date(this.getVersion() / 256 + 1500000000000)
+				return new Date(this.getVersion())
 			}
 		},
 		schema: {
@@ -2880,7 +2880,7 @@
 	})
 
 	function getNextVersion() {
-		var dateBasedVersion = (Date.now() - 1500000000000) * 256
+		var dateBasedVersion = Date.now()
 		if (dateBasedVersion > nextVersion) {
 			nextVersion = dateBasedVersion
 		}
@@ -3177,7 +3177,7 @@
 			if (variable && variable instanceof Variable) {
 				var copy = Object.assign({}, variable)
 				copy[Symbol.toStringTag] = variable.constructor.name
-				var variableTime = variable.version / 256 + 1500000000000
+				var variableTime = variable.version
 				return ['span', {}, '',
 					(variable.readyState === 'invalidated' ? ' invalidated ' :
 						typeof variable.valueOf() === 'object' ? ['object', { object: variable.valueOf() }] : ['span', {}, ' = ' + variable]),
@@ -3192,7 +3192,7 @@
 			return false // default
 		},
 		body: function(variable) {
-			var variableTime = variable.version / 256 + 1500000000000
+			var variableTime = variable.version
 			var properties = ['div', {}, ['div', {}, 'version: ' + (variableTime && new Date(variableTime).toLocaleString())],
 				['div', {}, 'readyState: ' + variable.readyState]]
 			if (variable.valueOf())
