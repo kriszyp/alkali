@@ -246,7 +246,7 @@
 							renderer.contextualized = renderer.variable.notifies(renderer)
 						})
 					}
-					if(value !== undefined || renderer.started){
+					if(value !== undefined || renderer.started) {
 						renderer.started = true
 						renderer.renderUpdate(value, element)
 					}
