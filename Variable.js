@@ -230,6 +230,9 @@
 		this.visited = propertyEvent.visited
 	}
 	PropertyChangeEvent.prototype.type = 'property'
+	PropertyChangeEvent.prototype.getVersion = function() {
+		return this.propertyEvent.getVersion ? this.propertyEvent.getVersion() : this.parent.version
+	}
 
 	function SplicedEvent(modifier, items, removed, start, deleteCount) {
 		this.visited = new Set()
@@ -2156,6 +2159,12 @@
 		},
 		has: function(idOrValue) { // same as includes
 			return this.indexOf(idOrValue) > -1
+		},
+		updated: function(event, by, isDownstream) {
+			Variable.prototype.updated.call(this, event, by, isDownstream)
+			if (this._typedArray && event instanceof PropertyChangeEvent) {
+				this._typedVersion = event.getVersion()
+			}
 		}
 	})
 	Object.defineProperty(VArray.prototype, 'length', {
