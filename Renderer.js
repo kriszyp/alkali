@@ -550,7 +550,7 @@
 				if(renderers){
 					element.renderersOnShow = null
 					// remove needs-rerendering class
-					element.className = element.className.replace(/\s?needs\-rerendering\s?/g, '')
+					element.className = element.className.replace(/\s?needs\-rerendering/g, '')
 					for (var id in renderers) {
 						var renderer = renderers[id]
 						if (renderer.omitValueOf)

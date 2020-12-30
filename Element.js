@@ -1235,6 +1235,7 @@
 		'Date',
 		'DateTime',
 		'Email',
+		'File',
 		'Month',
 		'Number',
 		'Range',
