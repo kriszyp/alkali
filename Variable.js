@@ -1910,6 +1910,7 @@
 					if (version === variable.version) {
 						Variable.prototype.updated.call(variable)
 						variable.cachedVersion = variable.version
+						variable.cachedValue = value
 					}
 				}, function (error) {
 					// we have to go into an error state so the subsequent request can throw
