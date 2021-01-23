@@ -1890,6 +1890,7 @@
 		}
 	})
 
+	var nextResolvingId = 1
 	var RESOLUTION_UPDATE = {}
 		WhileResolving = lang.compose(Transform, function WhileResolving(variable, defaultValue, useLastValue) {
 		this.source = variable
@@ -1904,10 +1905,10 @@
 		getValue: function() {
 			var result = Transform.prototype.getValue.call(this)
 			if (result && result.then) {
-				var version = this.version
+				var resolvingId = this.resolvingId = nextResolvingId++
 				var variable = this
 				result.then(function(value) {
-					if (version === variable.version) {
+					if (resolvingId === variable.resolvingId) {
 						Variable.prototype.updated.call(variable)
 						variable.cachedVersion = variable.version
 						variable.cachedValue = value
