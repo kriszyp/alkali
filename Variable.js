@@ -440,7 +440,7 @@
 			}
 			var key = this.key
 			var parent
-			if (key != null && (parent = this.parent) != null) {
+			if (key !== undefined && (parent = this.parent) != null) {
 				if (context) {
 					if (context.ifModifiedSince != null) {
 						// just too complicated to handle NOT_MODIFED objects for now
@@ -1462,7 +1462,7 @@
 				: []
 			return callback.call(variable, newArray, function(startingIndex, deleteCount, items) {
 				if (startingIndex < 0) {
-					startingIndex = newArray.length + startingIndex
+					startingIndex = Math.max(newArray.length + startingIndex, 0)
 				}
 				if (startingIndex === newArray.length) {
 					var atEnd = true
