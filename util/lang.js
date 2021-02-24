@@ -245,18 +245,22 @@
 	}
 
 	var lang = {
-		requestAnimationFrame:
+		rAFOrdered:
 			(function() {
 				var toRender = []
 				var queued = false
 				function processAnimationFrame() {
+					toRender.sort(function(a, b) {
+						return (a.element.compareDocumentPosition(b.element) & 2) ? 1 : -1
+					})
 					for (var i = 0; i < toRender.length; i++) {
 						toRender[i]()
 					}
 					toRender = []
 					queued = false
 				}
-				function requestAnimationFrame(renderer) {
+				function requestAnimationFrame(renderer, element) {
+					renderer.element = element || document.body
 				 	if (!queued) {
 						(window.requestAnimationFrame || setTimeout)(processAnimationFrame)
 						queued = true

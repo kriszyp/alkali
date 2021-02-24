@@ -7,7 +7,7 @@
 	var queued
 	var toRender = []
 	var nextId = 1
-	var requestAnimationFrame = lang.requestAnimationFrame
+	var rAFOrdered = lang.rAFOrdered
 	var Context = VariableExports.Context
 
 	function Renderer(options) {
@@ -80,7 +80,7 @@
 					this.deferredRender = null
 				}
 				var renderer = this;
-				(updateEvent.visited.enqueueUpdate || requestAnimationFrame)(function() {
+				(updateEvent.visited.enqueueUpdate || rAFOrdered)(function() {
 					if (renderer.invalidated === true) {
 						renderer.updateRendering(renderer.alwaysUpdate, renderer.element)
 					} else if (renderer.invalidated) {
@@ -88,7 +88,7 @@
 							renderer.updateRendering(renderer.alwaysUpdate, element)
 						})
 					}
-				})
+				}, this.element)
 			}
 		},
 		executeWithin: Context.prototype.executeWithin,
@@ -536,7 +536,7 @@
 	Renderer.ListRenderer = ListRenderer
 
 	Renderer.onShowElement = function(shownElement){
-		requestAnimationFrame(function(){
+		rAFOrdered(function(){
 			invalidatedElements = null
 			var elements = [].slice.call(shownElement.getElementsByClassName('needs-rerendering'))
 			if (shownElement.className.indexOf('needs-rerendering') > 0){
