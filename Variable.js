@@ -1916,7 +1916,7 @@
 				}, function (error) {
 					// we have to go into an error state so the subsequent request can throw
 					console.error('Variable resolution failed', error)
-					if (version === variable.version) {
+					if (resolvingId === variable.resolvingId) {
 						Variable.prototype.updated.call(variable)
 						variable.cachedVersion = variable.version
 						variable.cachedValue = 'Error occurred: ' + error
