@@ -161,7 +161,7 @@
 	}
 	ElementRenderer.prototype = Object.create(Renderer.prototype)
 	ElementRenderer.prototype.shouldRender = function (element) {
-		return document.body.contains(element)
+		return document.body.contains(element) || typeof element.__alkaliAttached__ != 'boolean'
 	}
 	ElementRenderer.prototype.getSubject = function () {
 		return this.element
