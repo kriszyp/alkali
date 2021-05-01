@@ -352,7 +352,7 @@
 			}
 		},
 		_item: function(element, value) {
-			setForClass(element, value.constructor, value)
+			//setForClass(element, value.constructor, value)
 		}
 	}
 
@@ -1553,11 +1553,11 @@
 	}
 
 	function getForClass(element, Target) {
-		var createInstance
+		/*var createInstance
 		while (element && !(createInstance = element.constructor.ownedClasses && element.constructor.ownedClasses.get(Target))) {
 			element = element.parentNode || presumptiveParentMap.get(element)
 		}
-		if (createInstance) {
+		/*if (createInstance) {
 			var ownedInstances = element.ownedInstances || (element.ownedInstances = new lang.WeakMap())
 			var instance = ownedInstances.get(Target)
 			if (instance === undefined) {
@@ -1565,11 +1565,11 @@
 				instance.subject = element
 			}
 			return instance
-		}
+		}*/
 	}
 
 	function setForClass(element, Target, instance) {
-		var From = element.constructor
+/*		var From = element.constructor
 		var ownedClasses = From.ownedClasses || (From.ownedClasses = new lang.WeakMap())
 		var instanceMap = ownedClasses.get(Target)
 		if (!instanceMap) {
@@ -1577,7 +1577,7 @@
 		}
 		var ownedInstances = element.ownedInstances || (element.ownedInstances = new lang.WeakMap())
 		ownedInstances.set(Target, instance)
-		instanceMap.set(element, instance)
+		instanceMap.set(element, instance)*/
 	}
 
 	function propertyForElement(key) {
