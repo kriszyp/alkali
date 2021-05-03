@@ -917,7 +917,7 @@
 			parent = selector.parent
 		}
 		if (parent) {
-			presumptiveParentMap.set(element, parent)
+			//presumptiveParentMap.set(element, parent)
 		}
 		if (!(element instanceof this)) {
 			// ideally we want to avoid this call, as it is expensive, but for classes that
