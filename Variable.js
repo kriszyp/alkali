@@ -1890,7 +1890,7 @@
 		}
 	})
 
-	var nextResolvingId = 1
+	var nextResolvingId = 1, WhileResolving
 	var RESOLUTION_UPDATE = {}
 		WhileResolving = lang.compose(Transform, function WhileResolving(variable, defaultValue, useLastValue) {
 		this.source = variable
